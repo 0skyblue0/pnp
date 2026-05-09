@@ -1,0 +1,10 @@
+[Unit]
+Description=PnP PostgreSQL backup
+
+[Service]
+Type=oneshot
+EnvironmentFile=/etc/pnp/api.env
+Environment=BACKUP_DIR=/var/backups/pnp/postgres
+ExecStart=/opt/pnp/infra/backup/postgres-backup.sh
+User=pnp
+Group=pnp

@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - "phase/**"
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_DB: pnp_ops
+          POSTGRES_USER: pnp
+          POSTGRES_PASSWORD: pnp
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U pnp -d pnp_ops"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://pnp:pnp@localhost:5432/pnp_ops
+      SESSION_SECRET: ci-session-secret-with-at-least-32-chars
+      BOOTSTRAP_USERNAME: owner
+      BOOTSTRAP_PASSWORD_HASH: $2a$12$dE7HlHWASnJP9txW.Xd1.eaC9mQnxa.u65Xox33aT0/B.33uTqu7a
+      CORS_ORIGIN: http://localhost:5173
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run format:check
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build

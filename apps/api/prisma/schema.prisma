@@ -1,0 +1,242 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Product {
+  id               Int               @id @default(autoincrement())
+  name             String            @db.VarChar(80)
+  category         String?           @db.VarChar(40)
+  isSeasonal       Boolean           @default(false) @map("is_seasonal")
+  seasonStart      DateTime?         @map("season_start") @db.Date
+  seasonEnd        DateTime?         @map("season_end") @db.Date
+  isActive         Boolean           @default(true) @map("is_active")
+  createdAt        DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime          @default(now()) @map("updated_at") @db.Timestamptz(6)
+  stockouts        StockoutLog[]
+  tastings         TastingLog[]
+  responseLinks    ResponseProduct[]
+  reservationItems ReservationItem[]
+  productionLots   ProductionLot[]
+
+  @@map("product")
+}
+
+model Staff {
+  id                Int                @id @default(autoincrement())
+  username          String             @unique @db.VarChar(40)
+  displayName       String?            @map("display_name") @db.VarChar(40)
+  passwordHash      String             @map("password_hash") @db.VarChar(80)
+  role              String?            @db.VarChar(15)
+  isActive          Boolean            @default(true) @map("is_active")
+  createdAt         DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  customerResponses CustomerResponse[]
+  auditLogs         AuditLog[]
+
+  @@map("staff")
+}
+
+model DailyLog {
+  id             BigInt             @id @default(autoincrement())
+  date           DateTime           @unique @db.Date
+  weatherSummary String?            @map("weather_summary") @db.VarChar(80)
+  notes          String?            @db.Text
+  createdAt      DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime           @default(now()) @map("updated_at") @db.Timestamptz(6)
+  congestionLogs CongestionLog[]
+  tastingLogs    TastingLog[]
+  responses      CustomerResponse[]
+
+  @@map("daily_log")
+}
+
+model CongestionLog {
+  id               BigInt   @id @default(autoincrement())
+  dailyLogId       BigInt   @map("daily_log_id")
+  timeSlotStart    DateTime @map("time_slot_start") @db.Time(6)
+  timeSlotEnd      DateTime @map("time_slot_end") @db.Time(6)
+  level            Int?     @db.SmallInt
+  queueInside      Boolean  @default(false) @map("queue_inside")
+  queueOutside     Boolean  @default(false) @map("queue_outside")
+  estLostCustomers Int      @default(0) @map("est_lost_customers")
+  dailyLog         DailyLog @relation(fields: [dailyLogId], references: [id], onDelete: Cascade)
+
+  @@map("congestion_log")
+}
+
+model TastingLog {
+  id              BigInt   @id @default(autoincrement())
+  dailyLogId      BigInt   @map("daily_log_id")
+  productId       Int      @map("product_id")
+  recommended     Boolean  @default(false)
+  convertedToSale Boolean? @map("converted_to_sale")
+  note            String?  @db.Text
+  dailyLog        DailyLog @relation(fields: [dailyLogId], references: [id], onDelete: Cascade)
+  product         Product  @relation(fields: [productId], references: [id])
+
+  @@map("tasting_log")
+}
+
+model StockoutLog {
+  id                   BigInt   @id @default(autoincrement())
+  productId            Int      @map("product_id")
+  date                 DateTime @db.Date
+  sequence             Int      @db.SmallInt
+  stockoutAt           DateTime @map("stockout_at") @db.Timestamptz(6)
+  inquiryAfterStockout String?  @map("inquiry_after_stockout") @db.VarChar(10)
+  discardQty           Int      @default(0) @map("discard_qty")
+  discardReason        String?  @map("discard_reason") @db.Text
+  relatedLotId         BigInt?  @map("related_lot_id")
+  createdAt            DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  product              Product  @relation(fields: [productId], references: [id])
+
+  @@index([date, productId], map: "idx_stockout_date_product")
+  @@map("stockout_log")
+}
+
+model ProductionLot {
+  id         BigInt   @id @default(autoincrement())
+  productId  Int      @map("product_id")
+  producedAt DateTime @map("produced_at") @db.Timestamptz(6)
+  lotType    String?  @map("lot_type") @db.VarChar(10)
+  quantity   Int
+  staffNote  String?  @map("staff_note") @db.Text
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  product    Product  @relation(fields: [productId], references: [id])
+
+  @@index([producedAt, productId], map: "idx_production_lot_date")
+  @@map("production_lot")
+}
+
+model AbsentInquiry {
+  id          BigInt   @id @default(autoincrement())
+  productName String   @map("product_name") @db.VarChar(80)
+  productId   Int?     @map("product_id")
+  date        DateTime @db.Date
+  count       Int      @default(1)
+  note        String?  @db.Text
+
+  @@unique([productName, date])
+  @@map("absent_inquiry")
+}
+
+model Reservation {
+  id             BigInt            @id @default(autoincrement())
+  contactToken   String            @map("contact_token") @db.VarChar(64)
+  customerCardId String?           @map("customer_card_id") @db.Uuid
+  pickupAt       DateTime          @map("pickup_at") @db.Timestamptz(6)
+  status         String            @default("PENDING") @db.VarChar(15)
+  cancelReason   String?           @map("cancel_reason") @db.Text
+  purpose        String?           @db.VarChar(10)
+  allergyNote    String?           @map("allergy_note") @db.Text
+  memo           String?           @db.Text
+  createdAt      DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  completedAt    DateTime?         @map("completed_at") @db.Timestamptz(6)
+  items          ReservationItem[]
+
+  @@index([pickupAt, status], map: "idx_reservation_pickup")
+  @@map("reservation")
+}
+
+model ReservationItem {
+  id            BigInt      @id @default(autoincrement())
+  reservationId BigInt      @map("reservation_id")
+  productId     Int         @map("product_id")
+  quantity      Int
+  reservation   Reservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  product       Product     @relation(fields: [productId], references: [id])
+
+  @@index([productId], map: "idx_reservation_item_product")
+  @@map("reservation_item")
+}
+
+model CustomerResponse {
+  id              BigInt            @id @default(autoincrement())
+  date            DateTime          @db.Date
+  dailyLogId      BigInt?           @map("daily_log_id")
+  customerCardId  String?           @map("customer_card_id") @db.Uuid
+  category        String            @db.VarChar(20)
+  target          String?           @db.VarChar(15)
+  sentimentScore  Int?              @map("sentiment_score") @db.SmallInt
+  actionPriority  String?           @map("action_priority") @db.VarChar(15)
+  visitOrigin     String?           @map("visit_origin") @db.VarChar(10)
+  source          String?           @db.VarChar(20)
+  isBossFlag      Boolean           @default(false) @map("is_boss_flag")
+  shortSummary    String?           @map("short_summary") @db.VarChar(200)
+  fullText        String?           @map("full_text") @db.Text
+  llmSuggestionId BigInt?           @map("llm_suggestion_id")
+  llmAssisted     Boolean           @default(false) @map("llm_assisted")
+  createdBy       Int?              @map("created_by")
+  createdAt       DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  dailyLog        DailyLog?         @relation(fields: [dailyLogId], references: [id])
+  creator         Staff?            @relation(fields: [createdBy], references: [id])
+  tags            ResponseTag[]
+  products        ResponseProduct[]
+  photos          ResponsePhoto[]
+
+  @@index([date, category], map: "idx_response_date_category")
+  @@index([isBossFlag], map: "idx_response_boss_flag")
+  @@map("customer_response")
+}
+
+model ResponseTag {
+  responseId BigInt           @map("response_id")
+  tagCode    String           @map("tag_code") @db.VarChar(30)
+  response   CustomerResponse @relation(fields: [responseId], references: [id], onDelete: Cascade)
+
+  @@id([responseId, tagCode])
+  @@map("response_tag")
+}
+
+model ResponseProduct {
+  responseId BigInt           @map("response_id")
+  productId  Int              @map("product_id")
+  response   CustomerResponse @relation(fields: [responseId], references: [id], onDelete: Cascade)
+  product    Product          @relation(fields: [productId], references: [id])
+
+  @@id([responseId, productId])
+  @@map("response_product")
+}
+
+model ResponsePhoto {
+  id         BigInt           @id @default(autoincrement())
+  responseId BigInt           @map("response_id")
+  fileUrl    String           @map("file_url") @db.Text
+  createdAt  DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  response   CustomerResponse @relation(fields: [responseId], references: [id], onDelete: Cascade)
+
+  @@map("response_photo")
+}
+
+model Notification {
+  id        BigInt    @id @default(autoincrement())
+  type      String    @db.VarChar(40)
+  title     String    @db.VarChar(120)
+  body      String?   @db.Text
+  link      String?   @db.VarChar(200)
+  severity  String?   @db.VarChar(10)
+  isRead    Boolean   @default(false) @map("is_read")
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  readAt    DateTime? @map("read_at") @db.Timestamptz(6)
+
+  @@index([isRead, createdAt], map: "idx_notification_unread")
+  @@map("notification")
+}
+
+model AuditLog {
+  id          BigInt   @id @default(autoincrement())
+  staffId     Int?     @map("staff_id")
+  action      String?  @db.VarChar(20)
+  entity      String?  @db.VarChar(40)
+  entityId    String?  @map("entity_id") @db.VarChar(40)
+  beforeValue Json?    @map("before_value")
+  afterValue  Json?    @map("after_value")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  staff       Staff?   @relation(fields: [staffId], references: [id])
+
+  @@map("audit_log")
+}

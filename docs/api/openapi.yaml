@@ -1,0 +1,83 @@
+openapi: 3.1.0
+info:
+  title: PnP Operations API
+  version: 0.1.0
+servers:
+  - url: /api/v1
+paths:
+  /auth/login:
+    post:
+      summary: Create a server-side session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, password]
+              properties:
+                username:
+                  type: string
+                password:
+                  type: string
+      responses:
+        "200":
+          description: Session created
+        "401":
+          description: Invalid credentials
+  /auth/logout:
+    post:
+      summary: Destroy the current session
+      responses:
+        "200":
+          description: Session cleared
+  /me:
+    get:
+      summary: Return the current authenticated staff session
+      responses:
+        "200":
+          description: Current staff
+        "401":
+          description: No valid session
+  /response/tags:
+    get:
+      summary: Return quick tags for response entry
+      responses:
+        "200":
+          description: Tags returned
+  /notification:
+    get:
+      summary: List notifications
+      parameters:
+        - name: unread
+          in: query
+          schema:
+            type: boolean
+      responses:
+        "200":
+          description: Notifications returned
+components:
+  schemas:
+    ApiError:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+    ApiEnvelope:
+      oneOf:
+        - type: object
+          required: [data, error]
+          properties:
+            data: {}
+            error:
+              type: "null"
+        - type: object
+          required: [data, error]
+          properties:
+            data:
+              type: "null"
+            error:
+              $ref: "#/components/schemas/ApiError"

@@ -1,0 +1,12 @@
+node_modules/
+dist/
+coverage/
+.env
+.env.*
+!.env.example
+apps/api/prisma/generated/
+apps/api/prisma/migrations/migration_lock.toml
+playwright-report/
+test-results/
+*.log
+*.tsbuildinfo

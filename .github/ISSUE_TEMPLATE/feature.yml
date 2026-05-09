@@ -1,0 +1,32 @@
+name: Feature
+description: Track a module or user-story implementation
+title: "[Feature] "
+labels: ["feature"]
+body:
+  - type: input
+    id: module
+    attributes:
+      label: Module
+      description: M1-M13, auth, infra, or llm
+      placeholder: M3 response
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope
+      description: Describe the exact implementation boundary.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance Criteria
+      description: Link US-01 to US-13 where applicable.
+    validations:
+      required: true
+  - type: textarea
+    id: references
+    attributes:
+      label: Design References
+      description: FINAL_DESIGN.md sections and ADRs.

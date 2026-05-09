@@ -1,0 +1,16 @@
+[Unit]
+Description=PnP Operations API
+After=network.target postgresql.service
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/pnp/apps/api
+EnvironmentFile=/etc/pnp/api.env
+ExecStart=/usr/bin/node dist/index.js
+Restart=on-failure
+RestartSec=5
+User=pnp
+Group=pnp
+
+[Install]
+WantedBy=multi-user.target

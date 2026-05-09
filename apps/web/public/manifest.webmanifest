@@ -1,0 +1,10 @@
+{
+  "name": "폴앤폴리나 운영",
+  "short_name": "PnP 운영",
+  "start_url": "/home",
+  "display": "standalone",
+  "background_color": "#FAF7F2",
+  "theme_color": "#8B5A3C",
+  "orientation": "any",
+  "icons": []
+}

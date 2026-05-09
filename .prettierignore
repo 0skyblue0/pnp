@@ -1,0 +1,7 @@
+node_modules
+dist
+coverage
+apps/api/prisma/generated
+package-lock.json
+docs/AGENTS_MASTER.md
+docs/FINAL_DESIGN.md

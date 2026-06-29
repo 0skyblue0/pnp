@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "./App.js";
 import { AppLayout } from "./layouts/AppLayout.js";
 import { AppProviders } from "./providers/AppProviders.js";
+import { ManagementPage } from "../modules/admin/ManagementPage.js";
 import { DailyLogPage } from "../modules/daily-log/DailyLogPage.js";
 import { HomePage } from "../modules/home/HomePage.js";
 import { ResponseEntryPage } from "../modules/response/ResponseEntryPage.js";
@@ -13,8 +14,12 @@ import { ResponseInquiryPage } from "../modules/response/ResponseInquiryPage.js"
 const ACTIVE_NAV_CLASS = "from-cocoa";
 
 describe("App", () => {
+  let scrollIntoViewMock: ReturnType<typeof vi.fn>;
+
   beforeEach(() => {
     window.localStorage.clear();
+    scrollIntoViewMock = vi.fn();
+    window.HTMLElement.prototype.scrollIntoView = scrollIntoViewMock;
     vi.stubGlobal(
       "fetch",
       vi.fn(
@@ -51,6 +56,11 @@ describe("App", () => {
     const june26 = screen.getByLabelText("6월 26일");
     expect(within(june26).getByText("26")).toBeInTheDocument();
     expect(within(june26).getByText("여름깜빠뉴 출시")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "삭제" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "수정" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "여름깜빠뉴 출시 상세 보기" }));
+    expect(screen.getByRole("heading", { name: "스케줄 상세" })).toBeInTheDocument();
+    expect(scrollIntoViewMock).toHaveBeenCalled();
     expect(screen.queryByRole("heading", { name: "8월" })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "1년 전체 보기" }));
     expect(screen.getByRole("heading", { name: "8월" })).toBeInTheDocument();
@@ -59,6 +69,8 @@ describe("App", () => {
     expect(screen.getByRole("heading", { name: "올해 목표·매출 공지" })).toBeInTheDocument();
     expect(screen.getByText("올해 매출 목표")).toBeInTheDocument();
     expect(screen.getByText("운영 목표")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "올해 매출 목표 상세 보기" }));
+    expect(screen.getByRole("heading", { name: "목표·공지 상세" })).toBeInTheDocument();
     expect(screen.queryByText("시즌 상품 목표")).not.toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "오늘의 가용 재고" })).not.toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "생산 수량 입력" })).not.toBeInTheDocument();
@@ -126,7 +138,7 @@ describe("App", () => {
     expect(screen.getByLabelText("스케줄 구분")).toHaveValue("");
   });
 
-  it("lets staff select stored annual schedules before editing or deleting them", async () => {
+  it("opens a schedule detail panel so staff can edit or delete the selected schedule", async () => {
     vi.stubGlobal(
       "confirm",
       vi.fn(() => true)
@@ -202,9 +214,15 @@ describe("App", () => {
     expect(screen.getByRole("heading", { name: "6월" })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "8월" })).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "수정" }));
-    fireEvent.click(screen.getByLabelText("직원 입력 일정 수정 선택"));
-    fireEvent.click(screen.getByRole("button", { name: "확인" }));
+    fireEvent.click(screen.getByRole("button", { name: "직원 입력 일정 상세 보기" }));
+    expect(screen.getByRole("heading", { name: "스케줄 상세" })).toBeInTheDocument();
+    expect(scrollIntoViewMock).toHaveBeenCalled();
+    fireEvent.click(
+      within(screen.getByRole("region", { name: "스케줄 상세창" })).getByRole("button", {
+        name: "수정"
+      })
+    );
+    expect(screen.getByLabelText("상세 수정 날짜")).toHaveValue("2026-06-30");
     fireEvent.change(screen.getByLabelText("수정 스케줄 구분"), { target: { value: "launch" } });
     fireEvent.change(screen.getByDisplayValue("직원 입력 일정"), {
       target: { value: "수정된 일정" }
@@ -212,13 +230,16 @@ describe("App", () => {
     fireEvent.change(screen.getByDisplayValue("처음 메모"), { target: { value: "수정 메모" } });
     fireEvent.click(screen.getByRole("button", { name: "저장" }));
 
-    expect(await screen.findByText("수정된 일정")).toBeInTheDocument();
-    expect(screen.getByText("수정 메모")).toBeInTheDocument();
+    expect((await screen.findAllByText("수정된 일정")).length).toBeGreaterThan(0);
+    expect(screen.getAllByText("수정 메모").length).toBeGreaterThan(0);
     expect(screen.getAllByText("출시").length).toBeGreaterThan(0);
 
-    fireEvent.click(screen.getByRole("button", { name: "삭제" }));
-    fireEvent.click(screen.getByLabelText("수정된 일정 삭제 선택"));
-    fireEvent.click(screen.getByRole("button", { name: "확인" }));
+    fireEvent.click(screen.getByRole("button", { name: "수정된 일정 상세 보기" }));
+    fireEvent.click(
+      within(screen.getByRole("region", { name: "스케줄 상세창" })).getByRole("button", {
+        name: "삭제"
+      })
+    );
     await screen.findByText("여름깜빠뉴 출시");
     expect(screen.queryByText("수정된 일정")).not.toBeInTheDocument();
   });
@@ -240,6 +261,122 @@ describe("App", () => {
         .getAllByRole("link")
         .map((link) => link.textContent)
     ).toEqual(["홈", "일일 운영", "손님 반응", "예약", "관리"]);
+  });
+
+  it("lets staff manage home goal and sales notices from the management tab", async () => {
+    vi.stubGlobal(
+      "confirm",
+      vi.fn(() => true)
+    );
+    vi.mocked(fetch).mockImplementation(async (input, init) => {
+      const url = input instanceof Request ? input.url : String(input);
+
+      if (url.endsWith("/auth/csrf")) {
+        return new Response(JSON.stringify({ data: { csrfToken: "test-token" }, error: null }), {
+          headers: { "Content-Type": "application/json" }
+        });
+      }
+      if (
+        url.includes("/product") ||
+        url.includes("/staff") ||
+        url.includes("/response-criteria")
+      ) {
+        return new Response(
+          JSON.stringify({ data: { items: [], total: 0, page: 1, size: 0 }, error: null }),
+          { headers: { "Content-Type": "application/json" } }
+        );
+      }
+      if (url.endsWith("/annual-goal-notice") && (!init?.method || init.method === "GET")) {
+        return new Response(
+          JSON.stringify({
+            data: {
+              items: [
+                {
+                  id: "301",
+                  category: "sales",
+                  title: "올해 매출 목표",
+                  value: "전년 대비 +8%",
+                  note: "월별 매출을 함께 확인"
+                }
+              ],
+              total: 1,
+              page: 1,
+              size: 1
+            },
+            error: null
+          }),
+          { headers: { "Content-Type": "application/json" } }
+        );
+      }
+      if (url.endsWith("/annual-goal-notice") && init?.method === "POST") {
+        return new Response(
+          JSON.stringify({
+            data: {
+              id: "302",
+              category: "staff",
+              title: "직원 공지",
+              value: "주말 응대 집중",
+              note: "신입 직원과 함께 확인"
+            },
+            error: null
+          }),
+          { headers: { "Content-Type": "application/json" } }
+        );
+      }
+      if (url.endsWith("/annual-goal-notice/301") && init?.method === "PATCH") {
+        return new Response(
+          JSON.stringify({
+            data: {
+              id: "301",
+              category: "operation",
+              title: "운영 목표",
+              value: "일요일 매출 상승",
+              note: "시식 안내 강화"
+            },
+            error: null
+          }),
+          { headers: { "Content-Type": "application/json" } }
+        );
+      }
+      if (url.endsWith("/annual-goal-notice/301") && init?.method === "DELETE") {
+        return new Response(JSON.stringify({ data: { deleted: true }, error: null }), {
+          headers: { "Content-Type": "application/json" }
+        });
+      }
+      return new Response(JSON.stringify({ data: null, error: { message: url } }), {
+        status: 500,
+        headers: { "Content-Type": "application/json" }
+      });
+    });
+
+    render(<ManagementPage />);
+
+    expect(
+      await screen.findByRole("heading", { name: "홈 목표·매출 공지 관리" })
+    ).toBeInTheDocument();
+    expect(screen.getByText("전년 대비 +8%")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "홈 공지 추가" }));
+    fireEvent.change(screen.getByLabelText("공지 종류"), { target: { value: "staff" } });
+    fireEvent.change(screen.getByLabelText("공지 제목"), { target: { value: "직원 공지" } });
+    fireEvent.change(screen.getByLabelText("공지 내용"), { target: { value: "주말 응대 집중" } });
+    fireEvent.change(screen.getByLabelText("공지 메모"), {
+      target: { value: "신입 직원과 함께 확인" }
+    });
+    fireEvent.click(screen.getByRole("button", { name: "공지 저장" }));
+
+    expect(await screen.findByText("홈 공지 추가: 직원 공지")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "올해 매출 목표 수정" }));
+    fireEvent.change(screen.getByLabelText("공지 종류"), { target: { value: "operation" } });
+    fireEvent.change(screen.getByLabelText("공지 제목"), { target: { value: "운영 목표" } });
+    fireEvent.change(screen.getByLabelText("공지 내용"), { target: { value: "일요일 매출 상승" } });
+    fireEvent.change(screen.getByLabelText("공지 메모"), { target: { value: "시식 안내 강화" } });
+    fireEvent.click(screen.getByRole("button", { name: "공지 저장" }));
+
+    expect(await screen.findByText("홈 공지 수정 완료")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "올해 매출 목표 삭제" }));
+    expect(await screen.findByText("홈 공지 삭제 완료")).toBeInTheDocument();
   });
 
   it("keeps the customer response tab active on response entry route", () => {

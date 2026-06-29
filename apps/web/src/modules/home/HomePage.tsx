@@ -1,5 +1,5 @@
 import { Bell, CalendarDays, CheckCircle2, Target, TrendingUp } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 
 import { apiDelete, apiGet, apiPatch, apiPost } from "../../shared/api/client.js";
@@ -21,6 +21,16 @@ type AnnualScheduleDto = {
   tone?: ScheduleTone;
 };
 
+type AnnualGoalNoticeCategory = "sales" | "operation" | "staff";
+
+type AnnualGoalNoticeDto = {
+  id: string;
+  category: AnnualGoalNoticeCategory;
+  title: string;
+  value: string;
+  note: string;
+};
+
 type ScheduleTone = "launch" | "close" | "notice";
 
 type AnnualScheduleItem = {
@@ -40,10 +50,11 @@ type ScheduleForm = {
 };
 
 type CalendarViewMode = "month" | "year";
-type ScheduleActionMode = "none" | "edit" | "delete";
 
 type AnnualGoalNotice = {
-  label: string;
+  id?: string;
+  category: AnnualGoalNoticeCategory;
+  title: string;
   value: string;
   note: string;
 };
@@ -84,16 +95,32 @@ const annualScheduleItems: AnnualScheduleItem[] = [
 
 const annualGoalNotices: AnnualGoalNotice[] = [
   {
-    label: "올해 매출 목표",
+    category: "sales",
+    title: "올해 매출 목표",
     value: "전년 대비 +12%",
     note: "나중에 실제 목표 금액을 입력하면 이 자리에 고정 공지로 보여줍니다."
   },
   {
-    label: "운영 목표",
+    category: "operation",
+    title: "운영 목표",
     value: "품절·손실 사유 매일 기록",
     note: "일일 운영 입력률을 높여 생산량 조정과 손실 원인 확인에 사용합니다."
   }
 ];
+
+function toAnnualGoalNotice(item: AnnualGoalNoticeDto): AnnualGoalNotice {
+  return {
+    id: item.id,
+    category: item.category,
+    title: item.title,
+    value: item.value,
+    note: item.note
+  };
+}
+
+function goalNoticeKey(item: AnnualGoalNotice): string {
+  return item.id ?? `static-${item.category}-${item.title}`;
+}
 
 function toAnnualScheduleItem(item: AnnualScheduleDto): AnnualScheduleItem {
   const [, monthText = "1", dayText = "1"] = item.date.split("-");
@@ -122,6 +149,10 @@ function scheduleFormFromItem(item: AnnualScheduleItem, year: string): ScheduleF
     note: item.note,
     tone: item.tone
   };
+}
+
+function scheduleItemKey(item: AnnualScheduleItem): string {
+  return item.id ?? `static-${item.month}-${item.day}-${item.title}`;
 }
 
 function scheduleBadgeLabel(tone: AnnualScheduleItem["tone"]): string {
@@ -161,8 +192,10 @@ function getCalendarCells(year: number, month: number): Array<number | null> {
 }
 
 export function HomePage() {
+  const detailScheduleRef = useRef<HTMLDivElement | null>(null);
   const [date] = useState(todayInStoreTime());
   const [storedScheduleItems, setStoredScheduleItems] = useState<AnnualScheduleItem[]>([]);
+  const [storedGoalNotices, setStoredGoalNotices] = useState<AnnualGoalNotice[]>([]);
   const [scheduleForm, setScheduleForm] = useState<ScheduleForm>({
     date,
     title: "",
@@ -179,8 +212,8 @@ export function HomePage() {
   const [calendarViewMode, setCalendarViewMode] = useState<CalendarViewMode>("month");
   const [selectedMonth, setSelectedMonth] = useState(Number(date.slice(5, 7)));
   const [expandedScheduleKeys, setExpandedScheduleKeys] = useState<string[]>([]);
-  const [scheduleActionMode, setScheduleActionMode] = useState<ScheduleActionMode>("none");
-  const [selectedScheduleIds, setSelectedScheduleIds] = useState<string[]>([]);
+  const [detailScheduleKey, setDetailScheduleKey] = useState<string | null>(null);
+  const [detailGoalNoticeKey, setDetailGoalNoticeKey] = useState<string | null>(null);
   const [notifications, setNotifications] = useState<NotificationDto[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -206,6 +239,18 @@ export function HomePage() {
     calendarViewMode === "year"
       ? scheduleByMonth
       : scheduleByMonth.filter((month) => month.month === selectedMonth);
+  const detailScheduleItem = useMemo(
+    () => allScheduleItems.find((item) => scheduleItemKey(item) === detailScheduleKey) ?? null,
+    [allScheduleItems, detailScheduleKey]
+  );
+  const allGoalNotices = useMemo(
+    () => [...annualGoalNotices, ...storedGoalNotices],
+    [storedGoalNotices]
+  );
+  const detailGoalNotice = useMemo(
+    () => allGoalNotices.find((item) => goalNoticeKey(item) === detailGoalNoticeKey) ?? null,
+    [allGoalNotices, detailGoalNoticeKey]
+  );
 
   const loadAnnualSchedule = useCallback(async () => {
     const envelope = await apiGet<{ items: AnnualScheduleDto[] }>("/annual-schedule");
@@ -213,6 +258,14 @@ export function HomePage() {
       return;
     }
     setStoredScheduleItems(envelope.data.items.map(toAnnualScheduleItem));
+  }, []);
+
+  const loadAnnualGoalNotices = useCallback(async () => {
+    const envelope = await apiGet<ListEnvelope<AnnualGoalNoticeDto>>("/annual-goal-notice");
+    if (!envelope.data) {
+      return;
+    }
+    setStoredGoalNotices(envelope.data.items.map(toAnnualGoalNotice));
   }, []);
 
   async function addScheduleItem() {
@@ -235,46 +288,23 @@ export function HomePage() {
     setScheduleForm((current) => ({ ...current, title: "", note: "", tone: "" }));
   }
 
-  function beginScheduleAction(mode: Exclude<ScheduleActionMode, "none">) {
-    setScheduleActionMode(mode);
-    setSelectedScheduleIds([]);
-    cancelEditingSchedule();
-    setError(null);
-  }
-
-  function cancelScheduleAction() {
-    setScheduleActionMode("none");
-    setSelectedScheduleIds([]);
-  }
-
-  function toggleSelectedSchedule(itemId: string) {
-    setSelectedScheduleIds((current) => {
-      if (scheduleActionMode === "edit") {
-        return current.includes(itemId) ? [] : [itemId];
-      }
-      return current.includes(itemId)
-        ? current.filter((selectedId) => selectedId !== itemId)
-        : [...current, itemId];
-    });
-  }
-
   function startEditingSchedule(item: AnnualScheduleItem) {
     if (!item.id) {
       return;
     }
     setEditingScheduleId(item.id);
     setEditingScheduleForm(scheduleFormFromItem(item, currentYear));
-    cancelScheduleAction();
   }
 
-  function confirmEditingSelection() {
-    const [itemId] = selectedScheduleIds;
-    const item = storedScheduleItems.find((scheduleItem) => scheduleItem.id === itemId);
-    if (!item) {
-      setError("수정할 스케줄을 선택해주세요.");
-      return;
-    }
-    startEditingSchedule(item);
+  function openScheduleDetail(item: AnnualScheduleItem) {
+    setDetailScheduleKey(scheduleItemKey(item));
+    cancelEditingSchedule();
+    setError(null);
+  }
+
+  function closeScheduleDetail() {
+    setDetailScheduleKey(null);
+    cancelEditingSchedule();
   }
 
   function cancelEditingSchedule() {
@@ -302,32 +332,27 @@ export function HomePage() {
     setStoredScheduleItems((current) =>
       current.map((item) => (item.id === itemId ? updatedItem : item))
     );
+    setDetailScheduleKey(updatedItem.id ?? null);
     setSelectedMonth(updatedItem.month);
     setCalendarViewMode("month");
     cancelEditingSchedule();
   }
 
-  async function deleteSelectedScheduleItems() {
-    if (selectedScheduleIds.length === 0) {
-      setError("삭제할 스케줄을 선택해주세요.");
-      return;
+  async function deleteScheduleItem(itemId: string) {
+    const envelope = await apiDelete<{ deleted: boolean }>(`/annual-schedule/${itemId}`);
+    if (envelope.error) {
+      setError(envelope.error.message);
+      return false;
     }
 
-    for (const itemId of selectedScheduleIds) {
-      const envelope = await apiDelete<{ deleted: boolean }>(`/annual-schedule/${itemId}`);
-      if (envelope.error) {
-        setError(envelope.error.message);
-        return;
-      }
-    }
-
-    setStoredScheduleItems((current) =>
-      current.filter((item) => !item.id || !selectedScheduleIds.includes(item.id))
-    );
-    if (editingScheduleId && selectedScheduleIds.includes(editingScheduleId)) {
+    setStoredScheduleItems((current) => current.filter((item) => item.id !== itemId));
+    if (editingScheduleId === itemId) {
       cancelEditingSchedule();
     }
-    cancelScheduleAction();
+    if (detailScheduleKey === itemId) {
+      setDetailScheduleKey(null);
+    }
+    return true;
   }
 
   const loadScheduleNotifications = useCallback(async () => {
@@ -355,24 +380,114 @@ export function HomePage() {
   useEffect(() => {
     void loadScheduleNotifications();
     void loadAnnualSchedule();
-  }, [loadAnnualSchedule, loadScheduleNotifications]);
+    void loadAnnualGoalNotices();
+  }, [loadAnnualGoalNotices, loadAnnualSchedule, loadScheduleNotifications]);
+
+  useEffect(() => {
+    if (!detailScheduleKey) {
+      return;
+    }
+    detailScheduleRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [detailScheduleKey]);
 
   function renderScheduleItem(item: AnnualScheduleItem, showDate: boolean) {
-    const itemKey = item.id ?? `${item.month}-${item.day}-${item.title}`;
+    const itemKey = scheduleItemKey(item);
     const isLong = `${item.title} ${item.note}`.length > 44;
     const isExpanded = expandedScheduleKeys.includes(itemKey);
-    const isEditing = item.id === editingScheduleId;
-    const selectionLabel = scheduleActionMode === "delete" ? "삭제" : "수정";
 
-    if (isEditing && item.id) {
+    const itemContent = (
+      <div className="flex items-start gap-2">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center justify-between gap-2">
+            {showDate ? (
+              <span className="text-sm font-bold text-ink">
+                {item.month}/{item.day}
+              </span>
+            ) : null}
+            <span
+              className={[
+                "rounded-full px-2 py-0.5 text-[0.68rem] font-bold",
+                scheduleBadgeClass(item.tone)
+              ].join(" ")}
+            >
+              {scheduleBadgeLabel(item.tone)}
+            </span>
+          </div>
+          <div className={isExpanded ? "" : "max-h-14 overflow-hidden"}>
+            <p className="mt-1 text-xs font-bold leading-5 text-ink">{item.title}</p>
+            {item.note ? (
+              <p className="mt-0.5 text-[0.68rem] leading-4 text-muted">{item.note}</p>
+            ) : null}
+          </div>
+          {isLong ? (
+            <button
+              className="mt-1 text-xs font-bold text-blue hover:underline"
+              type="button"
+              onClick={() =>
+                setExpandedScheduleKeys((current) =>
+                  current.includes(itemKey)
+                    ? current.filter((key) => key !== itemKey)
+                    : [...current, itemKey]
+                )
+              }
+            >
+              {isExpanded ? "접기" : "더보기"}
+            </button>
+          ) : null}
+        </div>
+      </div>
+    );
+
+    return (
+      <div key={itemKey} className="rounded-control bg-cream/70 p-2.5">
+        <button
+          className="block w-full text-left"
+          type="button"
+          aria-label={`${item.title} 상세 보기`}
+          onClick={(event) => {
+            event.stopPropagation();
+            openScheduleDetail(item);
+          }}
+        >
+          {itemContent}
+        </button>
+      </div>
+    );
+  }
+
+  function renderScheduleDetail() {
+    if (!detailScheduleItem) {
+      return null;
+    }
+
+    if (editingScheduleId === detailScheduleItem.id) {
       return (
-        <div key={itemKey} className="rounded-control bg-cream/70 p-3">
-          <div className="grid gap-2">
-            <div className="grid gap-2 sm:grid-cols-[10rem_8rem]">
+        <div
+          className="mb-4 rounded-control border border-cocoa/20 bg-white p-4 shadow-control"
+          ref={detailScheduleRef}
+          role="region"
+          aria-label="스케줄 상세창"
+        >
+          <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="text-xs font-bold text-muted">선택한 스케줄</p>
+              <h3 className="text-lg font-bold text-cocoa">스케줄 상세</h3>
+            </div>
+            <button
+              className="rounded-control border border-latte bg-white px-3 py-1.5 text-xs font-bold text-cocoa"
+              type="button"
+              onClick={closeScheduleDetail}
+            >
+              닫기
+            </button>
+          </div>
+          <div className="grid gap-3">
+            <div className="grid gap-2 sm:grid-cols-[11rem_8rem]">
               <label className="grid gap-1">
-                <span className="text-xs font-bold text-cocoa">날짜</span>
+                <span className="field-label">날짜</span>
                 <input
-                  className="input h-10"
+                  className="input"
+                  aria-label="상세 수정 날짜"
                   type="date"
                   value={editingScheduleForm.date}
                   onChange={(event) =>
@@ -381,9 +496,9 @@ export function HomePage() {
                 />
               </label>
               <label className="grid gap-1">
-                <span className="text-xs font-bold text-cocoa">구분</span>
+                <span className="field-label">구분</span>
                 <select
-                  className="input h-10"
+                  className="input"
                   aria-label="수정 스케줄 구분"
                   value={editingScheduleForm.tone}
                   onChange={(event) =>
@@ -401,9 +516,9 @@ export function HomePage() {
               </label>
             </div>
             <label className="grid gap-1">
-              <span className="text-xs font-bold text-cocoa">제목</span>
+              <span className="field-label">제목</span>
               <input
-                className="input h-10"
+                className="input"
                 value={editingScheduleForm.title}
                 onChange={(event) =>
                   setEditingScheduleForm((current) => ({ ...current, title: event.target.value }))
@@ -411,9 +526,9 @@ export function HomePage() {
               />
             </label>
             <label className="grid gap-1">
-              <span className="text-xs font-bold text-cocoa">메모</span>
+              <span className="field-label">메모</span>
               <input
-                className="input h-10"
+                className="input"
                 value={editingScheduleForm.note}
                 onChange={(event) =>
                   setEditingScheduleForm((current) => ({ ...current, note: event.target.value }))
@@ -422,17 +537,17 @@ export function HomePage() {
             </label>
             <div className="flex flex-wrap justify-end gap-2">
               <button
-                className="rounded-control border border-latte bg-white px-3 py-1.5 text-xs font-bold text-cocoa"
+                className="rounded-control border border-latte bg-white px-3 py-2 text-sm font-bold text-cocoa"
                 type="button"
                 onClick={cancelEditingSchedule}
               >
                 취소
               </button>
               <button
-                className="rounded-control bg-cocoa px-3 py-1.5 text-xs font-bold text-white disabled:opacity-50"
+                className="rounded-control bg-cocoa px-3 py-2 text-sm font-bold text-white disabled:opacity-50"
                 type="button"
                 disabled={!isCompleteScheduleForm(editingScheduleForm)}
-                onClick={() => void updateScheduleItem(item.id!)}
+                onClick={() => void updateScheduleItem(detailScheduleItem.id!)}
               >
                 저장
               </button>
@@ -443,55 +558,100 @@ export function HomePage() {
     }
 
     return (
-      <div key={itemKey} className="rounded-control bg-cream/70 p-2.5">
-        <div className="flex items-start gap-2">
-          {scheduleActionMode !== "none" && item.id ? (
-            <input
-              className="mt-1 h-4 w-4 rounded border-latte accent-cocoa"
-              type="checkbox"
-              aria-label={`${item.title} ${selectionLabel} 선택`}
-              checked={selectedScheduleIds.includes(item.id)}
-              onChange={() => toggleSelectedSchedule(item.id!)}
-            />
-          ) : null}
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center justify-between gap-2">
-              {showDate ? (
-                <span className="text-sm font-bold text-ink">
-                  {item.month}/{item.day}
-                </span>
-              ) : null}
-              <span
-                className={[
-                  "rounded-full px-2 py-0.5 text-[0.68rem] font-bold",
-                  scheduleBadgeClass(item.tone)
-                ].join(" ")}
-              >
-                {scheduleBadgeLabel(item.tone)}
-              </span>
-            </div>
-            <div className={isExpanded ? "" : "max-h-14 overflow-hidden"}>
-              <p className="mt-1 text-xs font-bold leading-5 text-ink">{item.title}</p>
-              {item.note ? (
-                <p className="mt-0.5 text-[0.68rem] leading-4 text-muted">{item.note}</p>
-              ) : null}
-            </div>
-            {isLong ? (
-              <button
-                className="mt-1 text-xs font-bold text-blue hover:underline"
-                type="button"
-                onClick={() =>
-                  setExpandedScheduleKeys((current) =>
-                    current.includes(itemKey)
-                      ? current.filter((key) => key !== itemKey)
-                      : [...current, itemKey]
-                  )
-                }
-              >
-                {isExpanded ? "접기" : "더보기"}
-              </button>
+      <div
+        className="mb-4 rounded-control border border-cocoa/20 bg-white p-4 shadow-control"
+        ref={detailScheduleRef}
+        role="region"
+        aria-label="스케줄 상세창"
+      >
+        <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="text-xs font-bold text-muted">선택한 스케줄</p>
+            <h3 className="text-lg font-bold text-cocoa">스케줄 상세</h3>
+          </div>
+          <button
+            className="rounded-control border border-latte bg-white px-3 py-1.5 text-xs font-bold text-cocoa"
+            type="button"
+            onClick={closeScheduleDetail}
+          >
+            닫기
+          </button>
+        </div>
+        <div className="grid gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-sm font-bold text-ink">
+              {detailScheduleItem.month}/{detailScheduleItem.day}
+            </span>
+            <span
+              className={[
+                "rounded-full px-2 py-0.5 text-xs font-bold",
+                scheduleBadgeClass(detailScheduleItem.tone)
+              ].join(" ")}
+            >
+              {scheduleBadgeLabel(detailScheduleItem.tone)}
+            </span>
+          </div>
+          <div className="rounded-control bg-cream/70 p-3">
+            <p className="font-bold text-ink">{detailScheduleItem.title}</p>
+            {detailScheduleItem.note ? (
+              <p className="mt-1 text-sm leading-6 text-muted">{detailScheduleItem.note}</p>
             ) : null}
           </div>
+          {detailScheduleItem.id ? (
+            <div className="flex flex-wrap justify-end gap-2">
+              <button
+                className="rounded-control border border-cocoa bg-white px-3 py-2 text-sm font-bold text-cocoa"
+                type="button"
+                onClick={() => startEditingSchedule(detailScheduleItem)}
+              >
+                수정
+              </button>
+              <button
+                className="rounded-control bg-red px-3 py-2 text-sm font-bold text-white"
+                type="button"
+                onClick={() => void deleteScheduleItem(detailScheduleItem.id!)}
+              >
+                삭제
+              </button>
+            </div>
+          ) : null}
+        </div>
+      </div>
+    );
+  }
+
+  function renderGoalNoticeDetail() {
+    if (!detailGoalNotice) {
+      return null;
+    }
+
+    return (
+      <div
+        className="mb-4 rounded-control border border-cocoa/20 bg-white p-4 shadow-control"
+        role="region"
+        aria-label="목표·공지 상세창"
+      >
+        <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="text-xs font-bold text-muted">선택한 목표·공지</p>
+            <h3 className="text-lg font-bold text-cocoa">목표·공지 상세</h3>
+          </div>
+          <button
+            className="rounded-control border border-latte bg-white px-3 py-1.5 text-xs font-bold text-cocoa"
+            type="button"
+            onClick={() => setDetailGoalNoticeKey(null)}
+          >
+            닫기
+          </button>
+        </div>
+        <div className="rounded-control bg-cream/70 p-3">
+          <p className="text-sm font-bold text-cocoa">{detailGoalNotice.title}</p>
+          <p className="mt-2 text-2xl font-bold tracking-[-0.03em] text-ink">
+            {detailGoalNotice.value}
+          </p>
+          {detailGoalNotice.note ? (
+            <p className="mt-2 text-sm leading-6 text-muted">{detailGoalNotice.note}</p>
+          ) : null}
         </div>
       </div>
     );
@@ -618,61 +778,8 @@ export function HomePage() {
               </button>
             ))}
           </div>
-          <div className="flex flex-wrap items-center gap-2 border-t border-latte pt-3">
-            <button
-              className={[
-                "rounded-control border px-3 py-2 text-sm font-bold transition",
-                scheduleActionMode === "delete"
-                  ? "border-red bg-red text-white"
-                  : "border-red/30 bg-white text-red hover:bg-red/10"
-              ].join(" ")}
-              type="button"
-              onClick={() => beginScheduleAction("delete")}
-            >
-              삭제
-            </button>
-            <button
-              className={[
-                "rounded-control border px-3 py-2 text-sm font-bold transition",
-                scheduleActionMode === "edit"
-                  ? "border-cocoa bg-cocoa text-white"
-                  : "border-latte bg-white text-cocoa hover:border-bread"
-              ].join(" ")}
-              type="button"
-              onClick={() => beginScheduleAction("edit")}
-            >
-              수정
-            </button>
-            {scheduleActionMode !== "none" ? (
-              <>
-                <span className="text-xs font-bold text-muted">
-                  {scheduleActionMode === "delete"
-                    ? "삭제할 일정을 체크한 뒤 확인을 누르세요."
-                    : "수정할 일정 하나를 체크한 뒤 확인을 누르세요."}
-                </span>
-                <button
-                  className="rounded-control bg-cocoa px-3 py-2 text-sm font-bold text-white disabled:opacity-50"
-                  type="button"
-                  disabled={selectedScheduleIds.length === 0}
-                  onClick={() =>
-                    scheduleActionMode === "delete"
-                      ? void deleteSelectedScheduleItems()
-                      : confirmEditingSelection()
-                  }
-                >
-                  확인
-                </button>
-                <button
-                  className="rounded-control border border-latte bg-white px-3 py-2 text-sm font-bold text-cocoa"
-                  type="button"
-                  onClick={cancelScheduleAction}
-                >
-                  취소
-                </button>
-              </>
-            ) : null}
-          </div>
         </div>
+        {renderScheduleDetail()}
         <div
           className={
             calendarViewMode === "year" ? "grid gap-3 md:grid-cols-2 xl:grid-cols-3" : "grid gap-3"
@@ -756,14 +863,25 @@ export function HomePage() {
           </div>
           <Target className="h-5 w-5 text-green" aria-hidden="true" />
         </div>
+        {renderGoalNoticeDetail()}
         <div className="grid gap-3 lg:grid-cols-2">
-          {annualGoalNotices.map((notice) => (
-            <div key={notice.label} className="rounded-control border border-latte bg-cream/70 p-4">
+          {allGoalNotices.map((notice) => (
+            <div
+              key={goalNoticeKey(notice)}
+              className="rounded-control border border-latte bg-cream/70 p-4"
+            >
               <div className="mb-3 flex items-center gap-2 text-sm font-bold text-cocoa">
                 <TrendingUp className="h-4 w-4" aria-hidden="true" />
-                {notice.label}
+                {notice.title}
               </div>
-              <p className="text-2xl font-bold tracking-[-0.03em] text-ink">{notice.value}</p>
+              <button
+                className="block w-full text-left"
+                type="button"
+                aria-label={`${notice.title} 상세 보기`}
+                onClick={() => setDetailGoalNoticeKey(goalNoticeKey(notice))}
+              >
+                <p className="text-2xl font-bold tracking-[-0.03em] text-ink">{notice.value}</p>
+              </button>
               <p className="mt-2 text-sm leading-6 text-muted">{notice.note}</p>
             </div>
           ))}

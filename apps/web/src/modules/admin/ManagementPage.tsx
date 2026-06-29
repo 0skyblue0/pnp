@@ -32,6 +32,16 @@ type ResponseCriterionDto = {
   isActive: boolean;
 };
 
+type AnnualGoalNoticeCategory = "sales" | "operation" | "staff";
+
+type AnnualGoalNoticeDto = {
+  id: string;
+  category: AnnualGoalNoticeCategory;
+  title: string;
+  value: string;
+  note: string;
+};
+
 type DeleteResult<T> = {
   deleted: boolean;
   deactivated: boolean;
@@ -61,6 +71,13 @@ type CriterionForm = {
   isActive: boolean;
 };
 
+type GoalNoticeForm = {
+  category: AnnualGoalNoticeCategory;
+  title: string;
+  value: string;
+  note: string;
+};
+
 const emptyProductForm: ProductForm = {
   name: "",
   category: "",
@@ -82,6 +99,19 @@ const emptyCriterionForm: CriterionForm = {
   name: "",
   sortOrder: "0",
   isActive: true
+};
+
+const emptyGoalNoticeForm: GoalNoticeForm = {
+  category: "sales",
+  title: "",
+  value: "",
+  note: ""
+};
+
+const goalNoticeCategoryLabels: Record<AnnualGoalNoticeCategory, string> = {
+  sales: "매출 목표",
+  operation: "운영 목표",
+  staff: "직원 공지"
 };
 
 function roleLabel(role: StaffDto["role"]): string {
@@ -134,31 +164,37 @@ export function ManagementPage() {
   const [products, setProducts] = useState<ProductDto[]>([]);
   const [staff, setStaff] = useState<StaffDto[]>([]);
   const [responseCriteria, setResponseCriteria] = useState<ResponseCriterionDto[]>([]);
+  const [goalNotices, setGoalNotices] = useState<AnnualGoalNoticeDto[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [editingProductId, setEditingProductId] = useState<number | null>(null);
   const [editingStaffId, setEditingStaffId] = useState<number | null>(null);
   const [editingCriterionId, setEditingCriterionId] = useState<number | null>(null);
+  const [editingGoalNoticeId, setEditingGoalNoticeId] = useState<string | null>(null);
   const [selectedMajorId, setSelectedMajorId] = useState<number | null>(null);
   const [selectedMiddleId, setSelectedMiddleId] = useState<number | null>(null);
   const [criterionParentId, setCriterionParentId] = useState<number | null>(null);
   const [isProductFormOpen, setIsProductFormOpen] = useState(false);
   const [isStaffFormOpen, setIsStaffFormOpen] = useState(false);
   const [isCriterionFormOpen, setIsCriterionFormOpen] = useState(false);
+  const [isGoalNoticeFormOpen, setIsGoalNoticeFormOpen] = useState(false);
   const [productForm, setProductForm] = useState<ProductForm>(emptyProductForm);
   const [staffForm, setStaffForm] = useState<StaffForm>(emptyStaffForm);
   const [criterionForm, setCriterionForm] = useState<CriterionForm>(emptyCriterionForm);
+  const [goalNoticeForm, setGoalNoticeForm] = useState<GoalNoticeForm>(emptyGoalNoticeForm);
 
   const loadManagementData = useCallback(async () => {
     setIsLoading(true);
     setError(null);
 
-    const [productEnvelope, staffEnvelope, criterionEnvelope] = await Promise.all([
-      apiGet<ListEnvelope<ProductDto>>("/product"),
-      apiGet<ListEnvelope<StaffDto>>("/staff"),
-      apiGet<ListEnvelope<ResponseCriterionDto>>("/response-criteria")
-    ]);
+    const [productEnvelope, staffEnvelope, criterionEnvelope, goalNoticeEnvelope] =
+      await Promise.all([
+        apiGet<ListEnvelope<ProductDto>>("/product"),
+        apiGet<ListEnvelope<StaffDto>>("/staff"),
+        apiGet<ListEnvelope<ResponseCriterionDto>>("/response-criteria"),
+        apiGet<ListEnvelope<AnnualGoalNoticeDto>>("/annual-goal-notice")
+      ]);
 
     setIsLoading(false);
 
@@ -174,10 +210,15 @@ export function ManagementPage() {
       setError(criterionEnvelope.error.message);
       return;
     }
+    if (goalNoticeEnvelope.error) {
+      setError(goalNoticeEnvelope.error.message);
+      return;
+    }
 
     setProducts(productEnvelope.data.items);
     setStaff(staffEnvelope.data.items);
     setResponseCriteria(criterionEnvelope.data.items);
+    setGoalNotices(goalNoticeEnvelope.data.items);
   }, []);
 
   useEffect(() => {
@@ -307,6 +348,29 @@ export function ManagementPage() {
     setCriterionParentId(null);
     setCriterionForm(emptyCriterionForm);
     setIsCriterionFormOpen(false);
+  }
+
+  function openNewGoalNoticeForm() {
+    setEditingGoalNoticeId(null);
+    setGoalNoticeForm(emptyGoalNoticeForm);
+    setIsGoalNoticeFormOpen(true);
+  }
+
+  function openGoalNoticeEdit(notice: AnnualGoalNoticeDto) {
+    setEditingGoalNoticeId(notice.id);
+    setGoalNoticeForm({
+      category: notice.category,
+      title: notice.title,
+      value: notice.value,
+      note: notice.note
+    });
+    setIsGoalNoticeFormOpen(true);
+  }
+
+  function closeGoalNoticeForm() {
+    setEditingGoalNoticeId(null);
+    setGoalNoticeForm(emptyGoalNoticeForm);
+    setIsGoalNoticeFormOpen(false);
   }
 
   function selectMajorCriterion(id: number) {
@@ -445,6 +509,61 @@ export function ManagementPage() {
     setMessage(deleteMessage(person.username, envelope.data));
     if (editingStaffId === person.id) {
       closeStaffForm();
+    }
+    await loadManagementData();
+  }
+
+  async function saveGoalNotice() {
+    setMessage(null);
+    setError(null);
+
+    const title = goalNoticeForm.title.trim();
+    const value = goalNoticeForm.value.trim();
+    const note = goalNoticeForm.note.trim();
+
+    if (!title || !value) {
+      setError("공지 제목과 내용을 입력하세요.");
+      return;
+    }
+
+    const body = { category: goalNoticeForm.category, title, value, note };
+    const envelope =
+      editingGoalNoticeId === null
+        ? await apiPost<AnnualGoalNoticeDto, Record<string, unknown>>("/annual-goal-notice", body)
+        : await apiPatch<AnnualGoalNoticeDto, Record<string, unknown>>(
+            `/annual-goal-notice/${editingGoalNoticeId}`,
+            body
+          );
+
+    if (envelope.error) {
+      setError(envelope.error.message);
+      return;
+    }
+
+    setMessage(
+      editingGoalNoticeId === null ? `홈 공지 추가: ${envelope.data.title}` : "홈 공지 수정 완료"
+    );
+    closeGoalNoticeForm();
+    await loadManagementData();
+  }
+
+  async function deleteGoalNotice(notice: AnnualGoalNoticeDto) {
+    if (!window.confirm(`${notice.title} 홈 공지를 삭제하시겠습니까?`)) {
+      return;
+    }
+
+    setMessage(null);
+    setError(null);
+    const envelope = await apiDelete<{ deleted: boolean }>(`/annual-goal-notice/${notice.id}`);
+
+    if (envelope.error) {
+      setError(envelope.error.message);
+      return;
+    }
+
+    setMessage("홈 공지 삭제 완료");
+    if (editingGoalNoticeId === notice.id) {
+      closeGoalNoticeForm();
     }
     await loadManagementData();
   }
@@ -627,6 +746,129 @@ export function ManagementPage() {
               {responseCriteria.filter((criterion) => criterion.isActive).length}
             </p>
           </div>
+        </div>
+      </section>
+
+      <section className="panel">
+        <div className="panel-heading">
+          <div>
+            <p className="text-sm text-muted">홈 화면</p>
+            <h2 className="section-title">홈 목표·매출 공지 관리</h2>
+          </div>
+          <Button icon={Plus} type="button" onClick={openNewGoalNoticeForm}>
+            홈 공지 추가
+          </Button>
+        </div>
+
+        {isGoalNoticeFormOpen ? (
+          <div className="mb-4 rounded-control border border-stone-200 bg-cream/60 p-4">
+            <div className="grid gap-3 lg:grid-cols-[10rem_minmax(0,1fr)_minmax(0,1fr)]">
+              <label className="grid gap-2">
+                <span className="field-label">공지 종류</span>
+                <select
+                  className="input"
+                  aria-label="공지 종류"
+                  value={goalNoticeForm.category}
+                  onChange={(event) =>
+                    setGoalNoticeForm((current) => ({
+                      ...current,
+                      category: event.target.value as AnnualGoalNoticeCategory
+                    }))
+                  }
+                >
+                  <option value="sales">매출 목표</option>
+                  <option value="operation">운영 목표</option>
+                  <option value="staff">직원 공지</option>
+                </select>
+              </label>
+              <label className="grid gap-2">
+                <span className="field-label">공지 제목</span>
+                <input
+                  className="input"
+                  aria-label="공지 제목"
+                  value={goalNoticeForm.title}
+                  onChange={(event) =>
+                    setGoalNoticeForm((current) => ({ ...current, title: event.target.value }))
+                  }
+                />
+              </label>
+              <label className="grid gap-2">
+                <span className="field-label">공지 내용</span>
+                <input
+                  className="input"
+                  aria-label="공지 내용"
+                  placeholder="예: 전년 대비 +8%"
+                  value={goalNoticeForm.value}
+                  onChange={(event) =>
+                    setGoalNoticeForm((current) => ({ ...current, value: event.target.value }))
+                  }
+                />
+              </label>
+            </div>
+            <label className="mt-3 grid gap-2">
+              <span className="field-label">공지 메모</span>
+              <textarea
+                className="input min-h-24 py-3"
+                aria-label="공지 메모"
+                value={goalNoticeForm.note}
+                onChange={(event) =>
+                  setGoalNoticeForm((current) => ({ ...current, note: event.target.value }))
+                }
+              />
+            </label>
+            <div className="mt-3 flex flex-wrap justify-end gap-2">
+              <button
+                className="rounded-control border border-stone-300 bg-white px-4 py-2 font-bold text-cocoa"
+                type="button"
+                onClick={closeGoalNoticeForm}
+              >
+                취소
+              </button>
+              <Button type="button" onClick={() => void saveGoalNotice()}>
+                공지 저장
+              </Button>
+            </div>
+          </div>
+        ) : null}
+
+        <div className="grid gap-3 lg:grid-cols-3">
+          {goalNotices.map((notice) => (
+            <div key={notice.id} className="rounded-control border border-stone-200 bg-white p-4">
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                <span className="rounded-full bg-blue/10 px-2 py-1 text-xs font-bold text-blue">
+                  {goalNoticeCategoryLabels[notice.category]}
+                </span>
+                <div className="flex gap-1">
+                  <button
+                    className="inline-flex min-h-8 items-center justify-center rounded-control border border-stone-300 bg-white px-2 font-semibold hover:bg-stone-100"
+                    type="button"
+                    aria-label={`${notice.title} 수정`}
+                    onClick={() => openGoalNoticeEdit(notice)}
+                  >
+                    <Pencil className="h-4 w-4" aria-hidden="true" />
+                  </button>
+                  <button
+                    className="inline-flex min-h-8 items-center justify-center rounded-control border border-red/30 bg-white px-2 font-semibold text-red hover:bg-red/10"
+                    type="button"
+                    aria-label={`${notice.title} 삭제`}
+                    onClick={() => void deleteGoalNotice(notice)}
+                  >
+                    <Trash2 className="h-4 w-4" aria-hidden="true" />
+                  </button>
+                </div>
+              </div>
+              <p className="font-bold text-ink">{notice.title}</p>
+              <p className="mt-2 text-xl font-bold tracking-[-0.03em] text-cocoa">{notice.value}</p>
+              {notice.note ? (
+                <p className="mt-2 text-sm leading-6 text-muted">{notice.note}</p>
+              ) : null}
+            </div>
+          ))}
+          {!isLoading && goalNotices.length === 0 ? (
+            <div className="rounded-control border border-stone-200 px-3 py-6 text-center text-sm font-medium text-muted lg:col-span-3">
+              등록된 홈 공지 없음
+            </div>
+          ) : null}
         </div>
       </section>
 

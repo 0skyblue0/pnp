@@ -9,8 +9,10 @@ describe("healthz", () => {
         NODE_ENV: "test",
         HOST: "127.0.0.1",
         PORT: 0,
-        DATABASE_URL: "postgresql://test:test@localhost:5432/test",
-        CORS_ORIGIN: "http://localhost:5173"
+        DATABASE_URL: "postgresql://test:***@localhost:5432/test",
+        CORS_ORIGIN: "http://localhost:5173",
+        HERMES_API_MODEL: "pnp-response-classifier",
+        HERMES_API_TIMEOUT_MS: 60000
       }
     });
 

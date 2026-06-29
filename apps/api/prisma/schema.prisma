@@ -19,7 +19,6 @@ model Product {
   updatedAt        DateTime          @default(now()) @map("updated_at") @db.Timestamptz(6)
   stockouts        StockoutLog[]
   tastings         TastingLog[]
-  responseLinks    ResponseProduct[]
   reservationItems ReservationItem[]
   productionLots   ProductionLot[]
 
@@ -127,6 +126,8 @@ model AbsentInquiry {
 model Reservation {
   id             BigInt            @id @default(autoincrement())
   contactToken   String            @map("contact_token") @db.VarChar(64)
+  customerName   String?           @map("customer_name") @db.VarChar(80)
+  contactPhone   String?           @map("contact_phone") @db.VarChar(40)
   customerCardId String?           @map("customer_card_id") @db.Uuid
   pickupAt       DateTime          @map("pickup_at") @db.Timestamptz(6)
   status         String            @default("PENDING") @db.VarChar(15)
@@ -155,61 +156,51 @@ model ReservationItem {
 }
 
 model CustomerResponse {
-  id              BigInt            @id @default(autoincrement())
-  date            DateTime          @db.Date
-  dailyLogId      BigInt?           @map("daily_log_id")
-  customerCardId  String?           @map("customer_card_id") @db.Uuid
-  category        String            @db.VarChar(20)
-  target          String?           @db.VarChar(15)
-  sentimentScore  Int?              @map("sentiment_score") @db.SmallInt
-  actionPriority  String?           @map("action_priority") @db.VarChar(15)
-  visitOrigin     String?           @map("visit_origin") @db.VarChar(10)
-  source          String?           @db.VarChar(20)
-  isBossFlag      Boolean           @default(false) @map("is_boss_flag")
-  shortSummary    String?           @map("short_summary") @db.VarChar(200)
-  fullText        String?           @map("full_text") @db.Text
-  llmSuggestionId BigInt?           @map("llm_suggestion_id")
-  llmAssisted     Boolean           @default(false) @map("llm_assisted")
-  createdBy       Int?              @map("created_by")
-  createdAt       DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
-  dailyLog        DailyLog?         @relation(fields: [dailyLogId], references: [id])
-  creator         Staff?            @relation(fields: [createdBy], references: [id])
-  tags            ResponseTag[]
-  products        ResponseProduct[]
-  photos          ResponsePhoto[]
+  id                BigInt             @id @default(autoincrement())
+  date              DateTime           @db.Date
+  dailyLogId        BigInt?            @map("daily_log_id")
+  customerCardId    String?            @map("customer_card_id") @db.Uuid
+  criterionId       Int                @map("criterion_id")
+  majorCriterionId  Int                @map("major_criterion_id")
+  middleCriterionId Int?               @map("middle_criterion_id")
+  minorCriterionId  Int?               @map("minor_criterion_id")
+  shortSummary      String?            @map("short_summary") @db.VarChar(200)
+  fullText          String?            @map("full_text") @db.Text
+  llmSuggestionId   BigInt?            @map("llm_suggestion_id")
+  llmAssisted       Boolean            @default(false) @map("llm_assisted")
+  createdBy         Int?               @map("created_by")
+  createdAt         DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  dailyLog          DailyLog?          @relation(fields: [dailyLogId], references: [id])
+  creator           Staff?             @relation(fields: [createdBy], references: [id])
+  criterion         ResponseCriterion  @relation("SelectedResponseCriterion", fields: [criterionId], references: [id])
+  majorCriterion    ResponseCriterion  @relation("MajorResponseCriterion", fields: [majorCriterionId], references: [id])
+  middleCriterion   ResponseCriterion? @relation("MiddleResponseCriterion", fields: [middleCriterionId], references: [id])
+  minorCriterion    ResponseCriterion? @relation("MinorResponseCriterion", fields: [minorCriterionId], references: [id])
 
-  @@index([date, category], map: "idx_response_date_category")
-  @@index([isBossFlag], map: "idx_response_boss_flag")
+  @@index([date, majorCriterionId], map: "idx_response_date_major")
+  @@index([criterionId], map: "idx_response_criterion")
   @@map("customer_response")
 }
 
-model ResponseTag {
-  responseId BigInt           @map("response_id")
-  tagCode    String           @map("tag_code") @db.VarChar(30)
-  response   CustomerResponse @relation(fields: [responseId], references: [id], onDelete: Cascade)
+model ResponseCriterion {
+  id                Int                 @id @default(autoincrement())
+  parentId          Int?                @map("parent_id")
+  depth             Int                 @db.SmallInt
+  name              String              @db.VarChar(80)
+  sortOrder         Int                 @default(0) @map("sort_order")
+  isActive          Boolean             @default(true) @map("is_active")
+  createdAt         DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime            @default(now()) @map("updated_at") @db.Timestamptz(6)
+  parent            ResponseCriterion?  @relation("ResponseCriterionChildren", fields: [parentId], references: [id])
+  children          ResponseCriterion[] @relation("ResponseCriterionChildren")
+  selectedResponses CustomerResponse[]  @relation("SelectedResponseCriterion")
+  majorResponses    CustomerResponse[]  @relation("MajorResponseCriterion")
+  middleResponses   CustomerResponse[]  @relation("MiddleResponseCriterion")
+  minorResponses    CustomerResponse[]  @relation("MinorResponseCriterion")
 
-  @@id([responseId, tagCode])
-  @@map("response_tag")
-}
-
-model ResponseProduct {
-  responseId BigInt           @map("response_id")
-  productId  Int              @map("product_id")
-  response   CustomerResponse @relation(fields: [responseId], references: [id], onDelete: Cascade)
-  product    Product          @relation(fields: [productId], references: [id])
-
-  @@id([responseId, productId])
-  @@map("response_product")
-}
-
-model ResponsePhoto {
-  id         BigInt           @id @default(autoincrement())
-  responseId BigInt           @map("response_id")
-  fileUrl    String           @map("file_url") @db.Text
-  createdAt  DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
-  response   CustomerResponse @relation(fields: [responseId], references: [id], onDelete: Cascade)
-
-  @@map("response_photo")
+  @@index([parentId, sortOrder], map: "idx_response_criterion_parent_order")
+  @@index([depth, isActive], map: "idx_response_criterion_depth_active")
+  @@map("response_criterion")
 }
 
 model Notification {
@@ -225,6 +216,18 @@ model Notification {
 
   @@index([isRead, createdAt], map: "idx_notification_unread")
   @@map("notification")
+}
+
+model AnnualSchedule {
+  id        BigInt   @id @default(autoincrement())
+  date      DateTime @db.Date
+  title     String   @db.VarChar(120)
+  note      String?  @db.Text
+  tone      String   @default("notice") @db.VarChar(20)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([date], map: "idx_annual_schedule_date")
+  @@map("annual_schedule")
 }
 
 model AuditLog {

@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
 import { apiGet, apiPatch } from "../../shared/api/client.js";
+import type { ListEnvelope } from "../../shared/api/types.js";
 import { Button } from "../../shared/ui/Button.js";
 
 type NotificationDto = {
@@ -15,13 +16,6 @@ type NotificationDto = {
   isRead: boolean;
   createdAt: string;
   readAt: string | null;
-};
-
-type ListEnvelope<T> = {
-  items: T[];
-  total: number;
-  page: number;
-  size: number;
 };
 
 function severityClasses(severity: NotificationDto["severity"]) {

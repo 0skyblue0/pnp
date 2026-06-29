@@ -1,13 +1,7 @@
 import { z } from "zod";
 
 export const dateOnlySchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
-export const reservationStatusSchema = z.enum([
-  "PENDING",
-  "READY",
-  "COMPLETED",
-  "NO_SHOW",
-  "CANCELED"
-]);
+export const reservationStatusSchema = z.enum(["PENDING", "COMPLETED"]);
 export const reservationPurposeSchema = z.enum(["GIFT", "SELF", "UNKNOWN"]);
 
 const productReferenceShape = {
@@ -33,6 +27,8 @@ export const reservationItemSchema = z
 
 export const createReservationSchema = z.object({
   contactRef: z.string().trim().min(1).max(200),
+  customerName: z.string().trim().min(1).max(80),
+  contactPhone: z.string().trim().min(1).max(40),
   pickupAt: z.string().trim().min(1),
   purpose: reservationPurposeSchema.default("UNKNOWN"),
   allergyNote: z.string().trim().max(2000).optional(),

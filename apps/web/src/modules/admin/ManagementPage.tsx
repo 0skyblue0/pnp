@@ -2,14 +2,8 @@ import { Pencil, Plus, RefreshCcw, Trash2, UserPlus, X } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
 import { apiDelete, apiGet, apiPatch, apiPost } from "../../shared/api/client.js";
+import type { ListEnvelope } from "../../shared/api/types.js";
 import { Button } from "../../shared/ui/Button.js";
-
-type ListEnvelope<T> = {
-  items: T[];
-  total: number;
-  page: number;
-  size: number;
-};
 
 type ProductDto = {
   id: number;
@@ -26,6 +20,15 @@ type StaffDto = {
   username: string;
   displayName: string | null;
   role: "SALES" | "PRODUCTION" | "OWNER" | null;
+  isActive: boolean;
+};
+
+type ResponseCriterionDto = {
+  id: number;
+  parentId: number | null;
+  depth: number;
+  name: string;
+  sortOrder: number;
   isActive: boolean;
 };
 
@@ -52,6 +55,12 @@ type StaffForm = {
   isActive: boolean;
 };
 
+type CriterionForm = {
+  name: string;
+  sortOrder: string;
+  isActive: boolean;
+};
+
 const emptyProductForm: ProductForm = {
   name: "",
   category: "",
@@ -66,6 +75,12 @@ const emptyStaffForm: StaffForm = {
   displayName: "",
   password: "",
   role: "SALES",
+  isActive: true
+};
+
+const emptyCriterionForm: CriterionForm = {
+  name: "",
+  sortOrder: "0",
   isActive: true
 };
 
@@ -92,26 +107,57 @@ function statusBadge(isActive: boolean) {
   ].join(" ");
 }
 
+function criteriaByParent(criteria: ResponseCriterionDto[], parentId: number | null) {
+  return criteria
+    .filter((criterion) => criterion.parentId === parentId)
+    .sort((left, right) => left.sortOrder - right.sortOrder || left.name.localeCompare(right.name));
+}
+
+function criterionLevelLabel(depth: number) {
+  if (depth === 1) {
+    return "대분류";
+  }
+  if (depth === 2) {
+    return "중분류";
+  }
+  return "소분류";
+}
+
+function criterionRowClass(isSelected: boolean) {
+  return [
+    "grid gap-2 rounded-control border px-3 py-3 text-sm sm:grid-cols-[1fr_auto]",
+    isSelected ? "border-stone-900 bg-stone-100" : "border-stone-200 bg-white"
+  ].join(" ");
+}
+
 export function ManagementPage() {
   const [products, setProducts] = useState<ProductDto[]>([]);
   const [staff, setStaff] = useState<StaffDto[]>([]);
+  const [responseCriteria, setResponseCriteria] = useState<ResponseCriterionDto[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [editingProductId, setEditingProductId] = useState<number | null>(null);
   const [editingStaffId, setEditingStaffId] = useState<number | null>(null);
+  const [editingCriterionId, setEditingCriterionId] = useState<number | null>(null);
+  const [selectedMajorId, setSelectedMajorId] = useState<number | null>(null);
+  const [selectedMiddleId, setSelectedMiddleId] = useState<number | null>(null);
+  const [criterionParentId, setCriterionParentId] = useState<number | null>(null);
   const [isProductFormOpen, setIsProductFormOpen] = useState(false);
   const [isStaffFormOpen, setIsStaffFormOpen] = useState(false);
+  const [isCriterionFormOpen, setIsCriterionFormOpen] = useState(false);
   const [productForm, setProductForm] = useState<ProductForm>(emptyProductForm);
   const [staffForm, setStaffForm] = useState<StaffForm>(emptyStaffForm);
+  const [criterionForm, setCriterionForm] = useState<CriterionForm>(emptyCriterionForm);
 
   const loadManagementData = useCallback(async () => {
     setIsLoading(true);
     setError(null);
 
-    const [productEnvelope, staffEnvelope] = await Promise.all([
+    const [productEnvelope, staffEnvelope, criterionEnvelope] = await Promise.all([
       apiGet<ListEnvelope<ProductDto>>("/product"),
-      apiGet<ListEnvelope<StaffDto>>("/staff")
+      apiGet<ListEnvelope<StaffDto>>("/staff"),
+      apiGet<ListEnvelope<ResponseCriterionDto>>("/response-criteria")
     ]);
 
     setIsLoading(false);
@@ -124,14 +170,44 @@ export function ManagementPage() {
       setError(staffEnvelope.error.message);
       return;
     }
+    if (criterionEnvelope.error) {
+      setError(criterionEnvelope.error.message);
+      return;
+    }
 
     setProducts(productEnvelope.data.items);
     setStaff(staffEnvelope.data.items);
+    setResponseCriteria(criterionEnvelope.data.items);
   }, []);
 
   useEffect(() => {
     void loadManagementData();
   }, [loadManagementData]);
+
+  useEffect(() => {
+    if (
+      selectedMajorId !== null &&
+      !responseCriteria.some(
+        (criterion) => criterion.id === selectedMajorId && criterion.depth === 1
+      )
+    ) {
+      setSelectedMajorId(null);
+      setSelectedMiddleId(null);
+      return;
+    }
+
+    if (
+      selectedMiddleId !== null &&
+      !responseCriteria.some(
+        (criterion) =>
+          criterion.id === selectedMiddleId &&
+          criterion.depth === 2 &&
+          criterion.parentId === selectedMajorId
+      )
+    ) {
+      setSelectedMiddleId(null);
+    }
+  }, [responseCriteria, selectedMajorId, selectedMiddleId]);
 
   function openNewProductForm() {
     setEditingProductId(null);
@@ -180,6 +256,66 @@ export function ManagementPage() {
     setEditingStaffId(null);
     setStaffForm(emptyStaffForm);
     setIsStaffFormOpen(false);
+  }
+
+  function nextCriterionSortOrder(parentId: number | null) {
+    const siblings = criteriaByParent(responseCriteria, parentId);
+    if (siblings.length === 0) {
+      return 10;
+    }
+
+    return Math.max(...siblings.map((criterion) => criterion.sortOrder)) + 10;
+  }
+
+  function openNewCriterionForm(parentId: number | null) {
+    setEditingCriterionId(null);
+    setCriterionParentId(parentId);
+    setCriterionForm({
+      ...emptyCriterionForm,
+      sortOrder: String(nextCriterionSortOrder(parentId))
+    });
+    setIsCriterionFormOpen(true);
+  }
+
+  function openCriterionEdit(criterion: ResponseCriterionDto) {
+    if (criterion.depth === 1) {
+      setSelectedMajorId(criterion.id);
+      setSelectedMiddleId(null);
+    }
+    if (criterion.depth === 2) {
+      setSelectedMajorId(criterion.parentId);
+      setSelectedMiddleId(criterion.id);
+    }
+    if (criterion.depth === 3) {
+      const middle = responseCriteria.find((item) => item.id === criterion.parentId);
+      setSelectedMajorId(middle?.parentId ?? null);
+      setSelectedMiddleId(criterion.parentId);
+    }
+
+    setEditingCriterionId(criterion.id);
+    setCriterionParentId(criterion.parentId);
+    setCriterionForm({
+      name: criterion.name,
+      sortOrder: String(criterion.sortOrder),
+      isActive: criterion.isActive
+    });
+    setIsCriterionFormOpen(true);
+  }
+
+  function closeCriterionForm() {
+    setEditingCriterionId(null);
+    setCriterionParentId(null);
+    setCriterionForm(emptyCriterionForm);
+    setIsCriterionFormOpen(false);
+  }
+
+  function selectMajorCriterion(id: number) {
+    setSelectedMajorId(id);
+    setSelectedMiddleId(null);
+  }
+
+  function selectMiddleCriterion(id: number) {
+    setSelectedMiddleId(id);
   }
 
   async function saveProduct() {
@@ -313,6 +449,129 @@ export function ManagementPage() {
     await loadManagementData();
   }
 
+  async function saveCriterion() {
+    setMessage(null);
+    setError(null);
+
+    const name = criterionForm.name.trim();
+    const sortOrder = Number(criterionForm.sortOrder);
+
+    if (name.length === 0) {
+      setError("반응 기준명을 입력하세요.");
+      return;
+    }
+    if (!Number.isInteger(sortOrder)) {
+      setError("정렬 순서는 정수로 입력하세요.");
+      return;
+    }
+
+    const body = {
+      name,
+      sortOrder,
+      isActive: criterionForm.isActive
+    };
+    const envelope =
+      editingCriterionId === null
+        ? await apiPost<ResponseCriterionDto, Record<string, unknown>>("/response-criteria", {
+            ...body,
+            parentId: criterionParentId
+          })
+        : await apiPatch<ResponseCriterionDto, Record<string, unknown>>(
+            `/response-criteria/${editingCriterionId}`,
+            body
+          );
+
+    if (envelope.error) {
+      setError(envelope.error.message);
+      return;
+    }
+
+    const savedCriterion = envelope.data;
+    setMessage(
+      editingCriterionId === null
+        ? `${criterionLevelLabel(savedCriterion.depth)} 추가: ${savedCriterion.name}`
+        : "반응 기준 수정 완료"
+    );
+    closeCriterionForm();
+    await loadManagementData();
+
+    if (savedCriterion.depth === 1) {
+      setSelectedMajorId(savedCriterion.id);
+      setSelectedMiddleId(null);
+    }
+    if (savedCriterion.depth === 2) {
+      setSelectedMajorId(savedCriterion.parentId);
+      setSelectedMiddleId(savedCriterion.id);
+    }
+    if (savedCriterion.depth === 3) {
+      const middle = responseCriteria.find((criterion) => criterion.id === savedCriterion.parentId);
+      setSelectedMajorId(middle?.parentId ?? selectedMajorId);
+      setSelectedMiddleId(savedCriterion.parentId);
+    }
+  }
+
+  async function toggleCriterionStatus(criterion: ResponseCriterionDto) {
+    const nextActive = !criterion.isActive;
+    if (!nextActive && !window.confirm(`${criterion.name} 반응 기준을 비활성 처리하시겠습니까?`)) {
+      return;
+    }
+
+    setMessage(null);
+    setError(null);
+    const envelope = await apiPatch<ResponseCriterionDto, Record<string, unknown>>(
+      `/response-criteria/${criterion.id}`,
+      { isActive: nextActive }
+    );
+
+    if (envelope.error) {
+      setError(envelope.error.message);
+      return;
+    }
+
+    setMessage(`${criterion.name} ${nextActive ? "활성화" : "비활성화"} 완료`);
+    await loadManagementData();
+  }
+
+  async function deleteCriterion(criterion: ResponseCriterionDto) {
+    if (!window.confirm(`${criterion.name} 반응 기준을 삭제하시겠습니까?`)) {
+      return;
+    }
+
+    setMessage(null);
+    setError(null);
+    const envelope = await apiDelete<DeleteResult<ResponseCriterionDto>>(
+      `/response-criteria/${criterion.id}`
+    );
+
+    if (envelope.error) {
+      setError(envelope.error.message);
+      return;
+    }
+
+    setMessage(deleteMessage(criterion.name, envelope.data));
+    if (editingCriterionId === criterion.id) {
+      closeCriterionForm();
+    }
+    await loadManagementData();
+  }
+
+  const majorCriteria = criteriaByParent(responseCriteria, null);
+  const middleCriteria =
+    selectedMajorId === null ? [] : criteriaByParent(responseCriteria, selectedMajorId);
+  const minorCriteria =
+    selectedMiddleId === null ? [] : criteriaByParent(responseCriteria, selectedMiddleId);
+  const selectedMajor = majorCriteria.find((criterion) => criterion.id === selectedMajorId);
+  const selectedMiddle = middleCriteria.find((criterion) => criterion.id === selectedMiddleId);
+  const editingCriterion = responseCriteria.find(
+    (criterion) => criterion.id === editingCriterionId
+  );
+  const criterionFormParent =
+    criterionParentId === null
+      ? null
+      : responseCriteria.find((criterion) => criterion.id === criterionParentId);
+  const criterionFormDepth =
+    editingCriterion?.depth ?? (criterionFormParent ? criterionFormParent.depth + 1 : 1);
+
   return (
     <div className="mx-auto grid max-w-7xl gap-4">
       <section className="panel">
@@ -337,7 +596,7 @@ export function ManagementPage() {
           </div>
         ) : null}
 
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
           <div className="rounded-control border border-stone-200 px-3 py-3">
             <p className="text-sm text-muted">제품</p>
             <p className="mt-1 text-2xl font-semibold">{products.length}</p>
@@ -358,7 +617,304 @@ export function ManagementPage() {
               {staff.filter((person) => person.isActive).length}
             </p>
           </div>
+          <div className="rounded-control border border-stone-200 px-3 py-3">
+            <p className="text-sm text-muted">반응 기준</p>
+            <p className="mt-1 text-2xl font-semibold">{responseCriteria.length}</p>
+          </div>
+          <div className="rounded-control border border-stone-200 px-3 py-3">
+            <p className="text-sm text-muted">활성 기준</p>
+            <p className="mt-1 text-2xl font-semibold">
+              {responseCriteria.filter((criterion) => criterion.isActive).length}
+            </p>
+          </div>
         </div>
+      </section>
+
+      <section className="panel">
+        <div className="panel-heading">
+          <div>
+            <p className="text-sm text-muted">반응 분류</p>
+            <h2 className="section-title">반응 기준 관리</h2>
+          </div>
+          <Button icon={Plus} type="button" onClick={() => openNewCriterionForm(null)}>
+            대분류 추가
+          </Button>
+        </div>
+
+        <div className="grid gap-3 lg:grid-cols-3">
+          <div className="rounded-control border border-stone-200 p-3">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-sm text-muted">1단계</p>
+                <h3 className="text-base font-semibold">대분류</h3>
+              </div>
+              <span className="text-sm font-semibold text-muted">{majorCriteria.length}개</span>
+            </div>
+            <div className="mt-3 grid gap-2">
+              {majorCriteria.map((criterion) => (
+                <div
+                  key={criterion.id}
+                  className={criterionRowClass(selectedMajorId === criterion.id)}
+                >
+                  <button
+                    className="min-w-0 text-left"
+                    type="button"
+                    onClick={() => selectMajorCriterion(criterion.id)}
+                  >
+                    <span className="block truncate font-semibold">{criterion.name}</span>
+                    <span className="mt-1 block text-xs text-muted">
+                      #{criterion.id} · 정렬 {criterion.sortOrder}
+                    </span>
+                  </button>
+                  <div className="flex flex-wrap items-center gap-1">
+                    <span className={statusBadge(criterion.isActive)}>
+                      {criterion.isActive ? "활성" : "비활성"}
+                    </span>
+                    <button
+                      className="inline-flex min-h-8 items-center justify-center rounded-control border border-stone-300 bg-white px-2 font-semibold hover:bg-stone-100"
+                      type="button"
+                      onClick={() => openCriterionEdit(criterion)}
+                    >
+                      <Pencil className="h-4 w-4" aria-hidden="true" />
+                    </button>
+                    <button
+                      className="inline-flex min-h-8 items-center justify-center rounded-control border border-stone-300 bg-white px-2 font-semibold hover:bg-stone-100"
+                      type="button"
+                      onClick={() => void toggleCriterionStatus(criterion)}
+                    >
+                      {criterion.isActive ? "비활성" : "활성"}
+                    </button>
+                    <button
+                      className="inline-flex min-h-8 items-center justify-center rounded-control border border-red/30 bg-white px-2 font-semibold text-red hover:bg-red/10"
+                      type="button"
+                      onClick={() => void deleteCriterion(criterion)}
+                    >
+                      <Trash2 className="h-4 w-4" aria-hidden="true" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+              {!isLoading && majorCriteria.length === 0 ? (
+                <div className="rounded-control border border-stone-200 px-3 py-6 text-center text-sm font-medium text-muted">
+                  등록 대분류 없음
+                </div>
+              ) : null}
+            </div>
+          </div>
+
+          <div className="rounded-control border border-stone-200 p-3">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-sm text-muted">2단계</p>
+                <h3 className="text-base font-semibold">중분류</h3>
+              </div>
+              <Button
+                className="min-h-9 px-3 text-sm"
+                disabled={selectedMajorId === null}
+                icon={Plus}
+                type="button"
+                onClick={() => openNewCriterionForm(selectedMajorId)}
+              >
+                추가
+              </Button>
+            </div>
+            <p className="mt-2 text-sm text-muted">
+              {selectedMajor ? `선택 대분류: ${selectedMajor.name}` : "대분류를 선택하세요."}
+            </p>
+            <div className="mt-3 grid gap-2">
+              {middleCriteria.map((criterion) => (
+                <div
+                  key={criterion.id}
+                  className={criterionRowClass(selectedMiddleId === criterion.id)}
+                >
+                  <button
+                    className="min-w-0 text-left"
+                    type="button"
+                    onClick={() => selectMiddleCriterion(criterion.id)}
+                  >
+                    <span className="block truncate font-semibold">{criterion.name}</span>
+                    <span className="mt-1 block text-xs text-muted">
+                      #{criterion.id} · 정렬 {criterion.sortOrder}
+                    </span>
+                  </button>
+                  <div className="flex flex-wrap items-center gap-1">
+                    <span className={statusBadge(criterion.isActive)}>
+                      {criterion.isActive ? "활성" : "비활성"}
+                    </span>
+                    <button
+                      className="inline-flex min-h-8 items-center justify-center rounded-control border border-stone-300 bg-white px-2 font-semibold hover:bg-stone-100"
+                      type="button"
+                      onClick={() => openCriterionEdit(criterion)}
+                    >
+                      <Pencil className="h-4 w-4" aria-hidden="true" />
+                    </button>
+                    <button
+                      className="inline-flex min-h-8 items-center justify-center rounded-control border border-stone-300 bg-white px-2 font-semibold hover:bg-stone-100"
+                      type="button"
+                      onClick={() => void toggleCriterionStatus(criterion)}
+                    >
+                      {criterion.isActive ? "비활성" : "활성"}
+                    </button>
+                    <button
+                      className="inline-flex min-h-8 items-center justify-center rounded-control border border-red/30 bg-white px-2 font-semibold text-red hover:bg-red/10"
+                      type="button"
+                      onClick={() => void deleteCriterion(criterion)}
+                    >
+                      <Trash2 className="h-4 w-4" aria-hidden="true" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+              {!isLoading && selectedMajorId !== null && middleCriteria.length === 0 ? (
+                <div className="rounded-control border border-stone-200 px-3 py-6 text-center text-sm font-medium text-muted">
+                  등록 중분류 없음
+                </div>
+              ) : null}
+            </div>
+          </div>
+
+          <div className="rounded-control border border-stone-200 p-3">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-sm text-muted">3단계</p>
+                <h3 className="text-base font-semibold">소분류</h3>
+              </div>
+              <Button
+                className="min-h-9 px-3 text-sm"
+                disabled={selectedMiddleId === null}
+                icon={Plus}
+                type="button"
+                onClick={() => openNewCriterionForm(selectedMiddleId)}
+              >
+                추가
+              </Button>
+            </div>
+            <p className="mt-2 text-sm text-muted">
+              {selectedMiddle ? `선택 중분류: ${selectedMiddle.name}` : "중분류를 선택하세요."}
+            </p>
+            <div className="mt-3 grid gap-2">
+              {minorCriteria.map((criterion) => (
+                <div key={criterion.id} className={criterionRowClass(false)}>
+                  <button
+                    className="min-w-0 text-left"
+                    type="button"
+                    onClick={() => openCriterionEdit(criterion)}
+                  >
+                    <span className="block truncate font-semibold">{criterion.name}</span>
+                    <span className="mt-1 block text-xs text-muted">
+                      #{criterion.id} · 정렬 {criterion.sortOrder}
+                    </span>
+                  </button>
+                  <div className="flex flex-wrap items-center gap-1">
+                    <span className={statusBadge(criterion.isActive)}>
+                      {criterion.isActive ? "활성" : "비활성"}
+                    </span>
+                    <button
+                      className="inline-flex min-h-8 items-center justify-center rounded-control border border-stone-300 bg-white px-2 font-semibold hover:bg-stone-100"
+                      type="button"
+                      onClick={() => openCriterionEdit(criterion)}
+                    >
+                      <Pencil className="h-4 w-4" aria-hidden="true" />
+                    </button>
+                    <button
+                      className="inline-flex min-h-8 items-center justify-center rounded-control border border-stone-300 bg-white px-2 font-semibold hover:bg-stone-100"
+                      type="button"
+                      onClick={() => void toggleCriterionStatus(criterion)}
+                    >
+                      {criterion.isActive ? "비활성" : "활성"}
+                    </button>
+                    <button
+                      className="inline-flex min-h-8 items-center justify-center rounded-control border border-red/30 bg-white px-2 font-semibold text-red hover:bg-red/10"
+                      type="button"
+                      onClick={() => void deleteCriterion(criterion)}
+                    >
+                      <Trash2 className="h-4 w-4" aria-hidden="true" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+              {!isLoading && selectedMiddleId !== null && minorCriteria.length === 0 ? (
+                <div className="rounded-control border border-stone-200 px-3 py-6 text-center text-sm font-medium text-muted">
+                  등록 소분류 없음
+                </div>
+              ) : null}
+            </div>
+          </div>
+        </div>
+
+        {isCriterionFormOpen ? (
+          <div className="mt-4 grid gap-3 border-t border-stone-200 pt-4">
+            <div className="flex items-center justify-between gap-3">
+              <h3 className="text-base font-semibold">
+                {editingCriterionId === null
+                  ? `${criterionLevelLabel(criterionFormDepth)} 추가`
+                  : `${criterionLevelLabel(criterionFormDepth)} 수정 #${editingCriterionId}`}
+              </h3>
+              <button
+                className="inline-flex min-h-9 items-center justify-center rounded-control border border-stone-300 bg-white px-3 font-semibold hover:bg-stone-100"
+                type="button"
+                onClick={closeCriterionForm}
+              >
+                <X className="h-4 w-4" aria-hidden="true" />
+              </button>
+            </div>
+            <div className="grid gap-3 lg:grid-cols-[1fr_10rem_12rem]">
+              <label className="grid gap-2">
+                <span className="field-label">기준명</span>
+                <input
+                  className="input"
+                  value={criterionForm.name}
+                  onChange={(event) =>
+                    setCriterionForm((current) => ({ ...current, name: event.target.value }))
+                  }
+                />
+              </label>
+              <label className="grid gap-2">
+                <span className="field-label">정렬 순서</span>
+                <input
+                  className="input"
+                  inputMode="numeric"
+                  value={criterionForm.sortOrder}
+                  onChange={(event) =>
+                    setCriterionForm((current) => ({ ...current, sortOrder: event.target.value }))
+                  }
+                />
+              </label>
+              <label className="grid gap-2">
+                <span className="field-label">상태</span>
+                <select
+                  className="input"
+                  value={criterionForm.isActive ? "active" : "inactive"}
+                  onChange={(event) =>
+                    setCriterionForm((current) => ({
+                      ...current,
+                      isActive: event.target.value === "active"
+                    }))
+                  }
+                >
+                  <option value="active">활성</option>
+                  <option value="inactive">비활성</option>
+                </select>
+              </label>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                icon={editingCriterionId === null ? Plus : Pencil}
+                type="button"
+                onClick={() => void saveCriterion()}
+              >
+                {editingCriterionId === null ? "추가" : "저장"}
+              </Button>
+              <button
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-control border border-stone-300 bg-white px-4 font-semibold hover:bg-stone-100"
+                type="button"
+                onClick={closeCriterionForm}
+              >
+                취소
+              </button>
+            </div>
+          </div>
+        ) : null}
       </section>
 
       <section className="panel">

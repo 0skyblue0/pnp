@@ -1,9 +1,16 @@
 import { createHash } from "node:crypto";
 
-import type { Prisma, Product } from "@prisma/client";
+import type { Prisma } from "@prisma/client";
 import type { FastifyInstance } from "fastify";
 
+import {
+  parseStoreDateEnd,
+  parseStoreDateStart,
+  parseStoreDateTime,
+  todayInStoreTime
+} from "../../common/datetime.js";
 import { HttpError, sendOk } from "../../common/http.js";
+import { resolveProduct } from "../product/product-resolver.js";
 import { calculateAvailableWalkin } from "./inventory-calculator.js";
 import {
   availabilityParamsSchema,
@@ -11,8 +18,7 @@ import {
   createReservationSchema,
   idParamsSchema,
   listReservationQuerySchema,
-  updateReservationStatusSchema,
-  type ReservationItemInput
+  updateReservationStatusSchema
 } from "./reservation.schemas.js";
 
 type ReservationWithItems = Prisma.ReservationGetPayload<{
@@ -25,50 +31,6 @@ type ReservationWithItems = Prisma.ReservationGetPayload<{
   };
 }>;
 
-const KST_OFFSET = "+09:00";
-
-function parseDateOnly(date: string): Date {
-  return new Date(`${date}T00:00:00.000Z`);
-}
-
-function formatDateOnly(date: Date): string {
-  return date.toISOString().slice(0, 10);
-}
-
-function parseStoreDateTime(value: string): Date {
-  const normalized = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(value)
-    ? `${value}:00${KST_OFFSET}`
-    : /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/.test(value)
-      ? `${value}${KST_OFFSET}`
-      : value;
-  const parsed = new Date(normalized);
-
-  if (Number.isNaN(parsed.getTime())) {
-    throw new HttpError(400, "INVALID_DATETIME", "Invalid date-time value");
-  }
-
-  return parsed;
-}
-
-function parseStoreDateStart(date: string): Date {
-  return parseStoreDateTime(`${date}T00:00`);
-}
-
-function parseStoreDateEnd(date: string): Date {
-  const start = parseDateOnly(date);
-  start.setUTCDate(start.getUTCDate() + 1);
-  return parseStoreDateStart(formatDateOnly(start));
-}
-
-function todayInStoreTime(): string {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Seoul",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit"
-  }).format(new Date());
-}
-
 function toContactToken(contactRef: string): string {
   return createHash("sha256").update(contactRef.trim()).digest("hex");
 }
@@ -76,6 +38,8 @@ function toContactToken(contactRef: string): string {
 function toReservationDto(reservation: ReservationWithItems) {
   return {
     id: reservation.id.toString(),
+    customerName: reservation.customerName,
+    contactPhone: reservation.contactPhone,
     pickupAt: reservation.pickupAt.toISOString(),
     status: reservation.status,
     purpose: reservation.purpose,
@@ -91,44 +55,6 @@ function toReservationDto(reservation: ReservationWithItems) {
       quantity: item.quantity
     }))
   };
-}
-
-async function resolveProduct(
-  app: FastifyInstance,
-  input: Pick<ReservationItemInput, "productId" | "productName">
-): Promise<Product> {
-  if (input.productId !== undefined) {
-    const product = await app.prisma.product.findUnique({
-      where: { id: input.productId }
-    });
-
-    if (!product) {
-      throw new HttpError(404, "PRODUCT_NOT_FOUND", "Product not found");
-    }
-
-    return product;
-  }
-
-  const productName = input.productName;
-  if (!productName) {
-    throw new HttpError(400, "PRODUCT_REQUIRED", "productId or productName is required");
-  }
-
-  const existing = await app.prisma.product.findFirst({
-    where: { name: productName },
-    orderBy: { id: "asc" }
-  });
-
-  if (existing) {
-    return existing;
-  }
-
-  return app.prisma.product.create({
-    data: {
-      name: productName,
-      isActive: true
-    }
-  });
 }
 
 async function findReservationById(app: FastifyInstance, id: bigint) {
@@ -218,6 +144,8 @@ export async function registerReservationRoutes(app: FastifyInstance): Promise<v
     const reservation = await app.prisma.reservation.create({
       data: {
         contactToken: toContactToken(input.contactRef),
+        customerName: input.customerName,
+        contactPhone: input.contactPhone,
         pickupAt: parseStoreDateTime(input.pickupAt),
         purpose: input.purpose,
         allergyNote: input.allergyNote ?? null,
@@ -254,7 +182,7 @@ export async function registerReservationRoutes(app: FastifyInstance): Promise<v
       where: { id: params.id },
       data: {
         status: input.status,
-        cancelReason: input.status === "CANCELED" ? (input.cancelReason ?? null) : null,
+        cancelReason: null,
         completedAt: input.status === "COMPLETED" ? new Date() : null
       },
       include: {

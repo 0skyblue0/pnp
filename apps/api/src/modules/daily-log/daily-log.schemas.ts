@@ -49,6 +49,12 @@ export const createStockoutLogSchema = z
     message: "productId or productName is required"
   });
 
+export const createDiscardSchema = z.object({
+  productId: z.coerce.number().int().positive(),
+  date: dateOnlySchema,
+  discardQty: z.coerce.number().int().min(1).max(9999)
+});
+
 export const updateStockoutLogSchema = z
   .object({
     sequence: z.coerce.number().int().min(1).max(99).optional(),
@@ -90,5 +96,6 @@ export const dateParamsSchema = z.object({
 export type CreateCongestionLogInput = z.infer<typeof createCongestionLogSchema>;
 export type CreateTastingLogInput = z.infer<typeof createTastingLogSchema>;
 export type CreateStockoutLogInput = z.infer<typeof createStockoutLogSchema>;
+export type CreateDiscardInput = z.infer<typeof createDiscardSchema>;
 export type UpdateStockoutLogInput = z.infer<typeof updateStockoutLogSchema>;
 export type IncrementAbsentInquiryInput = z.infer<typeof incrementAbsentInquirySchema>;

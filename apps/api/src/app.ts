@@ -9,6 +9,7 @@ import { HttpError, sendError, sendOk } from "./common/http.js";
 import { attachCsrfProtection } from "./common/security/csrf.js";
 import { registerPrisma } from "./infra/db/prisma.js";
 import { registerAdminRoutes } from "./modules/admin/admin.routes.js";
+import { registerAnnualScheduleRoutes } from "./modules/annual-schedule/annual-schedule.routes.js";
 import { registerAuthRoutes } from "./modules/auth/auth.routes.js";
 import { registerDailyLogRoutes } from "./modules/daily-log/daily-log.routes.js";
 import { registerNotificationRoutes } from "./modules/notification/notification.routes.js";
@@ -64,6 +65,7 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Fas
 
   await app.register(registerAuthRoutes, { prefix: "/api/v1/auth" });
   await app.register(registerAdminRoutes, { prefix: "/api/v1" });
+  await app.register(registerAnnualScheduleRoutes, { prefix: "/api/v1" });
   await app.register(registerDailyLogRoutes, { prefix: "/api/v1" });
   await app.register(registerProductionLotRoutes, { prefix: "/api/v1/production-lot" });
   await app.register(registerReservationRoutes, { prefix: "/api/v1/reservation" });

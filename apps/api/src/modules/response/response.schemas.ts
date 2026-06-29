@@ -1,28 +1,13 @@
-import {
-  actionPrioritySchema,
-  quickResponseTagSchema,
-  responseCategorySchema,
-  responseSourceSchema,
-  responseTargetSchema,
-  visitOriginSchema
-} from "@pnp/shared";
 import { z } from "zod";
 
 const dateOnlySchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 
 export const createResponseSchema = z.object({
   date: dateOnlySchema,
-  category: responseCategorySchema,
-  target: responseTargetSchema.optional(),
-  sentimentScore: z.number().int().min(1).max(5).optional(),
-  actionPriority: actionPrioritySchema.default("RECORD_ONLY"),
-  visitOrigin: visitOriginSchema.optional(),
-  source: responseSourceSchema.optional(),
-  isBossFlag: z.boolean().default(false),
-  shortSummary: z.string().min(1).max(200),
+  criterionId: z.number().int().positive(),
+  shortSummary: z.string().trim().min(1).max(200),
   fullText: z.string().max(5000).optional(),
-  tags: z.array(quickResponseTagSchema).default([]),
-  productIds: z.array(z.number().int().positive()).default([])
+  llmAssisted: z.boolean().optional()
 });
 
 export const updateResponseSchema = createResponseSchema
@@ -34,9 +19,23 @@ export const updateResponseSchema = createResponseSchema
 export const listResponseQuerySchema = z.object({
   from: dateOnlySchema.optional(),
   to: dateOnlySchema.optional(),
-  category: responseCategorySchema.optional(),
-  boss_flag: z.coerce.boolean().optional()
+  criterion_id: z.coerce.number().int().positive().optional()
+});
+
+export const statsResponseQuerySchema = z
+  .object({
+    from: dateOnlySchema,
+    to: dateOnlySchema
+  })
+  .refine((value) => value.from <= value.to, {
+    message: "from must be before or equal to to",
+    path: ["from"]
+  });
+
+export const suggestResponseSchema = z.object({
+  fullText: z.string().trim().min(1).max(5000)
 });
 
 export type CreateResponseInput = z.infer<typeof createResponseSchema>;
+export type SuggestResponseInput = z.infer<typeof suggestResponseSchema>;
 export type UpdateResponseInput = z.infer<typeof updateResponseSchema>;

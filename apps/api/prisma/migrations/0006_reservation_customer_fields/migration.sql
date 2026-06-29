@@ -1,0 +1,3 @@
+ALTER TABLE reservation
+  ADD COLUMN IF NOT EXISTS customer_name VARCHAR(80),
+  ADD COLUMN IF NOT EXISTS contact_phone VARCHAR(40);

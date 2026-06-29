@@ -8,7 +8,7 @@ import { HomePage } from "../modules/home/HomePage.js";
 import { NotificationPage } from "../modules/notification/NotificationPage.js";
 import { ReservationPage } from "../modules/reservation/ReservationPage.js";
 import { ResponseEntryPage } from "../modules/response/ResponseEntryPage.js";
-import { ResponseListPage } from "../modules/response/ResponseListPage.js";
+import { ResponseInquiryPage } from "../modules/response/ResponseInquiryPage.js";
 
 export function App() {
   return (
@@ -17,8 +17,10 @@ export function App() {
         <Route element={<AppLayout />}>
           <Route index element={<Navigate to="/home" replace />} />
           <Route path="/home" element={<HomePage />} />
-          <Route path="/response" element={<ResponseListPage />} />
+          <Route path="/operation" element={<Navigate to="/daily-log/today" replace />} />
+          <Route path="/response" element={<ResponseInquiryPage />} />
           <Route path="/response/new" element={<ResponseEntryPage />} />
+          <Route path="/statistics" element={<Navigate to="/response?tab=stats" replace />} />
           <Route path="/reservation" element={<ReservationPage />} />
           <Route path="/daily-log/today" element={<DailyLogPage />} />
           <Route path="/staff" element={<ManagementPage />} />

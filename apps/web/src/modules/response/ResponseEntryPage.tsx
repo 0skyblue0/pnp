@@ -1,79 +1,41 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Camera, Save, Star } from "lucide-react";
-import { useState } from "react";
+import { RefreshCcw, Save, Sparkles } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 
-import {
-  actionPriorities,
-  quickResponseTags,
-  responseCategories,
-  responseSources,
-  responseTargets,
-  visitOrigins
-} from "@pnp/shared";
+import { apiGet, apiPost } from "../../shared/api/client.js";
+import type { ListEnvelope } from "../../shared/api/types.js";
+import { todayInStoreTime } from "../../shared/time/storeTime.js";
 import { Button } from "../../shared/ui/Button.js";
-import { apiPost } from "../../shared/api/client.js";
-import { SegmentedControl } from "../../shared/ui/SegmentedControl.js";
+import {
+  criteriaByParent,
+  criterionPathLabel,
+  type CriterionPathItem,
+  type ResponseCriterionDto
+} from "./responseCriteria.js";
 import { responseFormSchema, type ResponseFormValues } from "./responseFormSchema.js";
 
-const categoryLabels: Record<(typeof responseCategories)[number], string> = {
-  PRODUCT_REVIEW: "제품평가",
-  SERVICE_REVIEW: "서비스",
-  VISIT_MOTIVE: "방문동기",
-  REQUEST: "요청제안",
-  CASUAL_TALK: "일상대화",
-  COMPLAINT: "컴플레인",
-  USE_CASE: "사용법"
-};
-
-const targetLabels: Record<(typeof responseTargets)[number], string> = {
-  PRODUCT: "제품",
-  STORE: "매장",
-  STAFF: "직원",
-  PRICE: "가격",
-  DISPLAY: "진열"
-};
-
-const actionLabels: Record<(typeof actionPriorities)[number], string> = {
-  IMMEDIATE: "즉시",
-  REVIEW: "검토",
-  RECORD_ONLY: "단순 기록"
-};
-
-const visitLabels: Record<(typeof visitOrigins)[number], string> = {
-  FIRST: "처음",
-  REVISIT: "재방문",
-  REGULAR: "단골"
-};
-
-const sourceLabels: Record<(typeof responseSources)[number], string> = {
-  DIRECT: "직접",
-  SNS: "SNS",
-  RECOMMEND: "추천",
-  PASSING: "지나가다",
-  DISTANT_INTENT: "원거리"
-};
-
-const tagLabels: Record<(typeof quickResponseTags)[number], string> = {
-  DISTANT: "멀리서",
-  GIFT: "선물용",
-  REVISIT: "재방문",
-  REGULAR: "단골",
-  FROZEN_USE: "냉동사용",
-  SNS: "SNS보고",
-  BULK_PURCHASE: "대량구매"
-};
-
-function todayInStoreTime(): string {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Seoul",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit"
-  }).format(new Date());
+function criterionButtonClass(isSelected: boolean) {
+  return [
+    "min-h-11 rounded-control border px-3 text-sm font-semibold",
+    isSelected
+      ? "border-stone-900 bg-stone-900 text-white"
+      : "border-stone-300 bg-white text-stone-800 hover:bg-stone-100"
+  ].join(" ");
 }
 
-export function ResponseEntryPage() {
+type ResponseSuggestionDto = {
+  criterionId: number;
+  criterionPath: CriterionPathItem[];
+  shortSummary: string;
+  reason: string;
+};
+
+function pathLabel(path: CriterionPathItem[]): string {
+  return criterionPathLabel(path);
+}
+
+export function ResponseEntryPage({ embedded = false }: { embedded?: boolean } = {}) {
   const {
     register,
     setValue,
@@ -85,25 +47,129 @@ export function ResponseEntryPage() {
     resolver: zodResolver(responseFormSchema),
     defaultValues: {
       date: todayInStoreTime(),
-      category: "PRODUCT_REVIEW",
-      target: "PRODUCT",
-      sentimentScore: 4,
-      actionPriority: "RECORD_ONLY",
-      tags: [],
-      isBossFlag: false,
-      shortSummary: ""
+      criterionId: 0,
+      shortSummary: "",
+      fullText: "",
+      llmAssisted: false
     }
   });
 
-  const selectedTags = watch("tags");
+  const [criteria, setCriteria] = useState<ResponseCriterionDto[]>([]);
+  const [selectedMajorId, setSelectedMajorId] = useState<number | null>(null);
+  const [selectedMiddleId, setSelectedMiddleId] = useState<number | null>(null);
+  const [selectedMinorId, setSelectedMinorId] = useState<number | null>(null);
+  const [isLoadingCriteria, setIsLoadingCriteria] = useState(false);
+  const [isSuggesting, setIsSuggesting] = useState(false);
+  const [aiSuggestionPath, setAiSuggestionPath] = useState<CriterionPathItem[] | null>(null);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
 
-  function toggleTag(tag: (typeof quickResponseTags)[number]) {
-    const next = selectedTags.includes(tag)
-      ? selectedTags.filter((selected) => selected !== tag)
-      : [...selectedTags, tag];
-    setValue("tags", next, { shouldDirty: true, shouldValidate: true });
+  const selectedCriterionId = watch("criterionId");
+  const fullText = watch("fullText");
+  const majorCriteria = useMemo(() => criteriaByParent(criteria, null), [criteria]);
+  const middleCriteria = useMemo(
+    () => (selectedMajorId ? criteriaByParent(criteria, selectedMajorId) : []),
+    [criteria, selectedMajorId]
+  );
+  const minorCriteria = useMemo(
+    () => (selectedMiddleId ? criteriaByParent(criteria, selectedMiddleId) : []),
+    [criteria, selectedMiddleId]
+  );
+  const selectedPath = useMemo(
+    () =>
+      [selectedMajorId, selectedMiddleId, selectedMinorId]
+        .map((id) => criteria.find((criterion) => criterion.id === id))
+        .filter((criterion): criterion is ResponseCriterionDto => criterion !== undefined),
+    [criteria, selectedMajorId, selectedMiddleId, selectedMinorId]
+  );
+
+  const loadCriteria = useCallback(async () => {
+    setIsLoadingCriteria(true);
+    setSaveError(null);
+
+    try {
+      const envelope = await apiGet<ListEnvelope<ResponseCriterionDto>>(
+        "/response-criteria?active=true"
+      );
+
+      if (envelope.error) {
+        setSaveError(envelope.error.message);
+        return;
+      }
+
+      setCriteria(envelope.data.items);
+    } catch (unknownError) {
+      setSaveError(
+        unknownError instanceof Error ? unknownError.message : "반응 기준을 조회하지 못했습니다."
+      );
+    } finally {
+      setIsLoadingCriteria(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadCriteria();
+  }, [loadCriteria]);
+
+  function selectMajor(id: number) {
+    setAiSuggestionPath(null);
+    setSelectedMajorId(id);
+    setSelectedMiddleId(null);
+    setSelectedMinorId(null);
+    setValue("criterionId", id, { shouldValidate: true });
+  }
+
+  function selectMiddle(id: number) {
+    setAiSuggestionPath(null);
+    setSelectedMiddleId(id);
+    setSelectedMinorId(null);
+    setValue("criterionId", id, { shouldValidate: true });
+  }
+
+  function selectMinor(id: number) {
+    setAiSuggestionPath(null);
+    setSelectedMinorId(id);
+    setValue("criterionId", id, { shouldValidate: true });
+  }
+
+  function applyCriterionPath(path: CriterionPathItem[], criterionId: number) {
+    setSelectedMajorId(path.find((criterion) => criterion.depth === 1)?.id ?? null);
+    setSelectedMiddleId(path.find((criterion) => criterion.depth === 2)?.id ?? null);
+    setSelectedMinorId(path.find((criterion) => criterion.depth === 3)?.id ?? null);
+    setValue("criterionId", criterionId, { shouldValidate: true });
+  }
+
+  async function suggestWithAi() {
+    const text = fullText?.trim() ?? "";
+    if (!text) {
+      setSaveError("자세한 내용을 입력한 뒤 AI 분류하기를 눌러주세요.");
+      return;
+    }
+
+    setIsSuggesting(true);
+    setSaveMessage(null);
+    setSaveError(null);
+
+    try {
+      const envelope = await apiPost<ResponseSuggestionDto, { fullText: string }>("/response/suggest", {
+        fullText: text
+      });
+
+      if (envelope.error) {
+        setSaveError(envelope.error.message);
+        return;
+      }
+
+      applyCriterionPath(envelope.data.criterionPath, envelope.data.criterionId);
+      setAiSuggestionPath(envelope.data.criterionPath);
+      setValue("shortSummary", envelope.data.shortSummary, { shouldValidate: true });
+      setValue("llmAssisted", true, { shouldValidate: true });
+      setSaveMessage(`AI 추천 적용됨: ${pathLabel(envelope.data.criterionPath)}`);
+    } catch (unknownError) {
+      setSaveError(unknownError instanceof Error ? unknownError.message : "AI 추천을 가져오지 못했습니다.");
+    } finally {
+      setIsSuggesting(false);
+    }
   }
 
   async function submit(values: ResponseFormValues) {
@@ -118,18 +184,19 @@ export function ResponseEntryPage() {
     }
 
     setSaveMessage(`저장 완료 #${envelope.data.id}`);
+    setAiSuggestionPath(null);
     reset({
-      ...values,
+      date: values.date,
+      criterionId: values.criterionId,
       shortSummary: "",
       fullText: "",
-      tags: [],
-      isBossFlag: false
+      llmAssisted: false
     });
   }
 
   return (
     <form
-      className="mx-auto grid max-w-5xl gap-4"
+      className={["mx-auto grid gap-4", embedded ? "w-full max-w-7xl" : "max-w-5xl"].join(" ")}
       onSubmit={(event) => {
         void handleSubmit(submit)(event);
       }}
@@ -137,12 +204,28 @@ export function ResponseEntryPage() {
       <section className="panel">
         <div className="panel-heading">
           <div>
-            <p className="text-sm text-muted">M3</p>
-            <h2 className="section-title">고객 반응 입력</h2>
+            <p className="text-sm text-muted">입력</p>
+            <h2 className="section-title">손님 반응 입력</h2>
+            <p className="mt-1 text-sm text-muted">
+              손님이 말한 내용을 그대로 적고 AI 분류하기를 누른 뒤 직원이 확인해서 저장합니다.
+            </p>
           </div>
-          <Button disabled={isSubmitting} icon={Save} type="submit">
-            {isSubmitting ? "저장 중" : "저장"}
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button icon={RefreshCcw} type="button" onClick={() => void loadCriteria()}>
+              {isLoadingCriteria ? "조회 중" : "기준 새로고침"}
+            </Button>
+            <Button
+              disabled={isSuggesting || criteria.length === 0 || !fullText?.trim()}
+              icon={Sparkles}
+              type="button"
+              onClick={() => void suggestWithAi()}
+            >
+              {isSuggesting ? "AI 분류 중" : "AI 분류하기"}
+            </Button>
+            <Button disabled={isSubmitting || criteria.length === 0} icon={Save} type="submit">
+              {isSubmitting ? "저장 중" : "저장"}
+            </Button>
+          </div>
         </div>
 
         <div className="grid gap-5">
@@ -157,107 +240,85 @@ export function ResponseEntryPage() {
             </div>
           ) : null}
 
-          <SegmentedControl<(typeof responseCategories)[number]>
-            label="카테고리"
-            options={responseCategories.map((value) => ({
-              value,
-              label: categoryLabels[value]
-            }))}
-            value={watch("category")}
-            onChange={(value) => setValue("category", value, { shouldValidate: true })}
-          />
+          <label className="grid max-w-[12rem] gap-2">
+            <span className="field-label">날짜</span>
+            <input className="input w-48 max-w-full" type="date" {...register("date")} />
+          </label>
 
-          <SegmentedControl<(typeof responseTargets)[number]>
-            label="대상"
-            options={responseTargets.map((value) => ({
-              value,
-              label: targetLabels[value]
-            }))}
-            value={watch("target")}
-            onChange={(value) => setValue("target", value, { shouldValidate: true })}
-          />
-
-          <div className="grid gap-4 md:grid-cols-2">
-            <SegmentedControl<(typeof actionPriorities)[number]>
-              label="조치"
-              options={actionPriorities.map((value) => ({
-                value,
-                label: actionLabels[value]
-              }))}
-              value={watch("actionPriority")}
-              onChange={(value) => setValue("actionPriority", value, { shouldValidate: true })}
-            />
-
+          <div className="grid gap-4">
             <div>
-              <span className="field-label">감성</span>
-              <div className="flex min-h-11 items-center gap-2">
-                {[1, 2, 3, 4, 5].map((score) => (
+              <span className="field-label">대분류</span>
+              <div className="flex flex-wrap gap-2">
+                {majorCriteria.map((criterion) => (
                   <button
-                    key={score}
-                    className="grid h-11 w-11 place-items-center rounded-control border border-stone-300 bg-white text-amber hover:bg-amber/10"
+                    key={criterion.id}
+                    className={criterionButtonClass(selectedMajorId === criterion.id)}
                     type="button"
-                    onClick={() => setValue("sentimentScore", score, { shouldValidate: true })}
-                    title={`${score}점`}
+                    onClick={() => selectMajor(criterion.id)}
                   >
-                    <Star
-                      className="h-5 w-5"
-                      fill={watch("sentimentScore") >= score ? "currentColor" : "none"}
-                      aria-hidden="true"
-                    />
+                    {criterion.name}
                   </button>
                 ))}
               </div>
             </div>
-          </div>
 
-          <div>
-            <span className="field-label">퀵 태그</span>
-            <div className="flex flex-wrap gap-2">
-              {quickResponseTags.map((tag) => (
-                <button
-                  key={tag}
-                  className={[
-                    "min-h-11 rounded-control border px-3 text-sm font-semibold",
-                    selectedTags.includes(tag)
-                      ? "border-stone-900 bg-stone-900 text-white"
-                      : "border-stone-300 bg-white text-stone-800 hover:bg-stone-100"
-                  ].join(" ")}
-                  type="button"
-                  onClick={() => toggleTag(tag)}
-                >
-                  {tagLabels[tag]}
-                </button>
-              ))}
+            {selectedMajorId && middleCriteria.length > 0 ? (
+              <div>
+                <span className="field-label">중분류</span>
+                <div className="flex flex-wrap gap-2">
+                  {middleCriteria.map((criterion) => (
+                    <button
+                      key={criterion.id}
+                      className={criterionButtonClass(selectedMiddleId === criterion.id)}
+                      type="button"
+                      onClick={() => selectMiddle(criterion.id)}
+                    >
+                      {criterion.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+
+            {selectedMiddleId && minorCriteria.length > 0 ? (
+              <div>
+                <span className="field-label">소분류</span>
+                <div className="flex flex-wrap gap-2">
+                  {minorCriteria.map((criterion) => (
+                    <button
+                      key={criterion.id}
+                      className={criterionButtonClass(selectedMinorId === criterion.id)}
+                      type="button"
+                      onClick={() => selectMinor(criterion.id)}
+                    >
+                      {criterion.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+
+            <div className="rounded-control border border-stone-200 bg-stone-50 px-3 py-2 text-sm font-semibold text-stone-700">
+              선택 기준:{" "}
+              {selectedCriterionId > 0
+                ? `${aiSuggestionPath ? "AI 추천 · " : ""}${criterionPathLabel(selectedPath)}`
+                : "미선택"}
             </div>
-          </div>
-
-          <div className="grid gap-4 md:grid-cols-2">
-            <SegmentedControl<(typeof visitOrigins)[number]>
-              label="방문"
-              options={visitOrigins.map((value) => ({
-                value,
-                label: visitLabels[value]
-              }))}
-              value={watch("visitOrigin")}
-              onChange={(value) => setValue("visitOrigin", value, { shouldValidate: true })}
-            />
-
-            <SegmentedControl<(typeof responseSources)[number]>
-              label="유입"
-              options={responseSources.map((value) => ({
-                value,
-                label: sourceLabels[value]
-              }))}
-              value={watch("source")}
-              onChange={(value) => setValue("source", value, { shouldValidate: true })}
-            />
+            {errors.criterionId ? (
+              <span className="text-sm font-medium text-red">{errors.criterionId.message}</span>
+            ) : null}
+            {!isLoadingCriteria && majorCriteria.length === 0 ? (
+              <div className="rounded-control border border-stone-200 px-3 py-6 text-center text-sm font-medium text-muted">
+                관리 메뉴에서 반응 기준을 먼저 등록하세요.
+              </div>
+            ) : null}
           </div>
 
           <label className="grid gap-2">
-            <span className="field-label">짧은 요약</span>
+            <span className="field-label">요약</span>
             <input
               className="input"
-              placeholder="제주도 고객 대량 구매, 보관 안내"
+              placeholder="고객 반응을 한 줄로 요약"
               {...register("shortSummary")}
             />
             {errors.shortSummary ? (
@@ -266,27 +327,13 @@ export function ResponseEntryPage() {
           </label>
 
           <label className="grid gap-2">
-            <span className="field-label">자세한 내용</span>
-            <textarea className="input min-h-28 resize-y" {...register("fullText")} />
+            <span className="field-label">손님 반응 내용</span>
+            <textarea
+              className="input min-h-32 resize-y"
+              placeholder="예: 청주에서 방문한 손님 계셨습니다."
+              {...register("fullText")}
+            />
           </label>
-
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <button
-              className="inline-flex min-h-11 items-center gap-2 rounded-control border border-stone-300 bg-white px-4 font-semibold hover:bg-stone-100"
-              type="button"
-            >
-              <Camera className="h-5 w-5" aria-hidden="true" />
-              사진
-            </button>
-            <label className="inline-flex min-h-11 items-center gap-3 rounded-control border border-stone-300 bg-white px-4 font-semibold">
-              <input
-                className="h-5 w-5 accent-stone-900"
-                type="checkbox"
-                {...register("isBossFlag")}
-              />
-              사장 보고
-            </label>
-          </div>
         </div>
       </section>
     </form>

@@ -1,68 +1,36 @@
 import { MessageSquareText, RefreshCcw } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 
 import { apiGet } from "../../shared/api/client.js";
+import type { ListEnvelope } from "../../shared/api/types.js";
+import { todayInStoreTime } from "../../shared/time/storeTime.js";
 import { Button } from "../../shared/ui/Button.js";
-
-type ListEnvelope<T> = {
-  items: T[];
-  total: number;
-  page: number;
-  size: number;
-};
+import {
+  criteriaByParent,
+  criterionPathLabel,
+  type CriterionPathItem,
+  type ResponseCriterionDto
+} from "./responseCriteria.js";
 
 type ResponseDto = {
   id: string;
   date: string;
-  category:
-    | "PRODUCT_REVIEW"
-    | "SERVICE_REVIEW"
-    | "VISIT_MOTIVE"
-    | "REQUEST"
-    | "CASUAL_TALK"
-    | "COMPLAINT"
-    | "USE_CASE";
-  sentimentScore: number | null;
-  actionPriority: "IMMEDIATE" | "REVIEW" | "RECORD_ONLY" | null;
-  isBossFlag: boolean;
+  criterionId: number;
+  majorCriterionId: number;
+  middleCriterionId: number | null;
+  minorCriterionId: number | null;
+  criterionPath: CriterionPathItem[];
   shortSummary: string | null;
   fullText: string | null;
-  tags: string[];
   createdAt: string;
 };
 
 type FilterState = {
   from: string;
   to: string;
-  category: "" | ResponseDto["category"];
-  bossOnly: boolean;
+  criterionId: string;
 };
-
-const categoryLabels: Record<ResponseDto["category"], string> = {
-  PRODUCT_REVIEW: "제품 반응",
-  SERVICE_REVIEW: "응대 반응",
-  VISIT_MOTIVE: "방문 동기",
-  REQUEST: "요청",
-  CASUAL_TALK: "대화",
-  COMPLAINT: "불만",
-  USE_CASE: "활용"
-};
-
-const priorityLabels: Record<NonNullable<ResponseDto["actionPriority"]>, string> = {
-  IMMEDIATE: "즉시",
-  REVIEW: "검토",
-  RECORD_ONLY: "기록"
-};
-
-function todayInStoreTime(): string {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Seoul",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit"
-  }).format(new Date());
-}
 
 function buildQuery(filters: FilterState): string {
   const params = new URLSearchParams();
@@ -72,14 +40,26 @@ function buildQuery(filters: FilterState): string {
   if (filters.to) {
     params.set("to", filters.to);
   }
-  if (filters.category) {
-    params.set("category", filters.category);
-  }
-  if (filters.bossOnly) {
-    params.set("boss_flag", "true");
+  if (filters.criterionId) {
+    params.set("criterion_id", filters.criterionId);
   }
   const query = params.toString();
   return query ? `?${query}` : "";
+}
+
+function flattenCriteria(
+  criteria: ResponseCriterionDto[],
+  parentId: number | null = null
+): ResponseCriterionDto[] {
+  return criteriaByParent(criteria, parentId).flatMap((criterion) => [
+    criterion,
+    ...flattenCriteria(criteria, criterion.id)
+  ]);
+}
+
+function criterionOptionLabel(criterion: ResponseCriterionDto): string {
+  const prefix = criterion.depth > 1 ? `${"  ".repeat(criterion.depth - 1)}- ` : "";
+  return `${prefix}${criterion.name}${criterion.isActive ? "" : " (비활성)"}`;
 }
 
 export function ResponseListPage() {
@@ -87,12 +67,36 @@ export function ResponseListPage() {
   const [filters, setFilters] = useState<FilterState>({
     from: today,
     to: today,
-    category: "",
-    bossOnly: false
+    criterionId: ""
   });
+  const [criteria, setCriteria] = useState<ResponseCriterionDto[]>([]);
   const [responses, setResponses] = useState<ResponseDto[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingCriteria, setIsLoadingCriteria] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const criterionOptions = useMemo(() => flattenCriteria(criteria), [criteria]);
+
+  const loadCriteria = useCallback(async () => {
+    setIsLoadingCriteria(true);
+
+    try {
+      const envelope = await apiGet<ListEnvelope<ResponseCriterionDto>>("/response-criteria");
+
+      if (envelope.error) {
+        setError(envelope.error.message);
+        return;
+      }
+
+      setCriteria(envelope.data.items);
+    } catch (unknownError) {
+      setError(
+        unknownError instanceof Error ? unknownError.message : "반응 기준을 조회하지 못했습니다."
+      );
+    } finally {
+      setIsLoadingCriteria(false);
+    }
+  }, []);
 
   const loadResponses = useCallback(async () => {
     setIsLoading(true);
@@ -117,6 +121,10 @@ export function ResponseListPage() {
   }, [filters]);
 
   useEffect(() => {
+    void loadCriteria();
+  }, [loadCriteria]);
+
+  useEffect(() => {
     void loadResponses();
   }, [loadResponses]);
 
@@ -125,8 +133,8 @@ export function ResponseListPage() {
       <section className="panel min-w-0">
         <div className="panel-heading">
           <div>
-            <p className="text-sm text-muted">M3</p>
-            <h2 className="section-title">고객 반응 조회</h2>
+            <p className="text-sm text-muted">고객 반응</p>
+            <h2 className="section-title">상세 조회</h2>
           </div>
           <Link className="text-sm font-semibold text-blue hover:underline" to="/response/new">
             반응 입력
@@ -139,7 +147,7 @@ export function ResponseListPage() {
           </div>
         ) : null}
 
-        <div className="grid gap-3 lg:grid-cols-[1fr_1fr_1fr_auto_auto] lg:items-end">
+        <div className="grid gap-3 lg:grid-cols-[1fr_1fr_1.4fr_auto] lg:items-end">
           <label className="grid min-w-0 gap-2">
             <span className="field-label">시작일</span>
             <input
@@ -163,35 +171,22 @@ export function ResponseListPage() {
             />
           </label>
           <label className="grid min-w-0 gap-2">
-            <span className="field-label">분류</span>
+            <span className="field-label">기준</span>
             <select
               className="input min-w-0 w-full"
-              value={filters.category}
+              disabled={isLoadingCriteria}
+              value={filters.criterionId}
               onChange={(event) =>
-                setFilters((current) => ({
-                  ...current,
-                  category: event.target.value as FilterState["category"]
-                }))
+                setFilters((current) => ({ ...current, criterionId: event.target.value }))
               }
             >
               <option value="">전체</option>
-              {Object.entries(categoryLabels).map(([value, label]) => (
-                <option key={value} value={value}>
-                  {label}
+              {criterionOptions.map((criterion) => (
+                <option key={criterion.id} value={criterion.id}>
+                  {criterionOptionLabel(criterion)}
                 </option>
               ))}
             </select>
-          </label>
-          <label className="inline-flex min-h-11 items-center gap-3 rounded-control border border-stone-300 px-3 font-semibold">
-            <input
-              className="h-5 w-5 accent-stone-900"
-              type="checkbox"
-              checked={filters.bossOnly}
-              onChange={(event) =>
-                setFilters((current) => ({ ...current, bossOnly: event.target.checked }))
-              }
-            />
-            사장 보고
           </label>
           <Button icon={RefreshCcw} type="button" onClick={() => void loadResponses()}>
             {isLoading ? "조회 중" : "조회"}
@@ -210,10 +205,10 @@ export function ResponseListPage() {
         <div className="space-y-3">
           {responses.map((response) => (
             <article key={response.id} className="rounded-control border border-stone-200 p-3">
-              <div className="grid gap-3 lg:grid-cols-[120px_140px_minmax(0,1fr)_auto] lg:items-start">
+              <div className="grid gap-3 lg:grid-cols-[120px_minmax(180px,260px)_minmax(0,1fr)] lg:items-start">
                 <span className="font-semibold">{response.date}</span>
                 <span className="rounded-control bg-blue/10 px-2 py-1 text-center text-sm font-semibold text-blue">
-                  {categoryLabels[response.category]}
+                  {criterionPathLabel(response.criterionPath)}
                 </span>
                 <div className="min-w-0">
                   <p className="font-semibold">{response.shortSummary ?? "요약 없음"}</p>
@@ -223,36 +218,7 @@ export function ResponseListPage() {
                     </p>
                   ) : null}
                 </div>
-                <div className="flex flex-wrap justify-start gap-2 lg:justify-end">
-                  {response.actionPriority ? (
-                    <span className="rounded-control bg-stone-100 px-2 py-1 text-xs font-semibold">
-                      {priorityLabels[response.actionPriority]}
-                    </span>
-                  ) : null}
-                  {response.sentimentScore ? (
-                    <span className="rounded-control bg-green/10 px-2 py-1 text-xs font-semibold text-green">
-                      만족 {response.sentimentScore}
-                    </span>
-                  ) : null}
-                  {response.isBossFlag ? (
-                    <span className="rounded-control bg-amber/10 px-2 py-1 text-xs font-semibold text-amber">
-                      보고
-                    </span>
-                  ) : null}
-                </div>
               </div>
-              {response.tags.length > 0 ? (
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {response.tags.map((tag) => (
-                    <span
-                      key={tag}
-                      className="rounded-control border border-stone-200 px-2 py-1 text-xs font-semibold text-muted"
-                    >
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-              ) : null}
             </article>
           ))}
           {!isLoading && responses.length === 0 ? (

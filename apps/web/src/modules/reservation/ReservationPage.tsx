@@ -1,18 +1,15 @@
-import { Check, PackagePlus, RefreshCcw, X } from "lucide-react";
+import { Check, PackagePlus, RefreshCcw } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
 import { apiGet, apiPatch, apiPost } from "../../shared/api/client.js";
+import type { ListEnvelope } from "../../shared/api/types.js";
+import { todayInStoreTime } from "../../shared/time/storeTime.js";
 import { Button } from "../../shared/ui/Button.js";
-
-type ListEnvelope<T> = {
-  items: T[];
-  total: number;
-  page: number;
-  size: number;
-};
 
 type ReservationDto = {
   id: string;
+  customerName: string | null;
+  contactPhone: string | null;
   pickupAt: string;
   status: "PENDING" | "READY" | "COMPLETED" | "NO_SHOW" | "CANCELED";
   purpose: "GIFT" | "SELF" | "UNKNOWN" | null;
@@ -33,26 +30,17 @@ type ProductDto = {
 };
 
 type ReservationForm = {
-  contactRef: string;
+  customerName: string;
+  contactPhone: string;
   pickupAt: string;
-  purpose: "GIFT" | "SELF" | "UNKNOWN";
   productName: string;
   quantity: string;
-  allergyNote: string;
   memo: string;
 };
 
-function todayInStoreTime(): string {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Seoul",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit"
-  }).format(new Date());
-}
-
 function defaultPickupAt(): string {
   const value = new Date(Date.now() + 60 * 60 * 1000);
+  value.setMinutes(Math.ceil(value.getMinutes() / 10) * 10, 0, 0);
   return new Intl.DateTimeFormat("sv-SE", {
     timeZone: "Asia/Seoul",
     year: "numeric",
@@ -78,14 +66,7 @@ function formatPickupAt(value: string): string {
 }
 
 function statusLabel(status: ReservationDto["status"]): string {
-  const labels = {
-    PENDING: "대기",
-    READY: "준비",
-    COMPLETED: "완료",
-    NO_SHOW: "미방문",
-    CANCELED: "취소"
-  };
-  return labels[status];
+  return status === "COMPLETED" ? "픽업완료" : "대기";
 }
 
 export function ReservationPage() {
@@ -96,12 +77,11 @@ export function ReservationPage() {
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState<ReservationForm>({
-    contactRef: "",
+    customerName: "",
+    contactPhone: "",
     pickupAt: defaultPickupAt(),
-    purpose: "UNKNOWN",
     productName: "",
     quantity: "1",
-    allergyNote: "",
     memo: ""
   });
 
@@ -138,10 +118,11 @@ export function ReservationPage() {
     setError(null);
 
     const envelope = await apiPost<ReservationDto, Record<string, unknown>>("/reservation", {
-      contactRef: form.contactRef,
+      contactRef: `${form.customerName} ${form.contactPhone}`.trim(),
+      customerName: form.customerName,
+      contactPhone: form.contactPhone,
       pickupAt: form.pickupAt,
-      purpose: form.purpose,
-      allergyNote: form.allergyNote || undefined,
+      purpose: "UNKNOWN",
       memo: form.memo || undefined,
       items: [
         {
@@ -158,12 +139,11 @@ export function ReservationPage() {
 
     setMessage(`예약 저장 #${envelope.data.id}`);
     setForm({
-      contactRef: "",
+      customerName: "",
+      contactPhone: "",
       pickupAt: defaultPickupAt(),
-      purpose: "UNKNOWN",
       productName: "",
       quantity: "1",
-      allergyNote: "",
       memo: ""
     });
     await loadReservations();
@@ -210,21 +190,30 @@ export function ReservationPage() {
         ) : null}
 
         <div className="grid gap-3">
+          <div className="grid gap-3 md:grid-cols-2">
+            <label className="grid min-w-0 gap-2">
+              <span className="field-label">손님 이름</span>
+              <input
+                className="input min-w-0 w-full"
+                value={form.customerName}
+                onChange={(event) => setForm((current) => ({ ...current, customerName: event.target.value }))}
+              />
+            </label>
+            <label className="grid min-w-0 gap-2">
+              <span className="field-label">연락처</span>
+              <input
+                className="input min-w-0 w-full"
+                value={form.contactPhone}
+                onChange={(event) => setForm((current) => ({ ...current, contactPhone: event.target.value }))}
+              />
+            </label>
+          </div>
           <label className="grid min-w-0 gap-2">
-            <span className="field-label">연락 키</span>
-            <input
-              className="input min-w-0 w-full"
-              value={form.contactRef}
-              onChange={(event) =>
-                setForm((current) => ({ ...current, contactRef: event.target.value }))
-              }
-            />
-          </label>
-          <label className="grid min-w-0 gap-2">
-            <span className="field-label">픽업</span>
+            <span className="field-label">픽업 날짜·시간</span>
             <input
               className="input min-w-0 w-full"
               type="datetime-local"
+              step="600"
               value={form.pickupAt}
               onChange={(event) =>
                 setForm((current) => ({ ...current, pickupAt: event.target.value }))
@@ -262,33 +251,6 @@ export function ReservationPage() {
               />
             </label>
           </div>
-          <label className="grid min-w-0 gap-2">
-            <span className="field-label">목적</span>
-            <select
-              className="input min-w-0 w-full"
-              value={form.purpose}
-              onChange={(event) =>
-                setForm((current) => ({
-                  ...current,
-                  purpose: event.target.value as ReservationForm["purpose"]
-                }))
-              }
-            >
-              <option value="UNKNOWN">미확인</option>
-              <option value="SELF">본인</option>
-              <option value="GIFT">선물</option>
-            </select>
-          </label>
-          <label className="grid min-w-0 gap-2">
-            <span className="field-label">알레르기</span>
-            <input
-              className="input min-w-0 w-full"
-              value={form.allergyNote}
-              onChange={(event) =>
-                setForm((current) => ({ ...current, allergyNote: event.target.value }))
-              }
-            />
-          </label>
           <label className="grid min-w-0 gap-2">
             <span className="field-label">메모</span>
             <textarea
@@ -328,12 +290,11 @@ export function ReservationPage() {
                 <span className="font-semibold">{formatPickupAt(reservation.pickupAt)}</span>
                 <span className="min-w-0">
                   <span className="block truncate font-semibold">
-                    {reservation.items
-                      .map((item) => `${item.productName} x${item.quantity}`)
-                      .join(", ")}
+                    {reservation.customerName || "손님 이름 없음"} · {reservation.contactPhone || "연락처 없음"}
                   </span>
                   <span className="block truncate text-sm text-muted">
-                    {reservation.memo ?? "메모 없음"}
+                    {reservation.items.map((item) => `${item.productName} x${item.quantity}`).join(", ")}
+                    {reservation.memo ? ` · ${reservation.memo}` : ""}
                   </span>
                 </span>
                 <span className="rounded-control bg-blue/10 px-2 py-1 text-sm font-semibold text-blue">
@@ -341,23 +302,16 @@ export function ReservationPage() {
                 </span>
               </div>
               <div className="mt-3 flex flex-wrap gap-2">
-                <Button type="button" onClick={() => void updateStatus(reservation.id, "READY")}>
-                  준비
-                </Button>
-                <Button
-                  type="button"
-                  onClick={() => void updateStatus(reservation.id, "COMPLETED")}
-                >
-                  완료
-                </Button>
-                <button
-                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-control border border-stone-300 bg-white px-4 font-semibold hover:bg-stone-100"
-                  type="button"
-                  onClick={() => void updateStatus(reservation.id, "CANCELED")}
-                >
-                  <X className="h-5 w-5" aria-hidden="true" />
-                  취소
-                </button>
+                {reservation.status !== "PENDING" ? (
+                  <Button type="button" onClick={() => void updateStatus(reservation.id, "PENDING")}>
+                    대기
+                  </Button>
+                ) : null}
+                {reservation.status !== "COMPLETED" ? (
+                  <Button type="button" onClick={() => void updateStatus(reservation.id, "COMPLETED")}>
+                    픽업완료
+                  </Button>
+                ) : null}
               </div>
             </div>
           ))}

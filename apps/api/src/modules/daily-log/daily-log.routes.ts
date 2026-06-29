@@ -1,9 +1,20 @@
-import type { Prisma, Product } from "@prisma/client";
+import type { Prisma } from "@prisma/client";
 import type { FastifyInstance } from "fastify";
 
+import {
+  formatDateOnly,
+  formatTimeOnly,
+  parseDateOnly,
+  parseStoreDateTime,
+  parseTimeOnly,
+  subtractDays,
+  todayInStoreTime
+} from "../../common/datetime.js";
 import { HttpError, sendOk } from "../../common/http.js";
+import { resolveProduct } from "../product/product-resolver.js";
 import {
   createCongestionLogSchema,
+  createDiscardSchema,
   createStockoutLogSchema,
   createTastingLogSchema,
   dateParamsSchema,
@@ -11,9 +22,7 @@ import {
   incrementAbsentInquirySchema,
   listAbsentInquiryQuerySchema,
   listStockoutQuerySchema,
-  updateStockoutLogSchema,
-  type CreateStockoutLogInput,
-  type CreateTastingLogInput
+  updateStockoutLogSchema
 } from "./daily-log.schemas.js";
 
 type DailyLogWithRelations = Prisma.DailyLogGetPayload<{
@@ -32,55 +41,6 @@ type StockoutWithProduct = Prisma.StockoutLogGetPayload<{
     product: true;
   };
 }>;
-
-const KST_OFFSET = "+09:00";
-
-function parseDateOnly(date: string): Date {
-  return new Date(`${date}T00:00:00.000Z`);
-}
-
-function formatDateOnly(date: Date): string {
-  return date.toISOString().slice(0, 10);
-}
-
-function formatTimeOnly(date: Date): string {
-  return date.toISOString().slice(11, 16);
-}
-
-function parseTimeOnly(time: string): Date {
-  const [hour = "0", minute = "0", second = "0"] = time.split(":");
-  return new Date(Date.UTC(1970, 0, 1, Number(hour), Number(minute), Number(second)));
-}
-
-function parseStoreDateTime(value: string): Date {
-  const normalized = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(value)
-    ? `${value}:00${KST_OFFSET}`
-    : /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/.test(value)
-      ? `${value}${KST_OFFSET}`
-      : value;
-  const parsed = new Date(normalized);
-
-  if (Number.isNaN(parsed.getTime())) {
-    throw new HttpError(400, "INVALID_DATETIME", "Invalid date-time value");
-  }
-
-  return parsed;
-}
-
-function todayInStoreTime(): string {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Seoul",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit"
-  }).format(new Date());
-}
-
-function subtractDays(date: string, days: number): string {
-  const value = parseDateOnly(date);
-  value.setUTCDate(value.getUTCDate() - days);
-  return formatDateOnly(value);
-}
 
 function toDailyLogDto(dailyLog: DailyLogWithRelations) {
   return {
@@ -186,44 +146,6 @@ async function getOrCreateDailyLog(
   });
 }
 
-async function resolveProduct(
-  app: FastifyInstance,
-  input: Pick<CreateStockoutLogInput | CreateTastingLogInput, "productId" | "productName">
-): Promise<Product> {
-  if (input.productId !== undefined) {
-    const product = await app.prisma.product.findUnique({
-      where: { id: input.productId }
-    });
-
-    if (!product) {
-      throw new HttpError(404, "PRODUCT_NOT_FOUND", "Product not found");
-    }
-
-    return product;
-  }
-
-  const productName = input.productName;
-  if (!productName) {
-    throw new HttpError(400, "PRODUCT_REQUIRED", "productId or productName is required");
-  }
-
-  const existing = await app.prisma.product.findFirst({
-    where: { name: productName },
-    orderBy: { id: "asc" }
-  });
-
-  if (existing) {
-    return existing;
-  }
-
-  return app.prisma.product.create({
-    data: {
-      name: productName,
-      isActive: true
-    }
-  });
-}
-
 export async function registerDailyLogRoutes(app: FastifyInstance): Promise<void> {
   app.get("/daily-log/today", async (_request, reply) => {
     const dailyLog = await getOrCreateDailyLog(app, parseDateOnly(todayInStoreTime()));
@@ -314,6 +236,61 @@ export async function registerDailyLogRoutes(app: FastifyInstance): Promise<void
     });
 
     return sendOk(reply, toStockoutDto(stockout), 201);
+  });
+
+  app.post("/discard", async (request, reply) => {
+    const input = createDiscardSchema.parse(request.body);
+    const date = parseDateOnly(input.date);
+    const product = await app.prisma.product.findUnique({
+      where: { id: input.productId }
+    });
+
+    if (!product) {
+      throw new HttpError(404, "PRODUCT_NOT_FOUND", "Product not found");
+    }
+
+    let statusCode = 200;
+    const stockout = await app.prisma.$transaction(async (tx) => {
+      const latest = await tx.stockoutLog.findFirst({
+        where: {
+          productId: input.productId,
+          date
+        },
+        include: {
+          product: true
+        },
+        orderBy: [{ stockoutAt: "desc" }, { id: "desc" }]
+      });
+
+      if (latest) {
+        return tx.stockoutLog.update({
+          where: { id: latest.id },
+          data: {
+            discardQty: { increment: input.discardQty }
+          },
+          include: {
+            product: true
+          }
+        });
+      }
+
+      statusCode = 201;
+      return tx.stockoutLog.create({
+        data: {
+          productId: product.id,
+          date,
+          sequence: 1,
+          stockoutAt: new Date(),
+          inquiryAfterStockout: null,
+          discardQty: input.discardQty
+        },
+        include: {
+          product: true
+        }
+      });
+    });
+
+    return sendOk(reply, toStockoutDto(stockout), statusCode);
   });
 
   app.get("/stockout", async (request, reply) => {

@@ -50,6 +50,7 @@ type ScheduleForm = {
 };
 
 type CalendarViewMode = "month" | "year";
+type HomeTab = "goal" | "schedule";
 
 type AnnualGoalNotice = {
   id?: string;
@@ -75,38 +76,6 @@ const monthNames = [
 ];
 
 const weekdayLabels = ["일", "월", "화", "수", "목", "금", "토"];
-
-const annualScheduleItems: AnnualScheduleItem[] = [
-  {
-    month: 6,
-    day: 26,
-    title: "여름깜빠뉴 출시",
-    note: "시즌 POP, 진열 위치, 직원 안내 멘트 확인",
-    tone: "launch"
-  },
-  {
-    month: 8,
-    day: 31,
-    title: "여름깜빠뉴 마감",
-    note: "잔여 재료, 고객 문의 안내, 다음 시즌 전환 준비",
-    tone: "close"
-  }
-];
-
-const annualGoalNotices: AnnualGoalNotice[] = [
-  {
-    category: "sales",
-    title: "올해 매출 목표",
-    value: "전년 대비 +12%",
-    note: "나중에 실제 목표 금액을 입력하면 이 자리에 고정 공지로 보여줍니다."
-  },
-  {
-    category: "operation",
-    title: "운영 목표",
-    value: "품절·손실 사유 매일 기록",
-    note: "일일 운영 입력률을 높여 생산량 조정과 손실 원인 확인에 사용합니다."
-  }
-];
 
 function toAnnualGoalNotice(item: AnnualGoalNoticeDto): AnnualGoalNotice {
   return {
@@ -209,9 +178,9 @@ export function HomePage() {
     note: "",
     tone: ""
   });
+  const [activeHomeTab, setActiveHomeTab] = useState<HomeTab>("goal");
   const [calendarViewMode, setCalendarViewMode] = useState<CalendarViewMode>("month");
   const [selectedMonth, setSelectedMonth] = useState(Number(date.slice(5, 7)));
-  const [expandedScheduleKeys, setExpandedScheduleKeys] = useState<string[]>([]);
   const [detailScheduleKey, setDetailScheduleKey] = useState<string | null>(null);
   const [detailGoalNoticeKey, setDetailGoalNoticeKey] = useState<string | null>(null);
   const [notifications, setNotifications] = useState<NotificationDto[]>([]);
@@ -221,7 +190,7 @@ export function HomePage() {
   const currentYear = date.slice(0, 4);
   const allScheduleItems = useMemo(
     () =>
-      [...annualScheduleItems, ...storedScheduleItems].sort(
+      [...storedScheduleItems].sort(
         (left, right) => left.month - right.month || left.day - right.day
       ),
     [storedScheduleItems]
@@ -243,10 +212,7 @@ export function HomePage() {
     () => allScheduleItems.find((item) => scheduleItemKey(item) === detailScheduleKey) ?? null,
     [allScheduleItems, detailScheduleKey]
   );
-  const allGoalNotices = useMemo(
-    () => [...annualGoalNotices, ...storedGoalNotices],
-    [storedGoalNotices]
-  );
+  const allGoalNotices = storedGoalNotices;
   const detailGoalNotice = useMemo(
     () => allGoalNotices.find((item) => goalNoticeKey(item) === detailGoalNoticeKey) ?? null,
     [allGoalNotices, detailGoalNoticeKey]
@@ -392,8 +358,6 @@ export function HomePage() {
 
   function renderScheduleItem(item: AnnualScheduleItem, showDate: boolean) {
     const itemKey = scheduleItemKey(item);
-    const isLong = `${item.title} ${item.note}`.length > 44;
-    const isExpanded = expandedScheduleKeys.includes(itemKey);
 
     const itemContent = (
       <div className="flex items-start gap-2">
@@ -413,27 +377,7 @@ export function HomePage() {
               {scheduleBadgeLabel(item.tone)}
             </span>
           </div>
-          <div className={isExpanded ? "" : "max-h-14 overflow-hidden"}>
-            <p className="mt-1 text-xs font-bold leading-5 text-ink">{item.title}</p>
-            {item.note ? (
-              <p className="mt-0.5 text-[0.68rem] leading-4 text-muted">{item.note}</p>
-            ) : null}
-          </div>
-          {isLong ? (
-            <button
-              className="mt-1 text-xs font-bold text-blue hover:underline"
-              type="button"
-              onClick={() =>
-                setExpandedScheduleKeys((current) =>
-                  current.includes(itemKey)
-                    ? current.filter((key) => key !== itemKey)
-                    : [...current, itemKey]
-                )
-              }
-            >
-              {isExpanded ? "접기" : "더보기"}
-            </button>
-          ) : null}
+          <p className="mt-1 text-xs font-bold leading-5 text-ink">{item.title}</p>
         </div>
       </div>
     );
@@ -631,11 +575,7 @@ export function HomePage() {
         role="region"
         aria-label="목표·공지 상세창"
       >
-        <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <p className="text-xs font-bold text-muted">선택한 목표·공지</p>
-            <h3 className="text-lg font-bold text-cocoa">목표·공지 상세</h3>
-          </div>
+        <div className="mb-3 flex flex-wrap items-start justify-end gap-3">
           <button
             className="rounded-control border border-latte bg-white px-3 py-1.5 text-xs font-bold text-cocoa"
             type="button"
@@ -660,232 +600,257 @@ export function HomePage() {
   return (
     <div className="mx-auto grid max-w-7xl gap-4">
       <section className="panel min-w-0">
-        <div className="panel-heading">
-          <div>
-            <p className="text-sm text-muted">년도별·월별 공통 행사</p>
-            <h2 className="section-title">연간 스케줄 달력</h2>
-            <p className="mt-1 text-sm text-muted">
-              {currentYear}년 연간 스케줄 · 실제 일정은 나중에 입력받아 여기에 추가하면 됩니다.
-            </p>
-          </div>
-          <CalendarDays className="h-5 w-5 text-bread" aria-hidden="true" />
-        </div>
-        <div className="mb-4 rounded-control border border-latte bg-cream/50 p-4">
-          <h3 className="text-base font-bold text-cocoa">스케줄 입력</h3>
-          <div className="mt-3 grid gap-3 lg:grid-cols-[11rem_8rem_minmax(0,1fr)_minmax(0,1.4fr)_auto] lg:items-end">
-            <label className="grid gap-2">
-              <span className="field-label">날짜</span>
-              <input
-                className="input"
-                type="date"
-                value={scheduleForm.date}
-                onChange={(event) =>
-                  setScheduleForm((current) => ({ ...current, date: event.target.value }))
-                }
-              />
-            </label>
-            <label className="grid gap-2">
-              <span className="field-label">구분</span>
-              <select
-                className="input"
-                aria-label="스케줄 구분"
-                value={scheduleForm.tone}
-                onChange={(event) =>
-                  setScheduleForm((current) => ({
-                    ...current,
-                    tone: event.target.value as ScheduleForm["tone"]
-                  }))
-                }
-              >
-                <option value="">선택</option>
-                <option value="notice">공지</option>
-                <option value="launch">출시</option>
-                <option value="close">마감</option>
-              </select>
-            </label>
-            <label className="grid gap-2">
-              <span className="field-label">제목</span>
-              <input
-                className="input"
-                placeholder="예: 여름깜빠뉴 출시"
-                value={scheduleForm.title}
-                onChange={(event) =>
-                  setScheduleForm((current) => ({ ...current, title: event.target.value }))
-                }
-              />
-            </label>
-            <label className="grid gap-2">
-              <span className="field-label">메모</span>
-              <input
-                className="input"
-                placeholder="직원이 함께 볼 준비사항"
-                value={scheduleForm.note}
-                onChange={(event) =>
-                  setScheduleForm((current) => ({ ...current, note: event.target.value }))
-                }
-              />
-            </label>
+        <div className="mb-4 flex flex-wrap gap-2" role="tablist" aria-label="홈 화면 선택">
+          {(
+            [
+              ["goal", "목표·공지"],
+              ["schedule", "스케줄 달력"]
+            ] as Array<[HomeTab, string]>
+          ).map(([tab, label]) => (
             <button
-              className="min-h-11 rounded-control bg-cocoa px-4 font-bold text-white shadow-control disabled:opacity-50"
+              key={tab}
               type="button"
-              disabled={!isCompleteScheduleForm(scheduleForm)}
-              onClick={() => void addScheduleItem()}
-            >
-              추가
-            </button>
-          </div>
-        </div>
-        <div className="mb-4 grid gap-3 rounded-control border border-latte bg-white/80 p-3">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div>
-              <p className="text-sm font-bold text-cocoa">달력 보기</p>
-              <p className="text-xs text-muted">
-                기본은 이번 달만 크게 보고, 필요한 달이나 1년 전체는 따로 열어봅니다.
-              </p>
-            </div>
-            <button
+              role="tab"
+              aria-selected={activeHomeTab === tab}
               className={[
-                "rounded-control border px-3 py-2 text-sm font-bold transition",
-                calendarViewMode === "year"
-                  ? "border-cocoa bg-cocoa text-white"
+                "rounded-control border px-5 py-2 text-sm font-bold transition",
+                activeHomeTab === tab
+                  ? "border-cocoa bg-cocoa text-white shadow-control"
                   : "border-latte bg-white text-cocoa hover:border-bread"
               ].join(" ")}
-              type="button"
-              onClick={() =>
-                setCalendarViewMode((current) => (current === "year" ? "month" : "year"))
-              }
+              onClick={() => setActiveHomeTab(tab)}
             >
-              {calendarViewMode === "year" ? "선택한 달만 보기" : "1년 전체 보기"}
+              {label}
             </button>
-          </div>
-          <div className="flex flex-wrap gap-2" aria-label="다른 달 보기">
-            {scheduleByMonth.map((month) => (
-              <button
-                key={month.month}
-                className={[
-                  "rounded-full border px-3 py-1.5 text-xs font-bold transition",
-                  calendarViewMode === "month" && selectedMonth === month.month
-                    ? "border-cocoa bg-cocoa text-white"
-                    : "border-latte bg-cream/70 text-cocoa hover:border-bread"
-                ].join(" ")}
-                type="button"
-                onClick={() => {
-                  setSelectedMonth(month.month);
-                  setCalendarViewMode("month");
-                }}
-              >
-                {month.name}
-              </button>
-            ))}
-          </div>
-        </div>
-        {renderScheduleDetail()}
-        <div
-          className={
-            calendarViewMode === "year" ? "grid gap-3 md:grid-cols-2 xl:grid-cols-3" : "grid gap-3"
-          }
-        >
-          {visibleScheduleMonths.map((month) => {
-            const calendarCells = getCalendarCells(Number(currentYear), month.month);
-            return (
-              <section
-                key={month.month}
-                className={[
-                  "rounded-control border border-latte bg-white/85 p-4 shadow-control",
-                  calendarViewMode === "year" ? "min-h-40" : "min-h-[34rem]"
-                ].join(" ")}
-              >
-                <div className="mb-3 flex items-center justify-between border-b border-latte pb-2">
-                  <h3
-                    className={
-                      calendarViewMode === "year"
-                        ? "text-lg font-bold text-cocoa"
-                        : "text-2xl font-bold text-cocoa"
-                    }
-                  >
-                    {month.name}
-                  </h3>
-                  <span className="text-xs font-bold text-muted">{currentYear}</span>
-                </div>
-                {calendarViewMode === "year" ? (
-                  month.items.length > 0 ? (
-                    <div className="space-y-3">
-                      {month.items.map((item) => renderScheduleItem(item, true))}
-                    </div>
-                  ) : (
-                    <div className="grid min-h-24 place-items-center rounded-control border border-dashed border-latte text-sm font-semibold text-muted">
-                      등록된 스케줄 없음
-                    </div>
-                  )
-                ) : (
-                  <div className="overflow-hidden rounded-control border border-latte bg-white">
-                    <div className="grid grid-cols-7 border-b border-latte bg-cream/70 text-center text-xs font-bold text-cocoa">
-                      {weekdayLabels.map((weekday) => (
-                        <div key={weekday} className="px-2 py-2">
-                          {weekday}
-                        </div>
-                      ))}
-                    </div>
-                    <div className="grid grid-cols-7">
-                      {calendarCells.map((day, index) => {
-                        const dayItems = day ? month.items.filter((item) => item.day === day) : [];
-                        return (
-                          <div
-                            key={`${month.month}-${day ?? `empty-${index}`}`}
-                            className="min-h-28 border-b border-r border-latte/70 p-2 last:border-r-0"
-                            aria-label={day ? `${month.name} ${day}일` : undefined}
-                          >
-                            {day ? (
-                              <>
-                                <div className="mb-2 text-sm font-bold text-ink">{day}</div>
-                                <div className="space-y-1.5">
-                                  {dayItems.map((item) => renderScheduleItem(item, false))}
-                                </div>
-                              </>
-                            ) : null}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-              </section>
-            );
-          })}
-        </div>
-      </section>
-
-      <section className="panel min-w-0">
-        <div className="panel-heading">
-          <div>
-            <p className="text-sm text-muted">직원 공통 확인사항</p>
-            <h2 className="section-title">올해 목표·매출 공지</h2>
-          </div>
-          <Target className="h-5 w-5 text-green" aria-hidden="true" />
-        </div>
-        {renderGoalNoticeDetail()}
-        <div className="grid gap-3 lg:grid-cols-2">
-          {allGoalNotices.map((notice) => (
-            <div
-              key={goalNoticeKey(notice)}
-              className="rounded-control border border-latte bg-cream/70 p-4"
-            >
-              <div className="mb-3 flex items-center gap-2 text-sm font-bold text-cocoa">
-                <TrendingUp className="h-4 w-4" aria-hidden="true" />
-                {notice.title}
-              </div>
-              <button
-                className="block w-full text-left"
-                type="button"
-                aria-label={`${notice.title} 상세 보기`}
-                onClick={() => setDetailGoalNoticeKey(goalNoticeKey(notice))}
-              >
-                <p className="text-2xl font-bold tracking-[-0.03em] text-ink">{notice.value}</p>
-              </button>
-              <p className="mt-2 text-sm leading-6 text-muted">{notice.note}</p>
-            </div>
           ))}
         </div>
+        {activeHomeTab === "goal" ? (
+          <section className="panel min-w-0">
+            <div className="panel-heading">
+              <div>
+                <p className="text-sm text-muted">직원 공통 확인사항</p>
+                <h2 className="section-title">올해 목표·매출 공지</h2>
+              </div>
+              <Target className="h-5 w-5 text-green" aria-hidden="true" />
+            </div>
+            {renderGoalNoticeDetail()}
+            <div className="grid gap-3 lg:grid-cols-2">
+              {allGoalNotices.map((notice) => (
+                <button
+                  key={goalNoticeKey(notice)}
+                  className="rounded-control border border-latte bg-cream/70 p-4 text-left transition hover:border-bread hover:bg-white"
+                  type="button"
+                  aria-label={`${notice.title} 상세 보기`}
+                  onClick={() => setDetailGoalNoticeKey(goalNoticeKey(notice))}
+                >
+                  <span className="flex items-center gap-2 text-sm font-bold text-cocoa">
+                    <TrendingUp className="h-4 w-4" aria-hidden="true" />
+                    {notice.title}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </section>
+        ) : null}
+        {activeHomeTab === "schedule" ? (
+          <section className="panel min-w-0">
+            <div className="panel-heading">
+              <div>
+                <p className="text-sm text-muted">년도별·월별 공통 행사</p>
+                <h2 className="section-title">연간 스케줄 달력</h2>
+                <p className="mt-1 text-sm text-muted">{currentYear}년 연간 스케줄</p>
+              </div>
+              <CalendarDays className="h-5 w-5 text-bread" aria-hidden="true" />
+            </div>
+            <div className="mb-4 rounded-control border border-latte bg-cream/50 p-4">
+              <h3 className="text-base font-bold text-cocoa">스케줄 입력</h3>
+              <div className="mt-3 grid gap-3 lg:grid-cols-[11rem_8rem_minmax(0,1fr)_minmax(0,1.4fr)_auto] lg:items-end">
+                <label className="grid gap-2">
+                  <span className="field-label">날짜</span>
+                  <input
+                    className="input"
+                    type="date"
+                    value={scheduleForm.date}
+                    onChange={(event) =>
+                      setScheduleForm((current) => ({ ...current, date: event.target.value }))
+                    }
+                  />
+                </label>
+                <label className="grid gap-2">
+                  <span className="field-label">구분</span>
+                  <select
+                    className="input"
+                    aria-label="스케줄 구분"
+                    value={scheduleForm.tone}
+                    onChange={(event) =>
+                      setScheduleForm((current) => ({
+                        ...current,
+                        tone: event.target.value as ScheduleForm["tone"]
+                      }))
+                    }
+                  >
+                    <option value="">선택</option>
+                    <option value="notice">공지</option>
+                    <option value="launch">출시</option>
+                    <option value="close">마감</option>
+                  </select>
+                </label>
+                <label className="grid gap-2">
+                  <span className="field-label">제목</span>
+                  <input
+                    className="input"
+                    placeholder="일정 제목"
+                    value={scheduleForm.title}
+                    onChange={(event) =>
+                      setScheduleForm((current) => ({ ...current, title: event.target.value }))
+                    }
+                  />
+                </label>
+                <label className="grid gap-2">
+                  <span className="field-label">메모</span>
+                  <input
+                    className="input"
+                    placeholder="직원이 함께 볼 준비사항"
+                    value={scheduleForm.note}
+                    onChange={(event) =>
+                      setScheduleForm((current) => ({ ...current, note: event.target.value }))
+                    }
+                  />
+                </label>
+                <button
+                  className="min-h-11 rounded-control bg-cocoa px-4 font-bold text-white shadow-control disabled:opacity-50"
+                  type="button"
+                  disabled={!isCompleteScheduleForm(scheduleForm)}
+                  onClick={() => void addScheduleItem()}
+                >
+                  추가
+                </button>
+              </div>
+            </div>
+            <div className="mb-4 grid gap-3 rounded-control border border-latte bg-white/80 p-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <p className="text-sm font-bold text-cocoa">달력 보기</p>
+                  <p className="text-xs text-muted">
+                    기본은 이번 달만 크게 보고, 필요한 달이나 1년 전체는 따로 열어봅니다.
+                  </p>
+                </div>
+                <button
+                  className={[
+                    "rounded-control border px-3 py-2 text-sm font-bold transition",
+                    calendarViewMode === "year"
+                      ? "border-cocoa bg-cocoa text-white"
+                      : "border-latte bg-white text-cocoa hover:border-bread"
+                  ].join(" ")}
+                  type="button"
+                  onClick={() =>
+                    setCalendarViewMode((current) => (current === "year" ? "month" : "year"))
+                  }
+                >
+                  {calendarViewMode === "year" ? "선택한 달만 보기" : "1년 전체 보기"}
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-2" aria-label="다른 달 보기">
+                {scheduleByMonth.map((month) => (
+                  <button
+                    key={month.month}
+                    className={[
+                      "rounded-full border px-3 py-1.5 text-xs font-bold transition",
+                      calendarViewMode === "month" && selectedMonth === month.month
+                        ? "border-cocoa bg-cocoa text-white"
+                        : "border-latte bg-cream/70 text-cocoa hover:border-bread"
+                    ].join(" ")}
+                    type="button"
+                    onClick={() => {
+                      setSelectedMonth(month.month);
+                      setCalendarViewMode("month");
+                    }}
+                  >
+                    {month.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {renderScheduleDetail()}
+            <div
+              className={
+                calendarViewMode === "year"
+                  ? "grid gap-3 md:grid-cols-2 xl:grid-cols-3"
+                  : "grid gap-3"
+              }
+            >
+              {visibleScheduleMonths.map((month) => {
+                const calendarCells = getCalendarCells(Number(currentYear), month.month);
+                return (
+                  <section
+                    key={month.month}
+                    className={[
+                      "rounded-control border border-latte bg-white/85 p-4 shadow-control",
+                      calendarViewMode === "year" ? "min-h-40" : "min-h-[34rem]"
+                    ].join(" ")}
+                  >
+                    <div className="mb-3 flex items-center justify-between border-b border-latte pb-2">
+                      <h3
+                        className={
+                          calendarViewMode === "year"
+                            ? "text-lg font-bold text-cocoa"
+                            : "text-2xl font-bold text-cocoa"
+                        }
+                      >
+                        {month.name}
+                      </h3>
+                      <span className="text-xs font-bold text-muted">{currentYear}</span>
+                    </div>
+                    {calendarViewMode === "year" ? (
+                      month.items.length > 0 ? (
+                        <div className="space-y-3">
+                          {month.items.map((item) => renderScheduleItem(item, true))}
+                        </div>
+                      ) : (
+                        <div className="grid min-h-24 place-items-center rounded-control border border-dashed border-latte text-sm font-semibold text-muted">
+                          등록된 스케줄 없음
+                        </div>
+                      )
+                    ) : (
+                      <div className="overflow-hidden rounded-control border border-latte bg-white">
+                        <div className="grid grid-cols-7 border-b border-latte bg-cream/70 text-center text-xs font-bold text-cocoa">
+                          {weekdayLabels.map((weekday) => (
+                            <div key={weekday} className="px-2 py-2">
+                              {weekday}
+                            </div>
+                          ))}
+                        </div>
+                        <div className="grid grid-cols-7">
+                          {calendarCells.map((day, index) => {
+                            const dayItems = day
+                              ? month.items.filter((item) => item.day === day)
+                              : [];
+                            return (
+                              <div
+                                key={`${month.month}-${day ?? `empty-${index}`}`}
+                                className="min-h-28 border-b border-r border-latte/70 p-2 last:border-r-0"
+                                aria-label={day ? `${month.name} ${day}일` : undefined}
+                              >
+                                {day ? (
+                                  <>
+                                    <div className="mb-2 text-sm font-bold text-ink">{day}</div>
+                                    <div className="space-y-1.5">
+                                      {dayItems.map((item) => renderScheduleItem(item, false))}
+                                    </div>
+                                  </>
+                                ) : null}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </section>
+                );
+              })}
+            </div>
+          </section>
+        ) : null}
       </section>
 
       <section className="panel min-w-0">

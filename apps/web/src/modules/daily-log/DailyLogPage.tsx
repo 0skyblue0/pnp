@@ -3,6 +3,7 @@ import { Fragment, useMemo, useState } from "react";
 
 import { todayInStoreTime } from "../../shared/time/storeTime.js";
 import { Button } from "../../shared/ui/Button.js";
+import { providedDailyOperationRecords } from "./providedDailyOperationRecords.js";
 
 type DailyTab = "basic" | "products" | "sales" | "notes";
 type DailyViewMode = "entry" | "lookup";
@@ -17,7 +18,7 @@ type StaffCategory =
   | "newStaff"
   | "etc";
 
-type ProductRow = {
+export type ProductRow = {
   productName: string;
   producedQty: string;
   lossQty: string;
@@ -29,15 +30,15 @@ type ProductRow = {
   manualSold: boolean;
 };
 
-type ChannelRow = {
+export type ChannelRow = {
   name: string;
   count: string;
   amount: string;
 };
 
-type StaffSpecialRows = Record<StaffPeriod, Record<StaffCategory, string>>;
+export type StaffSpecialRows = Record<StaffPeriod, Record<StaffCategory, string>>;
 
-type DailyOperationDraft = {
+export type DailyOperationDraft = {
   date: string;
   author: string;
   outsideTemp: string;
@@ -62,7 +63,7 @@ type DailyOperationDraft = {
   finalChecker: string;
 };
 
-type DailyOperationSavedRecord = {
+export type DailyOperationSavedRecord = {
   draft: DailyOperationDraft;
   productRows: ProductRow[];
   channelRows: ChannelRow[];
@@ -310,20 +311,29 @@ function isDailyOperationRecord(value: unknown): value is DailyOperationSavedRec
 
 function loadStoredDailyRecords(): DailyOperationSavedRecord[] {
   if (typeof window === "undefined") {
-    return [];
+    return providedDailyOperationRecords;
   }
-  return Object.keys(window.localStorage)
+  const recordsByDate = new Map<string, DailyOperationSavedRecord>();
+  for (const record of providedDailyOperationRecords) {
+    recordsByDate.set(record.draft.date, record);
+  }
+
+  Object.keys(window.localStorage)
     .filter((key) => key.startsWith("pnp:daily-operation-draft:"))
-    .map((key) => {
+    .forEach((key) => {
       try {
         const parsed: unknown = JSON.parse(window.localStorage.getItem(key) ?? "null");
-        return isDailyOperationRecord(parsed) ? parsed : null;
+        if (isDailyOperationRecord(parsed)) {
+          recordsByDate.set(parsed.draft.date, parsed);
+        }
       } catch {
-        return null;
+        // 저장 중 깨진 임시 기록은 조회에서 제외합니다.
       }
-    })
-    .filter((record): record is DailyOperationSavedRecord => record !== null)
-    .sort((left, right) => right.draft.date.localeCompare(left.draft.date));
+    });
+
+  return Array.from(recordsByDate.values()).sort((left, right) =>
+    right.draft.date.localeCompare(left.draft.date)
+  );
 }
 
 function addDays(date: Date, days: number): Date {
@@ -510,6 +520,19 @@ export function DailyLogPage() {
     );
   }
 
+  function loadRecordForEdit(record: DailyOperationSavedRecord) {
+    setDraft({ ...record.draft });
+    setProductRows(record.productRows.map((row) => ({ ...row })));
+    setChannelRows(record.channelRows.map((row) => ({ ...row })));
+    setStaffSpecialRows({
+      today: { ...record.staffSpecialRows.today },
+      tomorrow: { ...record.staffSpecialRows.tomorrow }
+    });
+    setActiveTab("basic");
+    setViewMode("entry");
+    setMessage(`${record.draft.date} 일지를 불러왔습니다. 저장하면 같은 날짜 기록이 갱신됩니다.`);
+  }
+
   return (
     <div className="mx-auto grid max-w-7xl gap-4">
       <section className="panel">
@@ -655,6 +678,7 @@ export function DailyLogPage() {
             setLookupStartDate={setLookupStartDate}
             setLookupEndDate={setLookupEndDate}
             setLookupMonth={setLookupMonth}
+            onEditRecord={loadRecordForEdit}
           />
         )}
       </section>
@@ -677,7 +701,8 @@ function DailyLookupSection({
   setLookupDate,
   setLookupStartDate,
   setLookupEndDate,
-  setLookupMonth
+  setLookupMonth,
+  onEditRecord
 }: {
   records: DailyOperationSavedRecord[];
   previousRecords: DailyOperationSavedRecord[];
@@ -694,6 +719,7 @@ function DailyLookupSection({
   setLookupStartDate: (date: string) => void;
   setLookupEndDate: (date: string) => void;
   setLookupMonth: (month: string) => void;
+  onEditRecord: (record: DailyOperationSavedRecord) => void;
 }) {
   const [expandedDates, setExpandedDates] = useState<string[]>([]);
   const [productDetailDates, setProductDetailDates] = useState<string[]>([]);
@@ -860,6 +886,15 @@ function DailyLookupSection({
                       {isExpanded ? (
                         <tr className="border-t border-latte bg-cream/30">
                           <td className="px-3 py-3" colSpan={11}>
+                            <div className="mb-3 flex justify-end">
+                              <button
+                                className="rounded-control border border-cocoa bg-white px-3 py-1.5 text-xs font-bold text-cocoa hover:bg-cream"
+                                type="button"
+                                onClick={() => onEditRecord(record)}
+                              >
+                                수정
+                              </button>
+                            </div>
                             <div className="grid gap-3 lg:grid-cols-3">
                               <div className="rounded-control border border-latte bg-white p-3">
                                 <p className="font-bold text-cocoa">기본·점검</p>

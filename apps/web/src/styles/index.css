@@ -22,10 +22,16 @@
 body {
   margin: 0;
   min-width: 320px;
+  overflow-x: hidden;
   background:
     radial-gradient(circle at 10% 0%, rgba(138, 90, 58, 0.18), transparent 30rem),
     radial-gradient(circle at 90% 12%, rgba(231, 215, 197, 0.72), transparent 28rem),
     linear-gradient(135deg, #fffdf8 0%, #f7efe4 46%, #efe0cf 100%);
+}
+
+#root {
+  width: 100%;
+  overflow-x: hidden;
 }
 
 ::selection {

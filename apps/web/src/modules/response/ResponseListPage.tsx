@@ -1,6 +1,6 @@
 import { MessageSquareText, RefreshCcw } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 
 import { apiGet } from "../../shared/api/client.js";
 import type { ListEnvelope } from "../../shared/api/types.js";
@@ -64,10 +64,11 @@ function criterionOptionLabel(criterion: ResponseCriterionDto): string {
 }
 
 export function ResponseListPage() {
+  const [searchParams] = useSearchParams();
   const [filters, setFilters] = useState<FilterState>({
-    from: importedResponseRange.from,
-    to: importedResponseRange.to,
-    criterionId: ""
+    from: searchParams.get("from") ?? importedResponseRange.from,
+    to: searchParams.get("to") ?? importedResponseRange.to,
+    criterionId: searchParams.get("criterion_id") ?? ""
   });
   const [criteria, setCriteria] = useState<ResponseCriterionDto[]>([]);
   const [responses, setResponses] = useState<ResponseDto[]>([]);
@@ -207,13 +208,13 @@ export function ResponseListPage() {
             <article key={response.id} className="rounded-control border border-stone-200 p-3">
               <div className="grid gap-3 lg:grid-cols-[120px_minmax(180px,260px)_minmax(0,1fr)] lg:items-start">
                 <span className="font-semibold">{response.date}</span>
-                <span className="rounded-control bg-blue/10 px-2 py-1 text-center text-sm font-semibold text-blue">
+                <span className="min-w-0 rounded-control bg-blue/10 px-2 py-1 text-left text-sm font-semibold text-blue sm:text-center">
                   {criterionPathLabel(response.criterionPath)}
                 </span>
                 <div className="min-w-0">
                   <p className="font-semibold">{response.shortSummary ?? "요약 없음"}</p>
                   {response.fullText ? (
-                    <p className="mt-1 whitespace-pre-wrap text-sm text-muted">
+                    <p className="mt-1 whitespace-pre-wrap break-words text-sm text-muted [overflow-wrap:anywhere]">
                       {response.fullText}
                     </p>
                   ) : null}

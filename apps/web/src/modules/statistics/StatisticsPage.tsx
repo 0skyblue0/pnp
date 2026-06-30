@@ -1,5 +1,6 @@
 import { BarChart3, RefreshCcw } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 
 import { apiGet } from "../../shared/api/client.js";
 import { todayInStoreTime } from "../../shared/time/storeTime.js";
@@ -215,6 +216,18 @@ function barWidth(count: number, max: number): string {
   }
 
   return `${Math.max(4, Math.round((count / max) * 100))}%`;
+}
+
+function detailLink(range: DateRange, criterionId: number): string {
+  const params = new URLSearchParams({
+    mode: "lookup",
+    tab: "detail",
+    from: range.from,
+    to: range.to,
+    criterion_id: criterionId.toString()
+  });
+
+  return `/response?${params.toString()}`;
 }
 
 function SelectableBarChart({
@@ -532,11 +545,21 @@ export function StatisticsPage() {
                       {formatPercent(topic.count, stats.total)}
                     </span>
                   </div>
-                  {topic.sampleSummaries.length > 0 ? (
-                    <p className="mt-2 truncate text-sm text-muted">
-                      예: {topic.sampleSummaries[0]}
-                    </p>
-                  ) : null}
+                  <div className="mt-2 grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+                    {topic.sampleSummaries.length > 0 ? (
+                      <p className="min-w-0 truncate text-sm text-muted">
+                        예: {topic.sampleSummaries[0]}
+                      </p>
+                    ) : (
+                      <span />
+                    )}
+                    <Link
+                      className="inline-flex min-h-10 items-center justify-center rounded-control border border-cocoa bg-white px-3 text-sm font-bold text-cocoa hover:bg-cream"
+                      to={detailLink(range, topic.criterionId)}
+                    >
+                      {topic.path.map((item) => item.name).join(" > ")} 기록 보기
+                    </Link>
+                  </div>
                 </div>
               ))
             ) : (
@@ -544,35 +567,6 @@ export function StatisticsPage() {
                 반복 내용 없음
               </div>
             )}
-          </div>
-        </div>
-      </section>
-
-      <section className="panel min-w-0 border-green/20 bg-green/5">
-        <div className="panel-heading">
-          <div>
-            <p className="text-sm text-muted">추천 기능</p>
-            <h2 className="section-title">다음 확인 업무</h2>
-          </div>
-        </div>
-        <div className="grid gap-3 md:grid-cols-3">
-          <div className="rounded-control border border-latte bg-white p-3">
-            <p className="font-bold text-cocoa">품절 반복 확인</p>
-            <p className="mt-2 text-sm leading-6 text-muted">
-              품절/재고부족이 많은 제품을 주간 생산량 조정 후보로 봅니다.
-            </p>
-          </div>
-          <div className="rounded-control border border-latte bg-white p-3">
-            <p className="font-bold text-cocoa">조치대응 관리</p>
-            <p className="mt-2 text-sm leading-6 text-muted">
-              원문과 조치대응이 있는 기록을 한곳에서 보고 미처리 이슈를 줄입니다.
-            </p>
-          </div>
-          <div className="rounded-control border border-latte bg-white p-3">
-            <p className="font-bold text-cocoa">월간 보고 연결</p>
-            <p className="mt-2 text-sm leading-6 text-muted">
-              5월 보고 데이터를 기준으로 대표님 보고용 반복 이슈를 자동 요약합니다.
-            </p>
           </div>
         </div>
       </section>

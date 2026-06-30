@@ -572,22 +572,57 @@ describe("App", () => {
     expect(screen.getByText("12건 · 75%")).toBeInTheDocument();
     expect(screen.getAllByText("맛").length).toBeGreaterThan(0);
     expect(screen.getByText("9건 · 75%")).toBeInTheDocument();
+    expect(screen.queryByText("추천 기능")).not.toBeInTheDocument();
+    const topicLink = screen.getByRole("link", { name: "제품 > 맛 > 바게트 기록 보기" });
+    expect(topicLink).toHaveAttribute(
+      "href",
+      "/response?mode=lookup&tab=detail&from=2026-05-01&to=2026-05-31&criterion_id=6"
+    );
     expect(screen.queryByRole("button", { name: "원형" })).not.toBeInTheDocument();
   });
 
   it("switches from statistics to detailed response lookup inside the lookup screen", async () => {
+    vi.mocked(fetch).mockImplementation(async (input) => {
+      const url = input instanceof Request ? input.url : String(input);
+      if (url.includes("/response-criteria")) {
+        return new Response(
+          JSON.stringify({
+            data: {
+              items: [
+                { id: 6, parentId: null, depth: 1, name: "바게트", sortOrder: 1, isActive: true }
+              ],
+              total: 1,
+              page: 1,
+              size: 1
+            },
+            error: null
+          }),
+          { headers: { "Content-Type": "application/json" } }
+        );
+      }
+      return new Response(
+        JSON.stringify({ data: { items: [], total: 0, page: 1, size: 0 }, error: null }),
+        { headers: { "Content-Type": "application/json" } }
+      );
+    });
+
     render(
-      <MemoryRouter initialEntries={["/response?mode=lookup"]}>
+      <MemoryRouter
+        initialEntries={[
+          "/response?mode=lookup&tab=detail&from=2026-05-01&to=2026-05-31&criterion_id=6"
+        ]}
+      >
         <Routes>
           <Route path="/response" element={<ResponseInquiryPage />} />
         </Routes>
       </MemoryRouter>
     );
 
-    fireEvent.click(screen.getByRole("tab", { name: "상세 조회" }));
-
     expect(screen.getByRole("tab", { name: "상세 조회" })).toHaveAttribute("aria-selected", "true");
     expect(screen.getByRole("heading", { name: "상세 조회" })).toBeInTheDocument();
+    expect(screen.getByLabelText("시작일")).toHaveValue("2026-05-01");
+    expect(screen.getByLabelText("종료일")).toHaveValue("2026-05-31");
+    expect(await screen.findByLabelText("기준")).toHaveValue("6");
     expect(await screen.findByText("조회된 고객 반응 없음")).toBeInTheDocument();
   });
 

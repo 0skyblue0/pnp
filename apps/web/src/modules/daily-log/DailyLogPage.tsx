@@ -821,8 +821,8 @@ function DailyLookupSection({
             선택한 기간에 저장된 일일 운영 일지가 없습니다.
           </p>
         ) : (
-          <div className="mt-3 overflow-x-auto">
-            <table className="w-full min-w-[1120px] text-left text-sm">
+          <div className="mt-3 overflow-visible md:overflow-x-auto">
+            <table className="w-full min-w-0 text-left text-xs md:min-w-[1120px] md:text-sm">
               <thead className="bg-cream text-cocoa">
                 <tr>
                   <th className="px-2 py-2">날짜</th>
@@ -1208,7 +1208,7 @@ function ProductsSection({
     <div className="grid gap-3">
       <div className="rounded-control border border-latte bg-white">
         <div className="max-h-[62vh] overflow-auto">
-          <table className="w-full min-w-[880px] table-fixed text-left text-xs">
+          <table className="w-full min-w-0 table-fixed text-left text-[11px] md:min-w-[880px] md:text-xs">
             <thead className="sticky top-0 z-10 bg-cream text-cocoa shadow-sm">
               <tr>
                 <th className="w-40 px-2 py-2">제품</th>

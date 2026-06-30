@@ -10,6 +10,7 @@ import { DailyLogPage } from "../modules/daily-log/DailyLogPage.js";
 import { HomePage } from "../modules/home/HomePage.js";
 import { ResponseEntryPage } from "../modules/response/ResponseEntryPage.js";
 import { ResponseInquiryPage } from "../modules/response/ResponseInquiryPage.js";
+import { todayInStoreTime } from "../shared/time/storeTime.js";
 
 const ACTIVE_NAV_CLASS = "from-cocoa";
 
@@ -646,8 +647,8 @@ describe("App", () => {
       throw new Error("상세 버튼이 필요합니다.");
     }
     fireEvent.click(firstDetailButton);
-    expect(screen.getByText(/닭가슴살 재고 확인 필요합니다/)).toBeInTheDocument();
-    expect(screen.getByText(/구름빵 반죽 작업 있습니다/)).toBeInTheDocument();
+    expect(screen.getAllByText(/닭가슴살 재고 확인 필요합니다/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/구름빵 반죽 작업 있습니다/).length).toBeGreaterThan(0);
     fireEvent.click(screen.getByRole("tab", { name: "입력" }));
     expect(screen.queryByText(/엑셀 대체/)).not.toBeInTheDocument();
     expect(
@@ -693,10 +694,24 @@ describe("App", () => {
     expect(screen.getAllByLabelText("호밀쇼콜라오렌지 판매량 직접입력").length).toBeGreaterThan(0);
     expect(screen.getByText("자동 계산")).toBeInTheDocument();
 
+    fireEvent.click(screen.getByRole("tab", { name: "메모·점검" }));
+    fireEvent.change(screen.getByLabelText("제품의견/손실"), {
+      target: { value: "닭가슴살 재고 확인 필요합니다" }
+    });
+    fireEvent.change(screen.getByLabelText("지시 및 전달사항"), {
+      target: { value: "오후 진열대 보충" }
+    });
+    fireEvent.change(screen.getByLabelText("내일 준비사항"), {
+      target: { value: "구름빵 반죽 작업 있습니다" }
+    });
+
     fireEvent.click(screen.getByRole("button", { name: "일일 운영 저장" }));
     fireEvent.click(screen.getByRole("tab", { name: "조회" }));
     expect(screen.getByLabelText("조회 방식")).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText("조회 방식"), { target: { value: "date" } });
+    expect(screen.getByText("조회 날짜")).toBeInTheDocument();
+    expect(screen.getAllByText(todayInStoreTime()).length).toBeGreaterThan(0);
+    expect(screen.getByLabelText("조회 날짜")).toHaveValue(todayInStoreTime());
     expect(
       screen.getAllByText(
         (_content, element) => element?.textContent?.includes("조회 1일") ?? false
@@ -707,6 +722,15 @@ describe("App", () => {
     expect(screen.getByText("일 평균 매출")).toBeInTheDocument();
     expect(screen.getAllByText("객단가").length).toBeGreaterThan(0);
     expect(screen.getByText("이전 기간 대비")).toBeInTheDocument();
+    const savedRecord = screen.getByRole("article", { name: `${todayInStoreTime()} 일지 요약` });
+    expect(within(savedRecord).getByText(todayInStoreTime())).toHaveClass("whitespace-nowrap");
+    expect(within(savedRecord).getByText("작성자 -")).toHaveClass("whitespace-nowrap");
+    expect(within(savedRecord).getByText("제품의견/손실")).toBeInTheDocument();
+    expect(within(savedRecord).getByText("지시/전달")).toBeInTheDocument();
+    expect(within(savedRecord).getByText("내일 준비")).toBeInTheDocument();
+    expect(within(savedRecord).getByText("닭가슴살 재고 확인 필요합니다")).toBeInTheDocument();
+    expect(within(savedRecord).getByText("오후 진열대 보충")).toBeInTheDocument();
+    expect(within(savedRecord).getByText("구름빵 반죽 작업 있습니다")).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText("조회 방식"), { target: { value: "week" } });
     expect(screen.getByText("전주 대비")).toBeInTheDocument();
     expect(screen.getByText("+100%")).toBeInTheDocument();
@@ -733,6 +757,16 @@ describe("App", () => {
     expect(screen.getByLabelText("선물 매출액")).toHaveValue("10000");
     fireEvent.click(screen.getByRole("tab", { name: "제품" }));
     expect(screen.getByLabelText("바게트 생산량")).toHaveValue("10");
+
+    fireEvent.click(screen.getByRole("tab", { name: "조회" }));
+    fireEvent.change(screen.getByLabelText("조회 방식"), { target: { value: "date" } });
+    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
+    fireEvent.click(screen.getByRole("button", { name: "상세" }));
+    fireEvent.click(screen.getByRole("button", { name: "삭제" }));
+    expect(confirmSpy).toHaveBeenCalledWith(`${todayInStoreTime()} 일지를 삭제할까요?`);
+    expect(screen.getByText("선택한 일일 운영 일지를 삭제했습니다.")).toBeInTheDocument();
+    expect(screen.queryByText("닭가슴살 재고 확인 필요합니다")).not.toBeInTheDocument();
+    confirmSpy.mockRestore();
 
     fireEvent.click(screen.getByRole("tab", { name: "입력" }));
 
@@ -839,5 +873,8 @@ describe("App", () => {
       fullText: "바게트가 딱딱하다는 불만이 있었다.",
       llmAssisted: true
     });
+    expect(screen.getByLabelText("요약")).toHaveValue("");
+    expect(screen.getByLabelText("손님 반응 내용")).toHaveValue("");
+    expect(screen.getByText("선택 기준: 미선택")).toBeInTheDocument();
   });
 });

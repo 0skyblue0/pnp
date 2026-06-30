@@ -1,5 +1,5 @@
-import { ClipboardCheck, Save } from "lucide-react";
-import { Fragment, useMemo, useState } from "react";
+import { ClipboardCheck, Save, Trash2 } from "lucide-react";
+import { useMemo, useState } from "react";
 
 import { todayInStoreTime } from "../../shared/time/storeTime.js";
 import { Button } from "../../shared/ui/Button.js";
@@ -298,8 +298,29 @@ function summarizeChannels(rows: ChannelRow[]): ChannelTotals {
   );
 }
 
+const deletedDailyRecordsKey = "pnp:daily-operation-deleted-dates";
+
 function draftStorageKey(date: string): string {
   return `pnp:daily-operation-draft:${date}`;
+}
+
+function loadDeletedDailyRecordDates(): Set<string> {
+  if (typeof window === "undefined") {
+    return new Set();
+  }
+
+  try {
+    const parsed: unknown = JSON.parse(window.localStorage.getItem(deletedDailyRecordsKey) ?? "[]");
+    return new Set(
+      Array.isArray(parsed) ? parsed.filter((date): date is string => typeof date === "string") : []
+    );
+  } catch {
+    return new Set();
+  }
+}
+
+function storeDeletedDailyRecordDates(dates: Set<string>) {
+  window.localStorage.setItem(deletedDailyRecordsKey, JSON.stringify(Array.from(dates).sort()));
 }
 
 function isDailyOperationRecord(value: unknown): value is DailyOperationSavedRecord {
@@ -321,8 +342,11 @@ function loadStoredDailyRecords(): DailyOperationSavedRecord[] {
     return providedDailyOperationRecords;
   }
   const recordsByDate = new Map<string, DailyOperationSavedRecord>();
+  const deletedDates = loadDeletedDailyRecordDates();
   for (const record of providedDailyOperationRecords) {
-    recordsByDate.set(record.draft.date, record);
+    if (!deletedDates.has(record.draft.date)) {
+      recordsByDate.set(record.draft.date, record);
+    }
   }
 
   Object.keys(window.localStorage)
@@ -511,6 +535,11 @@ export function DailyLogPage() {
   }
 
   function saveDraft() {
+    const deletedDates = loadDeletedDailyRecordDates();
+    if (deletedDates.delete(draft.date)) {
+      storeDeletedDailyRecordDates(deletedDates);
+    }
+
     window.localStorage.setItem(
       draftStorageKey(draft.date),
       JSON.stringify({
@@ -538,6 +567,19 @@ export function DailyLogPage() {
     setActiveTab("basic");
     setViewMode("entry");
     setMessage(`${record.draft.date} 일지를 불러왔습니다. 저장하면 같은 날짜 기록이 갱신됩니다.`);
+  }
+
+  function deleteRecord(record: DailyOperationSavedRecord) {
+    if (!window.confirm(`${record.draft.date} 일지를 삭제할까요?`)) {
+      return;
+    }
+
+    window.localStorage.removeItem(draftStorageKey(record.draft.date));
+    const deletedDates = loadDeletedDailyRecordDates();
+    deletedDates.add(record.draft.date);
+    storeDeletedDailyRecordDates(deletedDates);
+    setSavedRecords(loadStoredDailyRecords());
+    setMessage("선택한 일일 운영 일지를 삭제했습니다.");
   }
 
   return (
@@ -686,6 +728,7 @@ export function DailyLogPage() {
             setLookupEndDate={setLookupEndDate}
             setLookupMonth={setLookupMonth}
             onEditRecord={loadRecordForEdit}
+            onDeleteRecord={deleteRecord}
           />
         )}
       </section>
@@ -709,7 +752,8 @@ function DailyLookupSection({
   setLookupStartDate,
   setLookupEndDate,
   setLookupMonth,
-  onEditRecord
+  onEditRecord,
+  onDeleteRecord
 }: {
   records: DailyOperationSavedRecord[];
   previousRecords: DailyOperationSavedRecord[];
@@ -727,6 +771,7 @@ function DailyLookupSection({
   setLookupEndDate: (date: string) => void;
   setLookupMonth: (month: string) => void;
   onEditRecord: (record: DailyOperationSavedRecord) => void;
+  onDeleteRecord: (record: DailyOperationSavedRecord) => void;
 }) {
   const [expandedDates, setExpandedDates] = useState<string[]>([]);
   const [productDetailDates, setProductDetailDates] = useState<string[]>([]);
@@ -742,12 +787,12 @@ function DailyLookupSection({
 
   return (
     <div className="grid gap-4">
-      <div className="rounded-control border border-latte bg-white/80 p-4">
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
-          <label className="grid gap-2">
+      <div className="w-[calc(100vw-58px)] min-w-0 max-w-full rounded-control border border-latte bg-white/80 p-4 sm:w-full">
+        <div className="grid w-full min-w-0 max-w-full gap-3 md:grid-cols-2 xl:grid-cols-5">
+          <label className="grid min-w-0 gap-2">
             <span className="field-label">조회 방식</span>
             <select
-              className="input"
+              className="input min-w-0 w-full"
               value={lookupMode}
               onChange={(event) => setLookupMode(event.target.value as LookupMode)}
             >
@@ -784,13 +829,13 @@ function DailyLookupSection({
           {lookupMode === "month" ? (
             <TextInput label="조회 월" type="month" value={lookupMonth} onChange={setLookupMonth} />
           ) : null}
-          <div className="rounded-control border border-latte bg-cream/60 px-3 py-2">
+          <div className="min-w-0 rounded-control border border-latte bg-cream/60 px-3 py-2">
             <p className="text-sm font-bold text-cocoa">조회 기간</p>
             <p className="mt-1 text-sm text-muted">
               {lookupRange.startDate} ~ {lookupRange.endDate}
             </p>
           </div>
-          <div className="rounded-control border border-latte bg-cream/60 px-3 py-2">
+          <div className="min-w-0 rounded-control border border-latte bg-cream/60 px-3 py-2">
             <p className="text-sm font-bold text-cocoa">저장된 일지</p>
             <p className="mt-1 text-sm text-muted">
               전체 {allRecordCount}일 / 조회 {records.length}일
@@ -821,218 +866,287 @@ function DailyLookupSection({
             선택한 기간에 저장된 일일 운영 일지가 없습니다.
           </p>
         ) : (
-          <div className="mt-3 overflow-visible md:overflow-x-auto">
-            <table className="w-full min-w-0 text-left text-xs md:min-w-[1120px] md:text-sm">
-              <thead className="bg-cream text-cocoa">
-                <tr>
-                  <th className="px-2 py-2">날짜</th>
-                  <th className="px-2 py-2">작성자</th>
-                  <th className="px-2 py-2">날씨</th>
-                  <th className="px-2 py-2 text-right">POS</th>
-                  <th className="px-2 py-2 text-right">POS 외</th>
-                  <th className="px-2 py-2 text-right">총 매출액</th>
-                  <th className="px-2 py-2 text-right">총 매출건수</th>
-                  <th className="px-2 py-2 text-right">객단가</th>
-                  <th className="px-2 py-2 text-right">제품 판매량</th>
-                  <th className="px-2 py-2">주요 메모</th>
-                  <th className="px-2 py-2 text-center">전체 데이터</th>
-                </tr>
-              </thead>
-              <tbody>
-                {records.map((record) => {
-                  const recordSales = salesTotal(record);
-                  const recordCount = salesCountTotal(record);
-                  const channelSummary = summarizeChannels(record.channelRows);
-                  const products = summarizeProducts(record.productRows);
-                  const isExpanded = expandedDates.includes(record.draft.date);
-                  const isProductDetail = productDetailDates.includes(record.draft.date);
-                  const productDetails = record.productRows.filter(hasProductDetail);
-                  return (
-                    <Fragment key={record.draft.date}>
-                      <tr className="border-t border-latte align-top">
-                        <td className="px-2 py-2 font-bold text-cocoa">{record.draft.date}</td>
-                        <td className="px-2 py-2">{record.draft.author || "-"}</td>
-                        <td className="px-2 py-2">{record.draft.weather || "-"}</td>
-                        <td className="px-2 py-2 text-right">
-                          {formatCurrency(numeric(record.draft.posSalesAmount))}
-                        </td>
-                        <td className="px-2 py-2 text-right">
-                          {formatCurrency(channelSummary.amount)}
-                        </td>
-                        <td className="px-2 py-2 text-right font-bold text-cocoa">
-                          {formatCurrency(recordSales)}
-                        </td>
-                        <td className="px-2 py-2 text-right">
-                          {recordCount.toLocaleString("ko-KR")}건
-                        </td>
-                        <td className="px-2 py-2 text-right">
-                          {formatCurrency(recordCount > 0 ? recordSales / recordCount : 0)}
-                        </td>
-                        <td className="px-2 py-2 text-right">
-                          {products.sold.toLocaleString("ko-KR")}개
-                        </td>
-                        <td className="max-w-[220px] truncate px-2 py-2">
-                          {record.draft.productOpinionAndLoss || record.draft.instructions || "-"}
-                        </td>
-                        <td className="px-2 py-2 text-center">
-                          <button
-                            className="rounded-control border border-latte bg-white px-3 py-1.5 text-xs font-bold text-cocoa hover:border-cocoa"
-                            type="button"
-                            onClick={() =>
-                              setExpandedDates((current) =>
-                                current.includes(record.draft.date)
-                                  ? current.filter((date) => date !== record.draft.date)
-                                  : [...current, record.draft.date]
-                              )
-                            }
-                          >
-                            {isExpanded ? "접기" : "상세"}
-                          </button>
-                        </td>
-                      </tr>
+          <div className="mt-3 grid gap-3">
+            {records.map((record) => {
+              const recordSales = salesTotal(record);
+              const recordCount = salesCountTotal(record);
+              const channelSummary = summarizeChannels(record.channelRows);
+              const products = summarizeProducts(record.productRows);
+              const isExpanded = expandedDates.includes(record.draft.date);
+              const isProductDetail = productDetailDates.includes(record.draft.date);
+              const productDetails = record.productRows.filter(hasProductDetail);
+
+              return (
+                <article
+                  key={record.draft.date}
+                  aria-label={`${record.draft.date} 일지 요약`}
+                  className="rounded-control border border-latte bg-white/90 p-3 shadow-control"
+                >
+                  <div className="flex flex-wrap items-start justify-between gap-3 border-b border-latte/70 pb-3">
+                    <div className="grid min-w-0 gap-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="whitespace-nowrap text-base font-bold text-cocoa">
+                          {record.draft.date}
+                        </span>
+                        <span className="whitespace-nowrap rounded-full bg-cream px-2 py-0.5 text-xs font-bold text-muted">
+                          작성자 {record.draft.author || "-"}
+                        </span>
+                        <span className="whitespace-nowrap rounded-full bg-cream px-2 py-0.5 text-xs font-bold text-muted">
+                          날씨 {record.draft.weather || "-"}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap justify-end gap-2">
+                      <button
+                        className="rounded-control border border-latte bg-white px-3 py-1.5 text-xs font-bold text-cocoa hover:border-cocoa"
+                        type="button"
+                        onClick={() =>
+                          setExpandedDates((current) =>
+                            current.includes(record.draft.date)
+                              ? current.filter((date) => date !== record.draft.date)
+                              : [...current, record.draft.date]
+                          )
+                        }
+                      >
+                        {isExpanded ? "접기" : "상세"}
+                      </button>
                       {isExpanded ? (
-                        <tr className="border-t border-latte bg-cream/30">
-                          <td className="px-3 py-3" colSpan={11}>
-                            <div className="mb-3 flex justify-end">
-                              <button
-                                className="rounded-control border border-cocoa bg-white px-3 py-1.5 text-xs font-bold text-cocoa hover:bg-cream"
-                                type="button"
-                                onClick={() => onEditRecord(record)}
-                              >
-                                수정
-                              </button>
-                            </div>
-                            <div className="grid gap-3 lg:grid-cols-3">
-                              <div className="rounded-control border border-latte bg-white p-3">
-                                <p className="font-bold text-cocoa">기본·점검</p>
-                                <p className="mt-2 text-sm text-muted">
-                                  온도 {record.draft.outsideTemp || "-"}/
-                                  {record.draft.insideTemp || "-"}℃ · 습도{" "}
-                                  {record.draft.outsideHumidity || "-"}/
-                                  {record.draft.insideHumidity || "-"}%
-                                </p>
-                                <p className="mt-1 text-sm text-muted">
-                                  첫 출근 {record.draft.firstWorker || "-"}{" "}
-                                  {record.draft.firstWorkerTime || ""} / 최종퇴근{" "}
-                                  {record.draft.lastWorker || "-"}{" "}
-                                  {record.draft.lastWorkerTime || ""}
-                                </p>
-                                <p className="mt-1 text-sm text-muted">
-                                  위생 {record.draft.hygieneChecker || "-"} · 최종{" "}
-                                  {record.draft.finalChecker || "-"}
-                                </p>
-                              </div>
-                              <div className="rounded-control border border-latte bg-white p-3">
-                                <div className="flex items-center justify-between gap-2">
-                                  <p className="font-bold text-cocoa">제품 합계</p>
-                                  <div
-                                    className="flex rounded-control border border-latte bg-cream/60 p-0.5"
-                                    role="tablist"
-                                    aria-label={`${record.draft.date} 제품합계 보기`}
-                                  >
-                                    {(
-                                      [
-                                        [false, "요약"],
-                                        [true, "상세"]
-                                      ] as Array<[boolean, string]>
-                                    ).map(([detailMode, label]) => (
-                                      <button
-                                        key={label}
-                                        className={[
-                                          "rounded-control px-2 py-1 text-xs font-bold transition",
-                                          isProductDetail === detailMode
-                                            ? "bg-cocoa text-white"
-                                            : "text-cocoa hover:bg-white"
-                                        ].join(" ")}
-                                        type="button"
-                                        role="tab"
-                                        aria-selected={isProductDetail === detailMode}
-                                        onClick={() =>
-                                          setProductDetailDates((current) =>
-                                            detailMode
-                                              ? current.includes(record.draft.date)
-                                                ? current
-                                                : [...current, record.draft.date]
-                                              : current.filter((date) => date !== record.draft.date)
-                                          )
-                                        }
-                                      >
-                                        {label}
-                                      </button>
-                                    ))}
-                                  </div>
-                                </div>
-                                {!isProductDetail ? (
-                                  <>
-                                    <p className="mt-2 text-sm text-muted">
-                                      생산 {products.produced} · 손실 {products.loss} · 시식{" "}
-                                      {products.tasting}
-                                    </p>
-                                    <p className="mt-1 text-sm text-muted">
-                                      기타 +{products.otherIn} / -{products.otherOut} · 재고{" "}
-                                      {products.stock} · 판매 {products.sold}
-                                    </p>
-                                  </>
-                                ) : productDetails.length > 0 ? (
-                                  <div className="mt-2 max-h-56 overflow-auto rounded-control border border-latte">
-                                    <table className="w-full text-left text-xs">
-                                      <thead className="sticky top-0 bg-cream text-cocoa">
-                                        <tr>
-                                          <th className="px-2 py-1.5">제품</th>
-                                          <th className="px-2 py-1.5">입력 내용</th>
-                                        </tr>
-                                      </thead>
-                                      <tbody>
-                                        {productDetails.map((row) => (
-                                          <tr
-                                            key={row.productName}
-                                            className="border-t border-latte align-top"
-                                          >
-                                            <td className="whitespace-nowrap px-2 py-1.5 font-bold text-cocoa">
-                                              {row.productName}
-                                            </td>
-                                            <td className="px-2 py-1.5 text-muted">
-                                              {productDetailText(row)}
-                                            </td>
-                                          </tr>
-                                        ))}
-                                      </tbody>
-                                    </table>
-                                  </div>
-                                ) : (
-                                  <p className="mt-2 rounded-control border border-dashed border-latte bg-cream/40 px-2 py-4 text-center text-xs font-semibold text-muted">
-                                    실제 입력된 제품 수량 없음
-                                  </p>
-                                )}
-                              </div>
-                              <div className="rounded-control border border-latte bg-white p-3">
-                                <p className="font-bold text-cocoa">메모</p>
-                                <p className="mt-2 text-sm text-muted">
-                                  제품의견/손실: {record.draft.productOpinionAndLoss || "-"}
-                                </p>
-                                <p className="mt-1 text-sm text-muted">
-                                  지시/전달: {record.draft.instructions || "-"}
-                                </p>
-                                <p className="mt-1 text-sm text-muted">
-                                  내일 준비: {record.draft.tomorrowPrep || "-"}
-                                </p>
-                                <p className="mt-1 text-sm text-muted">
-                                  시설/청결: {record.draft.facilityIssue || "-"} /{" "}
-                                  {record.draft.cleaningWork || "-"}
-                                </p>
-                              </div>
-                            </div>
-                          </td>
-                        </tr>
+                        <>
+                          <button
+                            className="rounded-control border border-cocoa bg-white px-3 py-1.5 text-xs font-bold text-cocoa hover:bg-cream"
+                            type="button"
+                            onClick={() => onEditRecord(record)}
+                          >
+                            수정
+                          </button>
+                          <button
+                            className="inline-flex items-center gap-1 rounded-control border border-red/40 bg-white px-3 py-1.5 text-xs font-bold text-red hover:bg-red/10"
+                            type="button"
+                            onClick={() => onDeleteRecord(record)}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+                            삭제
+                          </button>
+                        </>
                       ) : null}
-                    </Fragment>
-                  );
-                })}
-              </tbody>
-            </table>
+                    </div>
+                  </div>
+
+                  <div className="mt-3 grid gap-3 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
+                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                      <LookupMetric
+                        label="POS"
+                        value={formatCurrency(numeric(record.draft.posSalesAmount))}
+                      />
+                      <LookupMetric label="POS 외" value={formatCurrency(channelSummary.amount)} />
+                      <LookupMetric label="총 매출액" value={formatCurrency(recordSales)} strong />
+                      <LookupMetric
+                        label="총 매출건수"
+                        value={`${recordCount.toLocaleString("ko-KR")}건`}
+                      />
+                      <LookupMetric
+                        label="객단가"
+                        value={formatCurrency(recordCount > 0 ? recordSales / recordCount : 0)}
+                      />
+                      <LookupMetric
+                        label="제품 판매량"
+                        value={`${products.sold.toLocaleString("ko-KR")}개`}
+                      />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="mb-2 text-sm font-bold text-cocoa">주요 메모</p>
+                      <MemoSummary draft={record.draft} />
+                    </div>
+                  </div>
+
+                  {isExpanded ? (
+                    <div className="mt-3 border-t border-latte/70 pt-3">
+                      <div className="grid gap-3 lg:grid-cols-3">
+                        <div className="rounded-control border border-latte bg-white p-3">
+                          <p className="font-bold text-cocoa">기본·점검</p>
+                          <p className="mt-2 text-sm text-muted">
+                            온도 {record.draft.outsideTemp || "-"}/{record.draft.insideTemp || "-"}℃
+                            · 습도 {record.draft.outsideHumidity || "-"}/
+                            {record.draft.insideHumidity || "-"}%
+                          </p>
+                          <p className="mt-1 text-sm text-muted">
+                            첫 출근 {record.draft.firstWorker || "-"}{" "}
+                            {record.draft.firstWorkerTime || ""} / 최종퇴근{" "}
+                            {record.draft.lastWorker || "-"} {record.draft.lastWorkerTime || ""}
+                          </p>
+                          <p className="mt-1 text-sm text-muted">
+                            위생 {record.draft.hygieneChecker || "-"} · 최종{" "}
+                            {record.draft.finalChecker || "-"}
+                          </p>
+                        </div>
+                        <div className="rounded-control border border-latte bg-white p-3">
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="font-bold text-cocoa">제품 합계</p>
+                            <div
+                              className="flex rounded-control border border-latte bg-cream/60 p-0.5"
+                              role="tablist"
+                              aria-label={`${record.draft.date} 제품합계 보기`}
+                            >
+                              {(
+                                [
+                                  [false, "요약"],
+                                  [true, "상세"]
+                                ] as Array<[boolean, string]>
+                              ).map(([detailMode, label]) => (
+                                <button
+                                  key={label}
+                                  className={[
+                                    "rounded-control px-2 py-1 text-xs font-bold transition",
+                                    isProductDetail === detailMode
+                                      ? "bg-cocoa text-white"
+                                      : "text-cocoa hover:bg-white"
+                                  ].join(" ")}
+                                  type="button"
+                                  role="tab"
+                                  aria-selected={isProductDetail === detailMode}
+                                  onClick={() =>
+                                    setProductDetailDates((current) =>
+                                      detailMode
+                                        ? current.includes(record.draft.date)
+                                          ? current
+                                          : [...current, record.draft.date]
+                                        : current.filter((date) => date !== record.draft.date)
+                                    )
+                                  }
+                                >
+                                  {label}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                          {!isProductDetail ? (
+                            <>
+                              <p className="mt-2 text-sm text-muted">
+                                생산 {products.produced} · 손실 {products.loss} · 시식{" "}
+                                {products.tasting}
+                              </p>
+                              <p className="mt-1 text-sm text-muted">
+                                기타 +{products.otherIn} / -{products.otherOut} · 재고{" "}
+                                {products.stock} · 판매 {products.sold}
+                              </p>
+                            </>
+                          ) : productDetails.length > 0 ? (
+                            <div className="mt-2 max-h-56 overflow-auto rounded-control border border-latte">
+                              <table className="w-full text-left text-xs">
+                                <thead className="sticky top-0 bg-cream text-cocoa">
+                                  <tr>
+                                    <th className="px-2 py-1.5">제품</th>
+                                    <th className="px-2 py-1.5">입력 내용</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {productDetails.map((row) => (
+                                    <tr
+                                      key={row.productName}
+                                      className="border-t border-latte align-top"
+                                    >
+                                      <td className="whitespace-nowrap px-2 py-1.5 font-bold text-cocoa">
+                                        {row.productName}
+                                      </td>
+                                      <td className="px-2 py-1.5 text-muted">
+                                        {productDetailText(row)}
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          ) : (
+                            <p className="mt-2 rounded-control border border-dashed border-latte bg-cream/40 px-2 py-4 text-center text-xs font-semibold text-muted">
+                              실제 입력된 제품 수량 없음
+                            </p>
+                          )}
+                        </div>
+                        <div className="rounded-control border border-latte bg-white p-3">
+                          <p className="font-bold text-cocoa">메모</p>
+                          <p className="mt-2 text-sm text-muted">
+                            제품의견/손실: {record.draft.productOpinionAndLoss || "-"}
+                          </p>
+                          <p className="mt-1 text-sm text-muted">
+                            지시/전달: {record.draft.instructions || "-"}
+                          </p>
+                          <p className="mt-1 text-sm text-muted">
+                            내일 준비: {record.draft.tomorrowPrep || "-"}
+                          </p>
+                          <p className="mt-1 text-sm text-muted">
+                            시설/청결: {record.draft.facilityIssue || "-"} /{" "}
+                            {record.draft.cleaningWork || "-"}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ) : null}
+                </article>
+              );
+            })}
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+function memoItems(draft: DailyOperationDraft): Array<{ label: string; value: string }> {
+  return [
+    { label: "제품의견/손실", value: draft.productOpinionAndLoss },
+    { label: "지시/전달", value: draft.instructions },
+    { label: "내일 준비", value: draft.tomorrowPrep },
+    { label: "시설", value: draft.facilityIssue },
+    { label: "청결/위생", value: draft.cleaningWork }
+  ].filter((item) => item.value.trim().length > 0);
+}
+
+function MemoSummary({ draft }: { draft: DailyOperationDraft }) {
+  const items = memoItems(draft);
+
+  if (items.length === 0) {
+    return <span className="text-muted">-</span>;
+  }
+
+  return (
+    <div className="grid gap-1.5">
+      {items.map((item) => (
+        <div
+          key={item.label}
+          className="rounded-control border border-latte bg-white/80 px-2 py-1.5"
+        >
+          <span className="mr-1 inline-flex rounded bg-cocoa/10 px-1.5 py-0.5 text-[11px] font-bold text-cocoa">
+            {item.label}
+          </span>
+          <span className="break-words text-xs text-ink [overflow-wrap:anywhere]">
+            {item.value}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function LookupMetric({
+  label,
+  value,
+  strong = false
+}: {
+  label: string;
+  value: string;
+  strong?: boolean;
+}) {
+  return (
+    <div className="rounded-control border border-latte bg-cream/50 px-2 py-2">
+      <p className="text-[11px] font-bold text-muted">{label}</p>
+      <p
+        className={[
+          "mt-0.5 text-sm",
+          strong ? "font-bold text-cocoa" : "font-semibold text-ink"
+        ].join(" ")}
+      >
+        {value}
+      </p>
     </div>
   );
 }
@@ -1618,6 +1732,35 @@ function TextInput({
   suffix?: string;
 }) {
   const isNumeric = type === "number";
+  const isDatePicker = type === "date" || type === "month";
+  const pickerText =
+    type === "month" && value
+      ? value.replace(/^(\d{4})-(\d{2})$/, "$1년 $2월")
+      : value || (type === "month" ? "YYYY-MM" : "YYYY-MM-DD");
+
+  if (isDatePicker) {
+    return (
+      <label className="grid min-w-0 gap-2">
+        <span className="field-label">{label}</span>
+        <div className="input relative flex min-w-0 items-center justify-between gap-3 overflow-hidden">
+          <span className={value ? "truncate text-ink" : "truncate text-muted/60"}>
+            {pickerText}
+          </span>
+          <span className="shrink-0 text-lg leading-none text-cocoa" aria-hidden="true">
+            📅
+          </span>
+          <input
+            aria-label={label}
+            className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+            type={type}
+            value={value}
+            onChange={(event) => onChange(event.target.value)}
+          />
+        </div>
+      </label>
+    );
+  }
+
   return (
     <label className="grid min-w-0 gap-2">
       <span className="field-label">{label}</span>

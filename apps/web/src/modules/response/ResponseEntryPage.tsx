@@ -151,9 +151,12 @@ export function ResponseEntryPage({ embedded = false }: { embedded?: boolean } =
     setSaveError(null);
 
     try {
-      const envelope = await apiPost<ResponseSuggestionDto, { fullText: string }>("/response/suggest", {
-        fullText: text
-      });
+      const envelope = await apiPost<ResponseSuggestionDto, { fullText: string }>(
+        "/response/suggest",
+        {
+          fullText: text
+        }
+      );
 
       if (envelope.error) {
         setSaveError(envelope.error.message);
@@ -166,7 +169,9 @@ export function ResponseEntryPage({ embedded = false }: { embedded?: boolean } =
       setValue("llmAssisted", true, { shouldValidate: true });
       setSaveMessage(`AI 추천 적용됨: ${pathLabel(envelope.data.criterionPath)}`);
     } catch (unknownError) {
-      setSaveError(unknownError instanceof Error ? unknownError.message : "AI 추천을 가져오지 못했습니다.");
+      setSaveError(
+        unknownError instanceof Error ? unknownError.message : "AI 추천을 가져오지 못했습니다."
+      );
     } finally {
       setIsSuggesting(false);
     }
@@ -185,9 +190,12 @@ export function ResponseEntryPage({ embedded = false }: { embedded?: boolean } =
 
     setSaveMessage(`저장 완료 #${envelope.data.id}`);
     setAiSuggestionPath(null);
+    setSelectedMajorId(null);
+    setSelectedMiddleId(null);
+    setSelectedMinorId(null);
     reset({
       date: values.date,
-      criterionId: values.criterionId,
+      criterionId: 0,
       shortSummary: "",
       fullText: "",
       llmAssisted: false

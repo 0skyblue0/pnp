@@ -61,7 +61,7 @@ body {
 
 @layer components {
   .panel {
-    @apply rounded-panel border border-white/80 bg-cream/90 p-4 shadow-panel ring-1 ring-cocoa/10 backdrop-blur lg:p-5;
+    @apply min-w-0 rounded-panel border border-white/80 bg-cream/90 p-4 shadow-panel ring-1 ring-cocoa/10 backdrop-blur lg:p-5;
   }
 
   .panel-heading {
@@ -77,6 +77,25 @@ body {
   }
 
   .input {
-    @apply min-h-11 rounded-control border border-latte/90 bg-white/95 px-3 py-2 text-base font-medium text-ink shadow-sm outline-none transition placeholder:text-muted/60 hover:border-bread/50 focus:border-bread focus:bg-white focus:shadow-control focus:ring-4 focus:ring-bread/15;
+    @apply min-h-11 max-w-full rounded-control border border-latte/90 bg-white/95 px-3 py-2 text-base font-medium text-ink shadow-sm outline-none transition placeholder:text-muted/60 hover:border-bread/50 focus:border-bread focus:bg-white focus:shadow-control focus:ring-4 focus:ring-bread/15;
   }
+}
+
+input[type="date"],
+input[type="month"] {
+  min-width: 0;
+  max-width: 100%;
+  line-height: 1.5;
+}
+
+input[type="date"]::-webkit-date-and-time-value,
+input[type="month"]::-webkit-date-and-time-value {
+  min-height: 1.5em;
+  text-align: left;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="month"]::-webkit-calendar-picker-indicator {
+  flex-shrink: 0;
+  margin-left: 0.5rem;
 }

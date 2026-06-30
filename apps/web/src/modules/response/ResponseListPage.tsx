@@ -4,7 +4,6 @@ import { Link } from "react-router-dom";
 
 import { apiGet } from "../../shared/api/client.js";
 import type { ListEnvelope } from "../../shared/api/types.js";
-import { todayInStoreTime } from "../../shared/time/storeTime.js";
 import { Button } from "../../shared/ui/Button.js";
 import {
   criteriaByParent,
@@ -25,6 +24,8 @@ type ResponseDto = {
   fullText: string | null;
   createdAt: string;
 };
+
+const importedResponseRange = { from: "2026-05-01", to: "2026-05-31" };
 
 type FilterState = {
   from: string;
@@ -63,10 +64,9 @@ function criterionOptionLabel(criterion: ResponseCriterionDto): string {
 }
 
 export function ResponseListPage() {
-  const today = todayInStoreTime();
   const [filters, setFilters] = useState<FilterState>({
-    from: today,
-    to: today,
+    from: importedResponseRange.from,
+    to: importedResponseRange.to,
     criterionId: ""
   });
   const [criteria, setCriteria] = useState<ResponseCriterionDto[]>([]);

@@ -5,7 +5,6 @@ import { apiGet } from "../../shared/api/client.js";
 import { todayInStoreTime } from "../../shared/time/storeTime.js";
 import { Button } from "../../shared/ui/Button.js";
 
-
 type CriterionStatsDto = {
   criterionId: number | null;
   name: string;
@@ -70,6 +69,8 @@ type DateRange = {
   to: string;
 };
 
+const importedResponseReportRange: DateRange = { from: "2026-05-01", to: "2026-05-31" };
+
 const emptyStats: NormalizedStats = {
   total: 0,
   major: [],
@@ -112,7 +113,9 @@ function weekRange(value: string, offset = 0): DateRange {
   const dayOfWeek = base.getUTCDay();
   const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
   const monday = new Date(Date.UTC(year, month - 1, day + mondayOffset + offset * 7));
-  const sunday = new Date(Date.UTC(monday.getUTCFullYear(), monday.getUTCMonth(), monday.getUTCDate() + 6));
+  const sunday = new Date(
+    Date.UTC(monday.getUTCFullYear(), monday.getUTCMonth(), monday.getUTCDate() + 6)
+  );
 
   return {
     from: monday.toISOString().slice(0, 10),
@@ -293,7 +296,7 @@ function BreakdownBarChart({ items, total }: { items: ChartItem[]; total: number
 
 export function StatisticsPage() {
   const today = todayInStoreTime();
-  const [range, setRange] = useState<DateRange>(monthRange(today, 0));
+  const [range, setRange] = useState<DateRange>(importedResponseReportRange);
   const [stats, setStats] = useState<NormalizedStats>(emptyStats);
   const [selectedMajorId, setSelectedMajorId] = useState<number | null>(null);
   const [selectedMiddleId, setSelectedMiddleId] = useState<number | null>(null);
@@ -479,6 +482,13 @@ export function StatisticsPage() {
             >
               최근 30일
             </button>
+            <button
+              className="min-h-11 rounded-control border border-cocoa bg-cream px-3 text-sm font-semibold text-cocoa hover:bg-white"
+              type="button"
+              onClick={() => setRange(importedResponseReportRange)}
+            >
+              5월 보고
+            </button>
           </div>
           <Button icon={RefreshCcw} type="button" onClick={() => void loadStats()}>
             {isLoading ? "조회 중" : "조회"}
@@ -509,17 +519,23 @@ export function StatisticsPage() {
             <p className="field-label">많이 반복된 내용</p>
             {stats.insights.repeatedTopics.length > 0 ? (
               stats.insights.repeatedTopics.slice(0, 3).map((topic, index) => (
-                <div key={topic.criterionId} className="rounded-control border border-stone-200 bg-white p-3">
+                <div
+                  key={topic.criterionId}
+                  className="rounded-control border border-stone-200 bg-white p-3"
+                >
                   <div className="flex items-center justify-between gap-3">
                     <span className="text-sm font-bold text-ink">
                       {index + 1}. {topic.path.map((item) => item.name).join(" > ")}
                     </span>
                     <span className="shrink-0 text-sm font-bold text-cocoa">
-                      {topic.count.toLocaleString("ko-KR")}건 · {formatPercent(topic.count, stats.total)}
+                      {topic.count.toLocaleString("ko-KR")}건 ·{" "}
+                      {formatPercent(topic.count, stats.total)}
                     </span>
                   </div>
                   {topic.sampleSummaries.length > 0 ? (
-                    <p className="mt-2 truncate text-sm text-muted">예: {topic.sampleSummaries[0]}</p>
+                    <p className="mt-2 truncate text-sm text-muted">
+                      예: {topic.sampleSummaries[0]}
+                    </p>
                   ) : null}
                 </div>
               ))
@@ -528,6 +544,35 @@ export function StatisticsPage() {
                 반복 내용 없음
               </div>
             )}
+          </div>
+        </div>
+      </section>
+
+      <section className="panel min-w-0 border-green/20 bg-green/5">
+        <div className="panel-heading">
+          <div>
+            <p className="text-sm text-muted">추천 기능</p>
+            <h2 className="section-title">다음 확인 업무</h2>
+          </div>
+        </div>
+        <div className="grid gap-3 md:grid-cols-3">
+          <div className="rounded-control border border-latte bg-white p-3">
+            <p className="font-bold text-cocoa">품절 반복 확인</p>
+            <p className="mt-2 text-sm leading-6 text-muted">
+              품절/재고부족이 많은 제품을 주간 생산량 조정 후보로 봅니다.
+            </p>
+          </div>
+          <div className="rounded-control border border-latte bg-white p-3">
+            <p className="font-bold text-cocoa">조치대응 관리</p>
+            <p className="mt-2 text-sm leading-6 text-muted">
+              원문과 조치대응이 있는 기록을 한곳에서 보고 미처리 이슈를 줄입니다.
+            </p>
+          </div>
+          <div className="rounded-control border border-latte bg-white p-3">
+            <p className="font-bold text-cocoa">월간 보고 연결</p>
+            <p className="mt-2 text-sm leading-6 text-muted">
+              5월 보고 데이터를 기준으로 대표님 보고용 반복 이슈를 자동 요약합니다.
+            </p>
           </div>
         </div>
       </section>
@@ -559,7 +604,9 @@ export function StatisticsPage() {
         <section className="panel min-w-0">
           <div className="panel-heading">
             <div>
-              <p className="text-sm text-muted">{selectedMajor ? selectedMajor.label : "대분류 선택 필요"}</p>
+              <p className="text-sm text-muted">
+                {selectedMajor ? selectedMajor.label : "대분류 선택 필요"}
+              </p>
               <h2 className="section-title">선택 분류 상세</h2>
             </div>
             <BarChart3 className="h-5 w-5 text-bread" aria-hidden="true" />

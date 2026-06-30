@@ -601,6 +601,19 @@ describe("App", () => {
     );
 
     expect(await screen.findByRole("heading", { name: "매장 운영일지" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("tab", { name: "조회" }));
+    expect(screen.getByLabelText("조회 방식")).toHaveValue("month");
+    expect(screen.getByLabelText("조회 월")).toHaveValue("2026-05");
+    expect(screen.getAllByText("69,703,800원").length).toBeGreaterThan(0);
+    expect(screen.getByText(/전체 31일 \/ 조회 31일/)).toBeInTheDocument();
+    const firstDetailButton = screen.getAllByRole("button", { name: "상세" }).at(0);
+    if (!firstDetailButton) {
+      throw new Error("상세 버튼이 필요합니다.");
+    }
+    fireEvent.click(firstDetailButton);
+    expect(screen.getByText(/닭가슴살 재고 확인 필요합니다/)).toBeInTheDocument();
+    expect(screen.getByText(/구름빵 반죽 작업 있습니다/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("tab", { name: "입력" }));
     expect(screen.queryByText(/엑셀 대체/)).not.toBeInTheDocument();
     expect(
       within(screen.getByRole("tablist", { name: "일일 운영 입력 분류" }))
@@ -648,6 +661,7 @@ describe("App", () => {
     fireEvent.click(screen.getByRole("button", { name: "일일 운영 저장" }));
     fireEvent.click(screen.getByRole("tab", { name: "조회" }));
     expect(screen.getByLabelText("조회 방식")).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("조회 방식"), { target: { value: "date" } });
     expect(
       screen.getAllByText(
         (_content, element) => element?.textContent?.includes("조회 1일") ?? false

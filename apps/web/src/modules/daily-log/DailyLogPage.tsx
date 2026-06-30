@@ -3,7 +3,10 @@ import { Fragment, useMemo, useState } from "react";
 
 import { todayInStoreTime } from "../../shared/time/storeTime.js";
 import { Button } from "../../shared/ui/Button.js";
-import { providedDailyOperationRecords } from "./providedDailyOperationRecords.js";
+import {
+  providedDailyOperationDefaultMonth,
+  providedDailyOperationRecords
+} from "./providedDailyOperationRecords.js";
 
 type DailyTab = "basic" | "products" | "sales" | "notes";
 type DailyViewMode = "entry" | "lookup";
@@ -135,7 +138,11 @@ const productLineup = [
   "여름파네토네",
   "파네토네",
   "햄치즈샌드위치",
-  "치킨샌드위치"
+  "치킨샌드위치",
+  "바질치킨",
+  "멜란자네",
+  "수프+샌드위치",
+  "수프+빵"
 ];
 
 const manualSoldProducts = new Set(["구름빵", "호밀쇼콜라오렌지", "호밀비트", "호밀후르츠"]);
@@ -427,11 +434,11 @@ export function DailyLogPage() {
   const [savedRecords, setSavedRecords] = useState<DailyOperationSavedRecord[]>(() =>
     loadStoredDailyRecords()
   );
-  const [lookupMode, setLookupMode] = useState<LookupMode>("date");
+  const [lookupMode, setLookupMode] = useState<LookupMode>("month");
   const [lookupDate, setLookupDate] = useState(today);
   const [lookupStartDate, setLookupStartDate] = useState(today);
   const [lookupEndDate, setLookupEndDate] = useState(today);
-  const [lookupMonth, setLookupMonth] = useState(today.slice(0, 7));
+  const [lookupMonth, setLookupMonth] = useState(providedDailyOperationDefaultMonth);
   const [message, setMessage] = useState<string | null>(null);
 
   const channelSales = useMemo(() => summarizeChannels(channelRows), [channelRows]);

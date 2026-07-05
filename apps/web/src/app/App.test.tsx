@@ -553,7 +553,7 @@ describe("App", () => {
     expect(operationLink).toHaveClass(ACTIVE_NAV_CLASS);
   });
 
-  it("keeps reservation quick dates while allowing calendar and 10-minute pickup time selection", async () => {
+  it("keeps reservation quick dates while allowing calendar date picking and hourly pickup tabs", async () => {
     render(
       <AppProviders>
         <App />
@@ -578,10 +578,17 @@ describe("App", () => {
     expect(within(modal).getByRole("button", { name: "내일" })).toBeInTheDocument();
     expect(within(modal).getByRole("button", { name: "모레" })).toBeInTheDocument();
     expect(within(modal).getByLabelText("픽업 날짜")).toHaveAttribute("type", "date");
+    expect(within(modal).getByLabelText("픽업 날짜")).not.toHaveClass("sr-only");
+
+    expect(within(modal).getByRole("button", { name: "10:00" })).toBeInTheDocument();
+    expect(within(modal).getByRole("button", { name: "19:00" })).toBeInTheDocument();
+    expect(within(modal).queryByRole("button", { name: "09:00" })).not.toBeInTheDocument();
+    expect(within(modal).queryByRole("button", { name: "12:30" })).not.toBeInTheDocument();
+    expect(within(modal).queryByRole("button", { name: "19:30" })).not.toBeInTheDocument();
 
     const hourSelect = within(modal).getByLabelText("픽업 시");
     expect(within(hourSelect).queryByRole("option", { name: "08시" })).not.toBeInTheDocument();
-    expect(within(hourSelect).getByRole("option", { name: "11시" })).toBeInTheDocument();
+    expect(within(hourSelect).getByRole("option", { name: "10시" })).toBeInTheDocument();
     expect(within(hourSelect).getByRole("option", { name: "19시" })).toBeInTheDocument();
     expect(within(hourSelect).queryByRole("option", { name: "20시" })).not.toBeInTheDocument();
     expect(within(within(modal).getByLabelText("픽업 분")).getByRole("option", { name: "10분" })).toBeInTheDocument();

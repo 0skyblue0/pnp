@@ -46,8 +46,8 @@ type ReservationItemForm = {
   cuttingOption: CuttingOption;
 };
 
-const modalQuickTimes = ["11:00", "12:30", "14:00", "15:30", "17:00"];
-const pickupHours = Array.from({ length: 9 }, (_, index) => String(index + 11).padStart(2, "0"));
+const modalQuickTimes = Array.from({ length: 10 }, (_, index) => `${String(index + 10).padStart(2, "0")}:00`);
+const pickupHours = Array.from({ length: 10 }, (_, index) => String(index + 10).padStart(2, "0"));
 const pickupMinutes = ["00", "10", "20", "30", "40", "50"];
 const halfCuttableProducts = new Set(["바게트", "깜빠뉴", "호밀빵", "화이트바게트", "식빵"]);
 const sliceableProducts = new Set(["식빵"]);
@@ -518,7 +518,7 @@ export function ReservationPage() {
               </div>
               <input
                 aria-label="픽업 날짜"
-                className="sr-only"
+                className="w-full rounded-[8px] border border-latte px-[11px] py-[8px] text-[13px] outline-none focus:border-bread"
                 type="date"
                 value={datePart(form.pickupAt)}
                 onClick={(event) => event.currentTarget.showPicker()}

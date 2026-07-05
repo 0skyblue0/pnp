@@ -28,8 +28,12 @@ type StaffDto = {
 
 type ReservationDto = {
   id: string;
+  customerName: string | null;
+  contactPhone: string | null;
   pickupAt: string;
   status: "PENDING" | "READY" | "COMPLETED" | "NO_SHOW" | "CANCELED";
+  isPaid: boolean;
+  isCut: boolean;
   purpose: "GIFT" | "SELF" | "UNKNOWN" | null;
   allergyNote: string | null;
   memo: string | null;
@@ -38,6 +42,7 @@ type ReservationDto = {
     productId: number;
     productName: string;
     quantity: number;
+    cuttingOption: "NONE" | "HALF" | "SLICE" | "HALF_SLICE";
   }>;
 };
 
@@ -145,13 +150,17 @@ function defaultState(): MockState {
     reservations: [
       {
         id: "77",
+        customerName: "기존손님",
+        contactPhone: "010-1111-2222",
         pickupAt: "2026-05-10T06:00:00.000Z",
         status: "PENDING",
+        isPaid: false,
+        isCut: false,
         purpose: "UNKNOWN",
         allergyNote: null,
         memo: "기존 예약",
         cancelReason: null,
-        items: [{ productId: 1, productName: "바게트", quantity: 3 }]
+        items: [{ productId: 1, productName: "바게트", quantity: 3, cuttingOption: "NONE" }]
       }
     ],
     productionLots: [
@@ -322,13 +331,20 @@ test("reservation form submits entered fields and status buttons patch the selec
       postedReservation = route.request().postDataJSON();
       const created = {
         id: "88",
+        customerName: "예약손님",
+        contactPhone: "010-0000-0000",
         pickupAt: "2026-05-10T09:00:00.000Z",
         status: "PENDING",
+        isPaid: false,
+        isCut: true,
         purpose: "GIFT",
         allergyNote: "견과류",
         memo: "쇼핑백 요청",
         cancelReason: null,
-        items: [{ productId: 1, productName: "바게트", quantity: 4 }]
+        items: [
+          { productId: 1, productName: "바게트", quantity: 4, cuttingOption: "HALF" },
+          { productId: 2, productName: "호밀빵", quantity: 2, cuttingOption: "NONE" }
+        ]
       } satisfies ReservationDto;
       state.reservations = [created];
       await fulfillJson(route, created, 201);
@@ -337,7 +353,7 @@ test("reservation form submits entered fields and status buttons patch the selec
     if (method === "PATCH" && path === "/reservation/88/status") {
       patchedStatus = route.request().postDataJSON();
       state.reservations = state.reservations.map((reservation) =>
-        reservation.id === "88" ? { ...reservation, status: "READY" } : reservation
+        reservation.id === "88" ? { ...reservation, status: "COMPLETED" } : reservation
       );
       await fulfillJson(route, state.reservations[0]);
       return true;
@@ -350,28 +366,40 @@ test("reservation form submits entered fields and status buttons patch the selec
     .locator("section")
     .filter({ has: page.getByRole("heading", { name: "예약 등록" }) });
 
-  await registerPanel.getByLabel("연락 키").fill("010-0000-0000");
-  await registerPanel.getByLabel("픽업").fill("2026-05-10T18:00");
-  await registerPanel.getByLabel("제품").fill("바게트");
-  await registerPanel.getByLabel("수량").fill("4");
-  await registerPanel.getByLabel("목적").selectOption("GIFT");
-  await registerPanel.getByLabel("알레르기").fill("견과류");
+  await registerPanel.getByLabel("손님 이름").fill("예약손님");
+  await registerPanel.getByLabel("연락처").fill("010-0000-0000");
+  await registerPanel.getByLabel("픽업 날짜").fill("2026-05-10");
+  await registerPanel.getByLabel("픽업 시").selectOption("18");
+  await registerPanel.getByLabel("픽업 분").selectOption("00");
+  await registerPanel.getByLabel("제품 1").selectOption("바게트");
+  await registerPanel.getByLabel("수량 1").fill("4");
+  await registerPanel.getByLabel("반컷팅").check();
+  await registerPanel.getByRole("button", { name: "제품 추가" }).click();
+  await registerPanel.getByLabel("제품 2").selectOption("호밀빵");
+  await registerPanel.getByLabel("수량 2").fill("2");
+  await expect(registerPanel.getByLabel("슬라이스")).toHaveCount(0);
   await registerPanel.getByLabel("메모").fill("쇼핑백 요청");
   await registerPanel.getByRole("button", { name: "저장" }).click();
 
   await expect(page.getByText("예약 저장 #88")).toBeVisible();
   expect(postedReservation).toMatchObject({
-    contactRef: "010-0000-0000",
+    contactRef: "예약손님 010-0000-0000",
+    customerName: "예약손님",
+    contactPhone: "010-0000-0000",
     pickupAt: "2026-05-10T18:00",
-    purpose: "GIFT",
-    allergyNote: "견과류",
+    isCut: true,
     memo: "쇼핑백 요청",
-    items: [{ productName: "바게트", quantity: 4 }]
+    items: [
+      { productName: "바게트", quantity: 4, cuttingOption: "HALF" },
+      { productName: "호밀빵", quantity: 2, cuttingOption: "NONE" }
+    ]
   });
 
-  await page.getByRole("button", { name: "준비" }).click();
+  await expect(page.getByRole("button", { name: "결제완료" })).toHaveCount(0);
+
+  await page.getByRole("button", { name: "픽업완료" }).click();
   await expect(page.getByText("상태 변경 #88")).toBeVisible();
-  expect(patchedStatus).toEqual({ status: "READY" });
+  expect(patchedStatus).toEqual({ status: "COMPLETED" });
 });
 
 test("response entry buttons and inputs produce the expected response payload", async ({

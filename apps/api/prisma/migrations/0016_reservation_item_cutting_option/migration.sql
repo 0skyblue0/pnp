@@ -1,0 +1,2 @@
+ALTER TABLE reservation_item
+ADD COLUMN IF NOT EXISTS cutting_option VARCHAR(20) NOT NULL DEFAULT 'NONE';

@@ -14,6 +14,7 @@ import { registerAnnualScheduleRoutes } from "./modules/annual-schedule/annual-s
 import { registerAuthRoutes } from "./modules/auth/auth.routes.js";
 import { registerDailyLogRoutes } from "./modules/daily-log/daily-log.routes.js";
 import { registerNotificationRoutes } from "./modules/notification/notification.routes.js";
+import { registerPrepaidLedgerRoutes } from "./modules/prepaid-ledger/prepaid-ledger.routes.js";
 import { registerProductionLotRoutes } from "./modules/production-lot/production-lot.routes.js";
 import { registerReservationRoutes } from "./modules/reservation/reservation.routes.js";
 import { registerResponseRoutes } from "./modules/response/response.routes.js";
@@ -70,6 +71,7 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Fas
   await app.register(registerAnnualScheduleRoutes, { prefix: "/api/v1" });
   await app.register(registerDailyLogRoutes, { prefix: "/api/v1" });
   await app.register(registerProductionLotRoutes, { prefix: "/api/v1/production-lot" });
+  await app.register(registerPrepaidLedgerRoutes, { prefix: "/api/v1/prepaid-ledger" });
   await app.register(registerReservationRoutes, { prefix: "/api/v1/reservation" });
   await app.register(registerResponseRoutes, { prefix: "/api/v1/response" });
   await app.register(registerNotificationRoutes, { prefix: "/api/v1/notification" });

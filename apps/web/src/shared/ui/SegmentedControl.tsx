@@ -17,14 +17,14 @@ export function SegmentedControl<TValue extends string>({
   return (
     <div>
       <span className="field-label">{label}</span>
-      <div className="flex flex-wrap gap-2 rounded-panel bg-latte/35 p-1.5 ring-1 ring-cocoa/10">
+      <div className="flex flex-wrap gap-1 rounded-control border border-latte bg-white p-1">
         {options.map((option) => (
           <button
             key={option.value}
             className={[
-              "min-h-11 rounded-control border px-3 text-sm font-bold transition",
+              "min-h-9 rounded-[7px] border px-3 text-[12.5px] font-semibold transition",
               value === option.value
-                ? "border-cocoa bg-gradient-to-r from-cocoa to-bread text-white shadow-control"
+                ? "border-bread bg-bread text-white shadow-none"
                 : "border-transparent bg-transparent text-cocoa/75 hover:bg-white/90 hover:text-cocoa hover:shadow-sm"
             ].join(" ")}
             type="button"

@@ -14,6 +14,10 @@ import { todayInStoreTime } from "../shared/time/storeTime.js";
 
 const ACTIVE_NAV_CLASS = "from-cocoa";
 
+function currentMonthLabel() {
+  return `${Number(todayInStoreTime().slice(5, 7))}월`;
+}
+
 describe("App", () => {
   let scrollIntoViewMock: ReturnType<typeof vi.fn>;
 
@@ -92,17 +96,21 @@ describe("App", () => {
     expect(screen.queryByRole("heading", { name: "연간 스케줄 달력" })).not.toBeInTheDocument();
 
     expect(
-      await screen.findByRole("button", { name: "올해 매출 목표 상세 보기" })
+      await screen.findByRole("button", { name: "올해 매출 목표 전년 대비 +12% 상세 보기" })
     ).toBeInTheDocument();
-    expect(screen.queryByText("전년 대비 +12%")).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "올해 매출 목표 상세 보기" }));
     expect(screen.getByText("전년 대비 +12%")).toBeInTheDocument();
+    expect(screen.queryByText("월별 매출을 함께 확인")).not.toBeInTheDocument();
+    fireEvent.click(
+      screen.getByRole("button", { name: "올해 매출 목표 전년 대비 +12% 상세 보기" })
+    );
+    expect(screen.getAllByText("전년 대비 +12%").length).toBeGreaterThan(0);
+    expect(screen.getByText("월별 매출을 함께 확인")).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "목표·공지 상세" })).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("tab", { name: "스케줄 달력" }));
     expect(screen.getByRole("heading", { name: "연간 스케줄 달력" })).toBeInTheDocument();
     expect(screen.getByLabelText("스케줄 구분")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "6월" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: currentMonthLabel() })).toBeInTheDocument();
     expect(screen.queryByText("여름깜빠뉴 출시")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "삭제" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "수정" })).not.toBeInTheDocument();
@@ -246,6 +254,7 @@ describe("App", () => {
     );
 
     fireEvent.click(screen.getByRole("tab", { name: "스케줄 달력" }));
+    fireEvent.click(screen.getByRole("button", { name: "6월" }));
     expect(await screen.findByText("직원 입력 일정")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "6월" })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "8월" })).not.toBeInTheDocument();
@@ -284,7 +293,7 @@ describe("App", () => {
     );
   });
 
-  it("shows only the five main bakery work tabs", () => {
+  it("shows the main bakery work tabs", () => {
     render(
       <MemoryRouter initialEntries={["/home"]}>
         <Routes>
@@ -300,7 +309,11 @@ describe("App", () => {
       within(navigation)
         .getAllByRole("link")
         .map((link) => link.textContent)
-    ).toEqual(["홈", "일일 운영", "손님 반응", "예약", "관리"]);
+    ).toEqual(["홈", "일일 운영", "손님 반응", "예약", "선결제 장부", "관리"]);
+    expect(screen.getByRole("link", { name: "Paul & Paulina 홈" })).toHaveAttribute(
+      "href",
+      "/home"
+    );
   });
 
   it("lets staff manage home goal and sales notices from the management tab", async () => {
@@ -656,8 +669,20 @@ describe("App", () => {
         .getAllByRole("tab")
         .map((tab) => tab.textContent)
     ).toEqual(["기본 정보", "제품", "매출", "메모·점검"]);
+    expect(screen.getByRole("heading", { name: "환경 · 근무 정보" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "제품별 생산 · 판매" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "매출 요약" })).toBeInTheDocument();
     expect(screen.getByLabelText("작성자")).toBeInTheDocument();
     expect(screen.getByLabelText("외부온도")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "일일 운영 저장" }));
+    expect(screen.getByText("일일 운영 작성 완료 전 빠진 항목을 확인해 주세요.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "기본 정보: 작성자" })).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("작성자"), { target: { value: "대표" } });
+    fireEvent.change(screen.getByLabelText("외부온도"), { target: { value: "22" } });
+    fireEvent.change(screen.getByLabelText("내부온도"), { target: { value: "24" } });
+    fireEvent.change(screen.getByLabelText("외부습도"), { target: { value: "60" } });
+    fireEvent.change(screen.getByLabelText("내부습도"), { target: { value: "55" } });
+    fireEvent.change(screen.getByLabelText("날씨"), { target: { value: "맑음" } });
 
     fireEvent.click(screen.getByRole("tab", { name: "매출" }));
     expect(screen.getByLabelText("POS 매출액")).toBeInTheDocument();
@@ -673,6 +698,9 @@ describe("App", () => {
     fireEvent.change(screen.getByLabelText("선물 매출건수"), { target: { value: "2" } });
     fireEvent.change(screen.getByLabelText("배민 매출액"), { target: { value: "5000" } });
     fireEvent.change(screen.getByLabelText("배민 매출건수"), { target: { value: "3" } });
+    expect(screen.getByLabelText("POS 매출액")).toHaveValue("20,000");
+    expect(screen.getByLabelText("선물 매출액")).toHaveValue("10,000");
+    expect(screen.getByLabelText("배민 매출액")).toHaveValue("5,000");
     expect(screen.getByLabelText("POS 외 매출액")).toHaveTextContent("15,000원");
     expect(screen.getByLabelText("POS 외 매출건수")).toHaveTextContent("5건");
     expect(screen.getAllByText("35,000원").length).toBeGreaterThan(0);
@@ -704,10 +732,20 @@ describe("App", () => {
     fireEvent.change(screen.getByLabelText("내일 준비사항"), {
       target: { value: "구름빵 반죽 작업 있습니다" }
     });
+    fireEvent.change(screen.getByLabelText("청결/위생 관련업무"), {
+      target: { value: "오븐 주변 청소 완료" }
+    });
+    fireEvent.change(screen.getByLabelText("첫 출근자 이름"), { target: { value: "아침직원" } });
+    fireEvent.change(screen.getByLabelText("첫 출근자 출근시간"), { target: { value: "07:00" } });
+    fireEvent.change(screen.getByLabelText("최종퇴근자 이름"), { target: { value: "마감직원" } });
+    fireEvent.change(screen.getByLabelText("최종퇴근자 퇴근시간"), { target: { value: "20:00" } });
+    fireEvent.change(screen.getByLabelText("위생 점검자"), { target: { value: "위생담당" } });
+    fireEvent.change(screen.getByLabelText("최종 점검자"), { target: { value: "마감담당" } });
 
     fireEvent.click(screen.getByRole("button", { name: "일일 운영 저장" }));
     fireEvent.click(screen.getByRole("tab", { name: "조회" }));
     expect(screen.getByLabelText("조회 방식")).toBeInTheDocument();
+    expect(screen.getByLabelText("나열 방식")).toHaveValue("desc");
     fireEvent.change(screen.getByLabelText("조회 방식"), { target: { value: "date" } });
     expect(screen.getByText("조회 날짜")).toBeInTheDocument();
     expect(screen.getAllByText(todayInStoreTime()).length).toBeGreaterThan(0);
@@ -723,18 +761,58 @@ describe("App", () => {
     expect(screen.getAllByText("객단가").length).toBeGreaterThan(0);
     expect(screen.getByText("이전 기간 대비")).toBeInTheDocument();
     const savedRecord = screen.getByRole("article", { name: `${todayInStoreTime()} 일지 요약` });
-    expect(within(savedRecord).getByText(todayInStoreTime())).toHaveClass("whitespace-nowrap");
-    expect(within(savedRecord).getByText("작성자 -")).toHaveClass("whitespace-nowrap");
-    expect(within(savedRecord).getByText("제품의견/손실")).toBeInTheDocument();
-    expect(within(savedRecord).getByText("지시/전달")).toBeInTheDocument();
-    expect(within(savedRecord).getByText("내일 준비")).toBeInTheDocument();
-    expect(within(savedRecord).getByText("닭가슴살 재고 확인 필요합니다")).toBeInTheDocument();
-    expect(within(savedRecord).getByText("오후 진열대 보충")).toBeInTheDocument();
-    expect(within(savedRecord).getByText("구름빵 반죽 작업 있습니다")).toBeInTheDocument();
+    const savedRecordTable = within(savedRecord).getByRole("table", {
+      name: `${todayInStoreTime()} 일지 한줄 요약`
+    });
+    const savedRecordRow = within(savedRecordTable).getByRole("row", {
+      name: /POS 매출액 20,000원/
+    });
+    expect(savedRecordRow).toHaveTextContent(`날짜${todayInStoreTime()}`);
+    expect(savedRecordRow).toHaveTextContent("작성자대표");
+    expect(savedRecordRow).toHaveTextContent("POS 매출액20,000원");
+    expect(savedRecordRow).toHaveTextContent("POS 외 매출액15,000원");
+    expect(savedRecordRow).toHaveTextContent("총매출액35,000원");
+    expect(savedRecordRow).toHaveTextContent("매출건수10건");
+    expect(savedRecordRow).toHaveTextContent("객단가3,500원");
+    expect(savedRecordRow).toHaveTextContent("제품판매량2개");
+    expect(savedRecordRow).toHaveTextContent("메모2건");
+    expect(savedRecordRow).toHaveTextContent("상세");
+    expect(within(savedRecordRow).queryByText("구름빵 반죽 작업 있습니다")).not.toBeInTheDocument();
+    expect(within(savedRecordRow).queryByText("오후 진열대 보충")).not.toBeInTheDocument();
+    expect(within(savedRecord).queryByText("제품의견/손실")).not.toBeInTheDocument();
+    expect(within(savedRecord).queryByText("오븐 주변 청소 완료")).not.toBeInTheDocument();
     fireEvent.change(screen.getByLabelText("조회 방식"), { target: { value: "week" } });
+    fireEvent.change(screen.getByLabelText("기준 날짜"), { target: { value: "2026-05-10" } });
+    expect(screen.getByText("2026-05-10 ~ 2026-05-16")).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("기준 날짜"), { target: { value: todayInStoreTime() } });
     expect(screen.getByText("전주 대비")).toBeInTheDocument();
     expect(screen.getByText("+100%")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "상세" }));
+    const expandedRecord = screen.getByRole("article", { name: `${todayInStoreTime()} 일지 요약` });
+    const expandedActionCell = within(expandedRecord).getAllByRole("cell").at(10);
+    expect(within(expandedActionCell!).getAllByRole("button").map((button) => button.textContent)).toEqual([
+      "접기"
+    ]);
+    expect(within(expandedRecord).getAllByRole("button").map((button) => button.textContent)).toEqual(
+      expect.arrayContaining(["접기", "수정", "삭제"])
+    );
+    expect(within(expandedRecord).getByText("메모 원문")).toBeInTheDocument();
+    expect(within(expandedRecord).getByRole("group", { name: "기본·점검" })).toHaveTextContent(
+      "온습도"
+    );
+    expect(within(expandedRecord).getByRole("group", { name: "제품 합계" })).toHaveTextContent(
+      "생산"
+    );
+    const expandedText = expandedRecord.textContent ?? "";
+    expect(expandedText.indexOf("내일 준비")).toBeLessThan(expandedText.indexOf("지시/전달"));
+    expect(expandedText.indexOf("지시/전달")).toBeLessThan(expandedText.indexOf("청결/위생"));
+    expect(expandedText.indexOf("청결/위생")).toBeLessThan(expandedText.indexOf("제품의견/손실"));
+    expect(within(expandedRecord).getByText("구름빵 반죽 작업 있습니다")).toBeInTheDocument();
+    expect(within(expandedRecord).getByText("오후 진열대 보충")).toBeInTheDocument();
+    expect(within(expandedRecord).getByText("오븐 주변 청소 완료")).toBeInTheDocument();
+    expect(within(expandedRecord).getByText("닭가슴살 재고 확인 필요합니다")).toBeInTheDocument();
+    expect(within(expandedRecord).getAllByText("구름빵 반죽 작업 있습니다")).toHaveLength(1);
+    expect(within(expandedRecord).getAllByText("오후 진열대 보충")).toHaveLength(1);
     const productSummaryTabs = screen.getByRole("tablist", { name: /제품합계 보기/ });
     expect(within(productSummaryTabs).getByRole("tab", { name: "요약" })).toHaveAttribute(
       "aria-selected",
@@ -753,8 +831,8 @@ describe("App", () => {
     fireEvent.click(screen.getByRole("button", { name: "수정" }));
     expect(screen.getByRole("tab", { name: "입력" })).toHaveAttribute("aria-selected", "true");
     fireEvent.click(screen.getByRole("tab", { name: "매출" }));
-    expect(screen.getByLabelText("POS 매출액")).toHaveValue("20000");
-    expect(screen.getByLabelText("선물 매출액")).toHaveValue("10000");
+    expect(screen.getByLabelText("POS 매출액")).toHaveValue("20,000");
+    expect(screen.getByLabelText("선물 매출액")).toHaveValue("10,000");
     fireEvent.click(screen.getByRole("tab", { name: "제품" }));
     expect(screen.getByLabelText("바게트 생산량")).toHaveValue("10");
 
@@ -767,6 +845,14 @@ describe("App", () => {
     expect(screen.getByText("선택한 일일 운영 일지를 삭제했습니다.")).toBeInTheDocument();
     expect(screen.queryByText("닭가슴살 재고 확인 필요합니다")).not.toBeInTheDocument();
     confirmSpy.mockRestore();
+
+    fireEvent.change(screen.getByLabelText("조회 방식"), { target: { value: "month" } });
+    fireEvent.change(screen.getByLabelText("나열 방식"), { target: { value: "asc" } });
+    let sortedRecords = screen.getAllByRole("article", { name: /일지 요약/ });
+    expect(sortedRecords[0]).toHaveAccessibleName("2026-05-01 일지 요약");
+    fireEvent.change(screen.getByLabelText("나열 방식"), { target: { value: "desc" } });
+    sortedRecords = screen.getAllByRole("article", { name: /일지 요약/ });
+    expect(sortedRecords[0]).toHaveAccessibleName("2026-05-31 일지 요약");
 
     fireEvent.click(screen.getByRole("tab", { name: "입력" }));
 
@@ -802,9 +888,9 @@ describe("App", () => {
             data: {
               items: [
                 { id: 1, parentId: null, depth: 1, name: "제품", sortOrder: 1, isActive: true },
-                { id: 2, parentId: 1, depth: 2, name: "품목", sortOrder: 1, isActive: true },
-                { id: 3, parentId: 2, depth: 3, name: "바게트", sortOrder: 1, isActive: true },
-                { id: 4, parentId: null, depth: 1, name: "서비스", sortOrder: 2, isActive: true }
+                { id: 2, parentId: 1, depth: 2, name: "식감", sortOrder: 1, isActive: true },
+                { id: 3, parentId: 2, depth: 3, name: "딱딱함", sortOrder: 1, isActive: true },
+                { id: 4, parentId: null, depth: 1, name: "서비스·응대", sortOrder: 2, isActive: true }
               ],
               total: 4,
               page: 1,
@@ -821,11 +907,11 @@ describe("App", () => {
           JSON.stringify({
             data: {
               criterionId: 3,
-              shortSummary: "바게트 품목 상태 불만",
+              shortSummary: "바게트 식감 딱딱함 반응",
               criterionPath: [
                 { id: 1, parentId: null, depth: 1, name: "제품" },
-                { id: 2, parentId: 1, depth: 2, name: "품목" },
-                { id: 3, parentId: 2, depth: 3, name: "바게트" }
+                { id: 2, parentId: 1, depth: 2, name: "식감" },
+                { id: 3, parentId: 2, depth: 3, name: "딱딱함" }
               ]
             },
             error: null
@@ -850,31 +936,270 @@ describe("App", () => {
       });
     });
 
+    const showPicker = vi.fn();
+    Object.defineProperty(window.HTMLInputElement.prototype, "showPicker", {
+      configurable: true,
+      value: showPicker
+    });
+
     render(<ResponseEntryPage />);
+
+    fireEvent.click(screen.getByText("날짜"));
+    expect(showPicker).toHaveBeenCalled();
 
     fireEvent.change(await screen.findByLabelText("손님 반응 내용"), {
       target: { value: "바게트가 딱딱하다는 불만이 있었다." }
     });
     fireEvent.click(screen.getByRole("button", { name: "AI 분류하기" }));
 
-    expect(await screen.findByText("AI 추천 적용됨: 제품 > 품목 > 바게트")).toBeInTheDocument();
-    expect(screen.getByLabelText("요약")).toHaveValue("바게트 품목 상태 불만");
-    expect(screen.getByText("선택 기준: AI 추천 · 제품 > 품목 > 바게트")).toBeInTheDocument();
+    expect(await screen.findByText("AI 추천 적용됨: 제품 > 식감 > 딱딱함")).toBeInTheDocument();
+    expect(screen.getByLabelText("요약")).toHaveValue("바게트 식감 딱딱함 반응");
+    expect(screen.getByText("선택 기준: AI 추천 · 제품 > 식감 > 딱딱함")).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "서비스" }));
+    fireEvent.click(screen.getByRole("button", { name: "서비스·응대" }));
 
-    expect(screen.getByText("선택 기준: 서비스")).toBeInTheDocument();
+    expect(screen.getByText("선택 기준: 서비스·응대")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "저장" }));
 
     expect(await screen.findByText("저장 완료 #77")).toBeInTheDocument();
     expect(postedResponse).toMatchObject({
       criterionId: 4,
-      shortSummary: "바게트 품목 상태 불만",
+      shortSummary: "바게트 식감 딱딱함 반응",
       fullText: "바게트가 딱딱하다는 불만이 있었다.",
       llmAssisted: true
     });
     expect(screen.getByLabelText("요약")).toHaveValue("");
     expect(screen.getByLabelText("손님 반응 내용")).toHaveValue("");
     expect(screen.getByText("선택 기준: 미선택")).toBeInTheDocument();
+  });
+
+  it("alerts staff and keeps classification stopped when AI suggestion API fails", async () => {
+    const alertSpy = vi.fn();
+    vi.stubGlobal("alert", alertSpy);
+    vi.mocked(fetch).mockImplementation(async (input, init) => {
+      const url = input instanceof Request ? input.url : String(input);
+
+      if (url.endsWith("/auth/csrf")) {
+        return new Response(JSON.stringify({ data: { csrfToken: "test-token" }, error: null }), {
+          headers: { "Content-Type": "application/json" }
+        });
+      }
+
+      if (url.includes("/response-criteria")) {
+        return new Response(
+          JSON.stringify({
+            data: {
+              items: [
+                { id: 1, parentId: null, depth: 1, name: "제품", sortOrder: 1, isActive: true },
+                { id: 2, parentId: 1, depth: 2, name: "식감", sortOrder: 1, isActive: true },
+                { id: 3, parentId: 2, depth: 3, name: "딱딱함", sortOrder: 1, isActive: true }
+              ],
+              total: 3,
+              page: 1,
+              size: 3
+            },
+            error: null
+          }),
+          { headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      if (url.endsWith("/response/suggest") && init?.method === "POST") {
+        return new Response(
+          JSON.stringify({
+            data: null,
+            error: {
+              code: "HERMES_NOT_CONFIGURED",
+              message: "AI 분류 API가 설정되지 않았습니다. 관리자에게 연결 상태를 확인해 주세요."
+            }
+          }),
+          { status: 503, headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      return new Response(JSON.stringify({ data: null, error: { message: url } }), {
+        status: 500,
+        headers: { "Content-Type": "application/json" }
+      });
+    });
+
+    render(<ResponseEntryPage />);
+
+    fireEvent.change(await screen.findByLabelText("손님 반응 내용"), {
+      target: { value: "청주에서 방문한 손님 계셨습니다." }
+    });
+    fireEvent.click(screen.getByRole("button", { name: "AI 분류하기" }));
+
+    await waitFor(() =>
+      expect(alertSpy).toHaveBeenCalledWith(
+        "AI 분류 API가 설정되지 않았습니다. 관리자에게 연결 상태를 확인해 주세요."
+      )
+    );
+    expect(
+      screen.getByText("AI 분류 API가 설정되지 않았습니다. 관리자에게 연결 상태를 확인해 주세요.")
+    ).toBeInTheDocument();
+    expect(screen.getByText("선택 기준: 미선택")).toBeInTheDocument();
+    expect(screen.getByLabelText("요약")).toHaveValue("");
+    expect(screen.queryByText(/AI 추천 적용됨/)).not.toBeInTheDocument();
+  });
+
+  it("lets staff manage prepaid customer balances without a paper ledger", async () => {
+    const transactions = [
+      {
+        id: "t1",
+        type: "CHARGE",
+        amount: 50000,
+        note: "바게트 10개 선결제",
+        occurredAt: "2026-07-01T09:00:00.000Z",
+        createdAt: "2026-07-01T09:00:00.000Z"
+      },
+      {
+        id: "t2",
+        type: "USE",
+        amount: 12000,
+        note: "화이트바게트 픽업",
+        occurredAt: "2026-07-01T10:00:00.000Z",
+        createdAt: "2026-07-01T10:00:00.000Z"
+      }
+    ];
+    const customer = {
+      id: "1",
+      customerName: "김선결",
+      contactPhone: "010-1234-5678",
+      memo: "단골 선결제",
+      balance: 38000,
+      lastUsedAt: "2026-07-01T10:00:00.000Z",
+      transactions
+    };
+    let createdBody: unknown = null;
+    let usedBody: unknown = null;
+    let chargedBody: unknown = null;
+    let cancelledTransactionPath: string | null = null;
+
+    vi.mocked(fetch).mockImplementation(async (input, init) => {
+      const url = input instanceof Request ? input.url : String(input);
+
+      if (url.endsWith("/auth/csrf")) {
+        return new Response(JSON.stringify({ data: { csrfToken: "test-token" }, error: null }), {
+          headers: { "Content-Type": "application/json" }
+        });
+      }
+
+      if (url.includes("/prepaid-ledger") && (!init?.method || init.method === "GET")) {
+        return new Response(
+          JSON.stringify({ data: { items: [customer], total: 1, page: 1, size: 1 }, error: null }),
+          { headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      if (url.endsWith("/prepaid-ledger") && init?.method === "POST") {
+        createdBody = typeof init.body === "string" ? JSON.parse(init.body) : init.body;
+        return new Response(
+          JSON.stringify({
+            data: {
+              ...customer,
+              id: "2",
+              customerName: "박충전",
+              contactPhone: "010-7777-7777",
+              balance: 30000,
+              transactions: []
+            },
+            error: null
+          }),
+          { headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      if (url.endsWith("/prepaid-ledger/1/use") && init?.method === "POST") {
+        usedBody = typeof init.body === "string" ? JSON.parse(init.body) : init.body;
+        return new Response(
+          JSON.stringify({ data: { ...customer, balance: 33000 }, error: null }),
+          { headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      if (url.endsWith("/prepaid-ledger/1/charge") && init?.method === "POST") {
+        chargedBody = typeof init.body === "string" ? JSON.parse(init.body) : init.body;
+        return new Response(
+          JSON.stringify({ data: { ...customer, balance: 58000 }, error: null }),
+          { headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      if (url.endsWith("/prepaid-ledger/1/transactions/t2") && init?.method === "DELETE") {
+        cancelledTransactionPath = new URL(url, "http://localhost").pathname;
+        return new Response(
+          JSON.stringify({
+            data: { ...customer, balance: 50000, transactions: transactions.slice(1) },
+            error: null
+          }),
+          { headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      return new Response(JSON.stringify({ data: { items: [], total: 0, page: 1, size: 0 }, error: null }), {
+        headers: { "Content-Type": "application/json" }
+      });
+    });
+
+    render(
+      <AppProviders>
+        <App />
+      </AppProviders>
+    );
+
+    fireEvent.click(screen.getByRole("link", { name: "선결제 장부" }));
+
+    expect(await screen.findByRole("heading", { name: "선결제 장부" })).toBeInTheDocument();
+    expect(screen.getByLabelText("손님 검색")).toBeInTheDocument();
+    expect(screen.getByText("검색 결과")).toBeInTheDocument();
+    expect(screen.getByText("총 잔액")).toBeInTheDocument();
+    expect(screen.getByText("김선결님")).toBeInTheDocument();
+    expect(screen.getByText("현재 잔액")).toBeInTheDocument();
+    expect(screen.getAllByText("38,000원")).toHaveLength(2);
+    expect(screen.getByText("화이트바게트 픽업")).toBeInTheDocument();
+    expect(
+      screen.getByText("잘못 눌렀다면 최근 내역의 “되돌리기”를 누른 뒤 정확한 금액으로 다시 입력합니다.")
+    ).toBeInTheDocument();
+
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    const cancelButtons = screen.getAllByRole("button", { name: "되돌리기" });
+    expect(cancelButtons).toHaveLength(2);
+    const cancelButton = cancelButtons[1] as HTMLElement;
+    fireEvent.click(cancelButton);
+    await waitFor(() => expect(cancelledTransactionPath).toBe("/api/v1/prepaid-ledger/1/transactions/t2"));
+    expect(await screen.findByText("사용 12,000원 되돌리기 완료 #1")).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("새 손님 이름"), { target: { value: "박충전" } });
+    fireEvent.change(screen.getByLabelText("새 손님 연락처"), { target: { value: "01077777777" } });
+    fireEvent.change(screen.getByLabelText("선결제 금액"), { target: { value: "30000" } });
+    fireEvent.change(screen.getByLabelText("선결제 메모"), { target: { value: "식빵 선결제" } });
+    fireEvent.click(screen.getByRole("button", { name: "선결제 등록" }));
+
+    await waitFor(() =>
+      expect(createdBody).toMatchObject({
+        customerName: "박충전",
+        contactPhone: "010-7777-7777",
+        amount: 30000,
+        memo: "식빵 선결제"
+      })
+    );
+    expect(await screen.findByText("선결제 등록 완료 #2")).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("김선결 추가 충전 금액"), { target: { value: "20000" } });
+    fireEvent.change(screen.getByLabelText("김선결 추가 충전 메모"), { target: { value: "식빵 추가 충전" } });
+    fireEvent.click(screen.getByRole("button", { name: "김선결 추가 충전" }));
+
+    await waitFor(() =>
+      expect(chargedBody).toMatchObject({ amount: 20000, note: "식빵 추가 충전" })
+    );
+    expect(await screen.findByText("추가 충전 완료 #1")).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("김선결 사용 금액"), { target: { value: "5000" } });
+    fireEvent.change(screen.getByLabelText("김선결 사용 내용"), { target: { value: "크로와상 사용" } });
+    fireEvent.click(screen.getByRole("button", { name: "김선결 사용 처리" }));
+
+    await waitFor(() => expect(usedBody).toMatchObject({ amount: 5000, note: "크로와상 사용" }));
+    expect(await screen.findByText("사용 처리 완료 #1")).toBeInTheDocument();
   });
 });

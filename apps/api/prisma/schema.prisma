@@ -131,6 +131,9 @@ model Reservation {
   customerCardId String?           @map("customer_card_id") @db.Uuid
   pickupAt       DateTime          @map("pickup_at") @db.Timestamptz(6)
   status         String            @default("PENDING") @db.VarChar(15)
+  isPaid         Boolean           @default(false) @map("is_paid")
+  isCut          Boolean           @default(false) @map("is_cut")
+  isBag          Boolean           @default(false) @map("is_bag")
   cancelReason   String?           @map("cancel_reason") @db.Text
   purpose        String?           @db.VarChar(10)
   allergyNote    String?           @map("allergy_note") @db.Text
@@ -143,11 +146,53 @@ model Reservation {
   @@map("reservation")
 }
 
+model RegularCustomer {
+  id           BigInt   @id @default(autoincrement())
+  customerName String   @map("customer_name") @db.VarChar(80)
+  contactPhone String?  @map("contact_phone") @db.VarChar(40)
+  fixedMemo    String   @map("fixed_memo") @db.Text
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  @@index([customerName, contactPhone], map: "idx_regular_customer_lookup")
+  @@map("regular_customer")
+}
+
+model PrepaidCustomer {
+  id           BigInt               @id @default(autoincrement())
+  customerName String               @map("customer_name") @db.VarChar(80)
+  contactPhone String?              @map("contact_phone") @db.VarChar(40)
+  memo         String?              @db.Text
+  isActive     Boolean              @default(true) @map("is_active")
+  createdAt    DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime             @default(now()) @map("updated_at") @db.Timestamptz(6)
+  transactions PrepaidTransaction[]
+
+  @@index([customerName, contactPhone], map: "idx_prepaid_customer_lookup")
+  @@map("prepaid_customer")
+}
+
+model PrepaidTransaction {
+  id         BigInt          @id @default(autoincrement())
+  customerId BigInt          @map("customer_id")
+  type       String          @db.VarChar(10)
+  amount     Int
+  note       String?         @db.Text
+  occurredAt DateTime        @default(now()) @map("occurred_at") @db.Timestamptz(6)
+  createdAt  DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  customer   PrepaidCustomer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([customerId, occurredAt], map: "idx_prepaid_transaction_customer_date")
+  @@map("prepaid_transaction")
+}
+
 model ReservationItem {
   id            BigInt      @id @default(autoincrement())
   reservationId BigInt      @map("reservation_id")
   productId     Int         @map("product_id")
   quantity      Int
+  cuttingOption String      @default("NONE") @map("cutting_option") @db.VarChar(20)
   reservation   Reservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
   product       Product     @relation(fields: [productId], references: [id])
 

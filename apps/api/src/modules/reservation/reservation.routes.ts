@@ -18,7 +18,10 @@ import {
   createReservationSchema,
   idParamsSchema,
   listReservationQuerySchema,
-  updateReservationStatusSchema
+  updateReservationPaymentSchema,
+  updateReservationSchema,
+  updateReservationStatusSchema,
+  upsertRegularCustomerSchema
 } from "./reservation.schemas.js";
 
 type ReservationWithItems = Prisma.ReservationGetPayload<{
@@ -42,6 +45,9 @@ function toReservationDto(reservation: ReservationWithItems) {
     contactPhone: reservation.contactPhone,
     pickupAt: reservation.pickupAt.toISOString(),
     status: reservation.status,
+    isPaid: reservation.isPaid,
+    isCut: reservation.isCut,
+    isBag: reservation.isBag,
     purpose: reservation.purpose,
     allergyNote: reservation.allergyNote,
     memo: reservation.memo,
@@ -52,9 +58,25 @@ function toReservationDto(reservation: ReservationWithItems) {
       id: item.id.toString(),
       productId: item.productId,
       productName: item.product.name,
-      quantity: item.quantity
+      quantity: item.quantity,
+      cuttingOption: item.cuttingOption
     }))
   };
+}
+
+function toRegularCustomerDto(customer: Prisma.RegularCustomerGetPayload<Record<string, never>>) {
+  return {
+    id: customer.id.toString(),
+    customerName: customer.customerName,
+    contactPhone: customer.contactPhone,
+    fixedMemo: customer.fixedMemo,
+    createdAt: customer.createdAt.toISOString(),
+    updatedAt: customer.updatedAt.toISOString()
+  };
+}
+
+function hasCuttingRequest(items: Array<{ cuttingOption?: string }>): boolean {
+  return items.some((item) => item.cuttingOption !== undefined && item.cuttingOption !== "NONE");
 }
 
 async function findReservationById(app: FastifyInstance, id: bigint) {
@@ -137,6 +159,60 @@ export async function registerReservationRoutes(app: FastifyInstance): Promise<v
     });
   });
 
+  app.get("/regular-customers", async (_request, reply) => {
+    const items = await app.prisma.regularCustomer.findMany({
+      where: { isActive: true },
+      orderBy: [{ updatedAt: "desc" }, { customerName: "asc" }],
+      take: 100
+    });
+
+    return sendOk(reply, {
+      items: items.map(toRegularCustomerDto),
+      total: items.length,
+      page: 1,
+      size: items.length
+    });
+  });
+
+  app.post("/regular-customers", async (request, reply) => {
+    const input = upsertRegularCustomerSchema.parse(request.body);
+    const customer = await app.prisma.regularCustomer.create({
+      data: {
+        customerName: input.customerName,
+        contactPhone: input.contactPhone || null,
+        fixedMemo: input.fixedMemo
+      }
+    });
+
+    return sendOk(reply, toRegularCustomerDto(customer), 201);
+  });
+
+  app.patch("/regular-customers/:id", async (request, reply) => {
+    const params = idParamsSchema.parse(request.params);
+    const input = upsertRegularCustomerSchema.parse(request.body);
+    const customer = await app.prisma.regularCustomer.update({
+      where: { id: params.id },
+      data: {
+        customerName: input.customerName,
+        contactPhone: input.contactPhone || null,
+        fixedMemo: input.fixedMemo,
+        updatedAt: new Date()
+      }
+    });
+
+    return sendOk(reply, toRegularCustomerDto(customer));
+  });
+
+  app.delete("/regular-customers/:id", async (request, reply) => {
+    const params = idParamsSchema.parse(request.params);
+    await app.prisma.regularCustomer.update({
+      where: { id: params.id },
+      data: { isActive: false, updatedAt: new Date() }
+    });
+
+    return sendOk(reply, { deleted: true });
+  });
+
   app.post("/", async (request, reply) => {
     const input = createReservationSchema.parse(request.body);
     const products = await Promise.all(input.items.map((item) => resolveProduct(app, item)));
@@ -147,13 +223,17 @@ export async function registerReservationRoutes(app: FastifyInstance): Promise<v
         customerName: input.customerName,
         contactPhone: input.contactPhone,
         pickupAt: parseStoreDateTime(input.pickupAt),
+        isPaid: input.isPaid,
+        isBag: input.isBag,
+        isCut: hasCuttingRequest(input.items),
         purpose: input.purpose,
         allergyNote: input.allergyNote ?? null,
         memo: input.memo ?? null,
         items: {
           create: input.items.map((item, index) => ({
             productId: products[index]?.id ?? 0,
-            quantity: item.quantity
+            quantity: item.quantity,
+            cuttingOption: item.cuttingOption
           }))
         }
       },
@@ -167,6 +247,55 @@ export async function registerReservationRoutes(app: FastifyInstance): Promise<v
     });
 
     return sendOk(reply, toReservationDto(reservation), 201);
+  });
+
+  app.patch("/:id", async (request, reply) => {
+    const params = idParamsSchema.parse(request.params);
+    const input = updateReservationSchema.parse(request.body);
+    const existing = await findReservationById(app, params.id);
+
+    if (!existing) {
+      throw new HttpError(404, "RESERVATION_NOT_FOUND", "Reservation not found");
+    }
+
+    const products = input.items
+      ? await Promise.all(input.items.map((item) => resolveProduct(app, item)))
+      : [];
+
+    const updated = await app.prisma.reservation.update({
+      where: { id: params.id },
+      data: {
+        ...(input.contactRef ? { contactToken: toContactToken(input.contactRef) } : {}),
+        ...(input.customerName !== undefined ? { customerName: input.customerName } : {}),
+        ...(input.contactPhone !== undefined ? { contactPhone: input.contactPhone } : {}),
+        ...(input.pickupAt !== undefined ? { pickupAt: parseStoreDateTime(input.pickupAt) } : {}),
+        ...(input.isPaid !== undefined ? { isPaid: input.isPaid } : {}),
+        ...(input.isBag !== undefined ? { isBag: input.isBag } : {}),
+        ...(input.items ? { isCut: hasCuttingRequest(input.items) } : {}),
+        ...(input.memo !== undefined ? { memo: input.memo ?? null } : {}),
+        ...(input.items
+          ? {
+              items: {
+                deleteMany: {},
+                create: input.items.map((item, index) => ({
+                  productId: products[index]?.id ?? 0,
+                  quantity: item.quantity,
+                  cuttingOption: item.cuttingOption
+                }))
+              }
+            }
+          : {})
+      },
+      include: {
+        items: {
+          include: {
+            product: true
+          }
+        }
+      }
+    });
+
+    return sendOk(reply, toReservationDto(updated));
   });
 
   app.patch("/:id/status", async (request, reply) => {
@@ -195,6 +324,45 @@ export async function registerReservationRoutes(app: FastifyInstance): Promise<v
     });
 
     return sendOk(reply, toReservationDto(updated));
+  });
+
+  app.patch("/:id/payment", async (request, reply) => {
+    const params = idParamsSchema.parse(request.params);
+    const input = updateReservationPaymentSchema.parse(request.body);
+    const existing = await findReservationById(app, params.id);
+
+    if (!existing) {
+      throw new HttpError(404, "RESERVATION_NOT_FOUND", "Reservation not found");
+    }
+
+    const updated = await app.prisma.reservation.update({
+      where: { id: params.id },
+      data: {
+        isPaid: input.isPaid
+      },
+      include: {
+        items: {
+          include: {
+            product: true
+          }
+        }
+      }
+    });
+
+    return sendOk(reply, toReservationDto(updated));
+  });
+
+  app.delete("/:id", async (request, reply) => {
+    const params = idParamsSchema.parse(request.params);
+    const existing = await findReservationById(app, params.id);
+
+    if (!existing) {
+      throw new HttpError(404, "RESERVATION_NOT_FOUND", "Reservation not found");
+    }
+
+    await app.prisma.reservation.delete({ where: { id: params.id } });
+
+    return sendOk(reply, { deleted: true });
   });
 
   app.get("/availability/:date/:productId", async (request, reply) => {

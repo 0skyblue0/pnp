@@ -176,7 +176,7 @@ describe("daily log discard route", () => {
         productId: 1,
         date: new Date("2026-06-03T00:00:00.000Z"),
         sequence: 1,
-        stockoutAt: expect.any(Date),
+        stockoutAt: expect.any(Date) as Date,
         inquiryAfterStockout: null,
         discardQty: 4
       },

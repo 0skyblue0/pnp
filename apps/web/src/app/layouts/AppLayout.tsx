@@ -1,76 +1,101 @@
-import {
-  Bell,
-  CalendarClock,
-  ClipboardList,
-  Home,
-  MessageSquarePlus,
-  Settings
-} from "lucide-react";
+import { Bell } from "lucide-react";
 import { NavLink, Outlet } from "react-router-dom";
 
 const navItems = [
-  { to: "/home", label: "홈", icon: Home },
-  { to: "/daily-log/today", label: "일일 운영", icon: ClipboardList },
-  { to: "/response", label: "손님 반응", icon: MessageSquarePlus },
-  { to: "/reservation", label: "예약", icon: CalendarClock },
-  { to: "/staff", label: "관리", icon: Settings }
+  { to: "/home", label: "홈" },
+  { to: "/daily-log/today", label: "일일 운영" },
+  { to: "/response", label: "손님 반응" },
+  { to: "/reservation", label: "예약" },
+  { to: "/prepaid-ledger", label: "선결제 장부" },
+  { to: "/staff", label: "관리" }
 ];
 
+function todayLabel() {
+  const now = new Date();
+  const weekday = new Intl.DateTimeFormat("ko-KR", { weekday: "short" }).format(now);
+  const dotted = `${now.getFullYear()}.${String(now.getMonth() + 1).padStart(2, "0")}.${String(
+    now.getDate()
+  ).padStart(2, "0")}`;
+
+  return `${dotted} (${weekday})`;
+}
+
 export function AppLayout() {
+  const dateText = todayLabel();
+
   return (
-    <div className="h-screen overflow-hidden bg-paper text-ink">
-      <div className="grid h-full min-h-0 grid-cols-1 lg:grid-cols-[232px_1fr]">
-        <aside className="fixed inset-x-0 bottom-0 z-30 border-t border-white/80 bg-cream/95 shadow-[0_-12px_36px_rgba(80,52,31,0.16)] backdrop-blur-xl lg:static lg:min-h-0 lg:overflow-y-auto lg:border-r lg:border-t-0 lg:bg-cream/90 lg:shadow-[18px_0_48px_rgba(80,52,31,0.10)]">
-          <div className="hidden h-[72px] items-center justify-center border-b border-latte/70 px-3 lg:flex lg:justify-start lg:px-4">
-            <div className="grid h-11 w-11 place-items-center rounded-control bg-gradient-to-br from-cocoa via-bread to-amber text-base font-bold text-white shadow-elegant ring-1 ring-white/40">
-              P
-            </div>
-            <span className="ml-3 hidden text-lg font-bold tracking-[-0.025em] text-cocoa lg:inline">
-              PnP 운영
+    <div className="min-h-screen bg-paper px-3 py-5 text-ink sm:px-6 sm:py-8 lg:px-10 lg:py-11">
+      <div className="mx-auto mb-5 w-full max-w-[1180px]">
+        <p className="text-[12.5px] font-semibold uppercase tracking-[0.03em] text-muted">
+          폴앤폴리나 · 직원 관리 시스템
+        </p>
+        <h1 className="mt-1 text-[22px] font-bold tracking-[-0.02em] text-ink">
+          실사용 프로토타입 — 상단 네비게이션형
+        </h1>
+      </div>
+
+      <div className="mx-auto flex min-h-[820px] w-full max-w-[1180px] flex-col overflow-hidden rounded-[20px] border border-latte bg-cream shadow-[0_24px_60px_rgba(43,38,34,0.18)]">
+        <header className="flex shrink-0 flex-col gap-3 border-b border-latte bg-white px-4 py-3 sm:px-7 lg:h-[68px] lg:flex-row lg:items-center lg:gap-7 lg:py-0">
+          <NavLink to="/home" className="shrink-0" aria-label="Paul & Paulina 홈" title="홈으로 이동">
+            <span className="block font-serif text-[19px] font-bold tracking-[0.01em] text-ink">
+              Paul&amp;Paulina
             </span>
-          </div>
-          <nav className="grid grid-cols-5 gap-1 p-1.5 lg:flex lg:flex-col lg:gap-2 lg:p-3">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              return (
-                <NavLink
-                  key={item.to}
-                  to={item.to}
-                  end={false}
-                  className={({ isActive }) =>
-                    [
-                      "flex min-h-12 min-w-0 flex-col items-center justify-center rounded-control px-1 text-[11px] font-bold transition lg:min-h-11 lg:flex-row lg:justify-start lg:px-3 lg:text-sm",
-                      isActive
-                        ? "bg-gradient-to-r from-cocoa to-bread text-white shadow-elegant ring-1 ring-white/30"
-                        : "text-cocoa/80 hover:bg-white/90 hover:text-cocoa hover:shadow-control"
-                    ].join(" ")
-                  }
-                  title={item.label}
-                >
-                  <Icon className="h-5 w-5 shrink-0" aria-hidden="true" />
-                  <span className="mt-1 truncate lg:ml-3 lg:mt-0">{item.label}</span>
-                </NavLink>
-              );
-            })}
+            <span className="mt-0.5 block text-[10px] text-muted">운영 시스템</span>
+          </NavLink>
+
+          <nav className="flex min-w-0 flex-1 gap-1 overflow-x-auto lg:justify-center" aria-label="주요 메뉴">
+            {navItems.map((item) => (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                end={false}
+                className={({ isActive }) =>
+                  [
+                    "relative shrink-0 rounded-control px-4 py-2 text-[13px] font-semibold transition",
+                    isActive
+                      ? "from-cocoa bg-bread text-white"
+                      : "text-[#5c5548] hover:bg-cream hover:text-ink"
+                  ].join(" ")
+                }
+              >
+                {item.label}
+              </NavLink>
+            ))}
           </nav>
-        </aside>
-        <div className="flex min-h-0 min-w-0 flex-col">
-          <header className="flex h-16 shrink-0 items-center justify-between border-b border-[#4d2c1a]/50 bg-gradient-to-r from-[#5f3822] via-[#7a4a2c] to-[#5a321d] px-4 shadow-sm lg:h-[72px] lg:px-7">
-            <div className="min-w-0 truncate font-serif text-2xl font-normal tracking-[-0.01em] text-white drop-shadow-sm sm:text-3xl">
-              Paul &amp; Paulina
-            </div>
+
+          <div className="flex shrink-0 items-center justify-between gap-3 sm:justify-start">
+            <span className="text-xs text-muted">{dateText}</span>
             <NavLink
               to="/notification"
-              className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-control border border-latte/80 bg-white/95 text-cocoa shadow-control transition hover:-translate-y-0.5 hover:border-bread/50 hover:bg-white hover:shadow-elegant"
+              className={({ isActive }) =>
+                [
+                  "relative hidden rounded-control px-3 py-2 text-[13px] font-semibold transition sm:inline-flex",
+                  isActive
+                    ? "from-cocoa bg-bread text-white"
+                    : "text-[#5c5548] hover:bg-cream hover:text-ink"
+                ].join(" ")
+              }
               title="알림"
             >
-              <Bell className="h-5 w-5" aria-hidden="true" />
+              알림
+              <span className="absolute right-0 top-0 grid h-4 w-4 place-items-center rounded-full bg-red text-[9px] font-bold text-white">
+                3
+              </span>
             </NavLink>
-          </header>
-          <main className="min-h-0 min-w-0 flex-1 overflow-y-auto px-3 py-4 pb-24 sm:px-4 lg:p-7">
-            <Outlet />
-          </main>
-        </div>
+            <NavLink
+              to="/notification"
+              className="grid h-8 w-8 place-items-center rounded-full bg-[#F4E3D8] text-xs font-bold text-cocoa transition hover:bg-[#ead3c5]"
+              title="알림"
+            >
+              <Bell className="h-4 w-4 sm:hidden" aria-hidden="true" />
+              <span className="hidden sm:inline">김</span>
+            </NavLink>
+          </div>
+        </header>
+
+        <main className="min-h-0 flex-1 overflow-y-auto bg-cream px-4 py-7 sm:px-7 lg:px-9 lg:py-7">
+          <Outlet />
+        </main>
       </div>
     </div>
   );

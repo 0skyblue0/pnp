@@ -1,4 +1,13 @@
-import { Bell, CalendarDays, CheckCircle2, Target, TrendingUp } from "lucide-react";
+import {
+  Bell,
+  CalendarDays,
+  CheckCircle2,
+  ClipboardList,
+  MessageSquareText,
+  PackageCheck,
+  Target,
+  TrendingUp
+} from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 
@@ -31,6 +40,15 @@ type AnnualGoalNoticeDto = {
   note: string;
 };
 
+type ReservationDto = {
+  id: string;
+  status: "PENDING" | "READY" | "COMPLETED" | "NO_SHOW" | "CANCELED";
+};
+
+type ResponseDto = {
+  id: string;
+};
+
 type ScheduleTone = "launch" | "close" | "notice";
 
 type AnnualScheduleItem = {
@@ -60,6 +78,12 @@ type AnnualGoalNotice = {
   note: string;
 };
 
+const goalNoticeCategoryLabels: Record<AnnualGoalNoticeCategory, string> = {
+  sales: "매출 목표",
+  operation: "운영 목표",
+  staff: "직원 공지"
+};
+
 const monthNames = [
   "1월",
   "2월",
@@ -76,6 +100,13 @@ const monthNames = [
 ];
 
 const weekdayLabels = ["일", "월", "화", "수", "목", "금", "토"];
+
+function hasSavedDailyOperation(date: string): boolean {
+  if (typeof window === "undefined") {
+    return false;
+  }
+  return window.localStorage.getItem(`pnp:daily-operation-draft:${date}`) !== null;
+}
 
 function toAnnualGoalNotice(item: AnnualGoalNoticeDto): AnnualGoalNotice {
   return {
@@ -184,6 +215,10 @@ export function HomePage() {
   const [detailScheduleKey, setDetailScheduleKey] = useState<string | null>(null);
   const [detailGoalNoticeKey, setDetailGoalNoticeKey] = useState<string | null>(null);
   const [notifications, setNotifications] = useState<NotificationDto[]>([]);
+  const [todayReservationCount, setTodayReservationCount] = useState(0);
+  const [pendingReservationCount, setPendingReservationCount] = useState(0);
+  const [todayResponseCount, setTodayResponseCount] = useState(0);
+  const [dailyOperationSaved, setDailyOperationSaved] = useState(() => hasSavedDailyOperation(date));
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -343,11 +378,35 @@ export function HomePage() {
     }
   }, []);
 
+  const loadTodayOverview = useCallback(async () => {
+    setDailyOperationSaved(hasSavedDailyOperation(date));
+    try {
+      const [reservationEnvelope, responseEnvelope] = await Promise.all([
+        apiGet<ListEnvelope<ReservationDto>>(`/reservation?from=${date}&to=${date}`),
+        apiGet<ListEnvelope<ResponseDto>>(`/response?from=${date}&to=${date}`)
+      ]);
+
+      if (!reservationEnvelope.error) {
+        const reservations = reservationEnvelope.data.items;
+        setTodayReservationCount(reservations.length);
+        setPendingReservationCount(
+          reservations.filter((reservation) => reservation.status !== "COMPLETED").length
+        );
+      }
+      if (!responseEnvelope.error) {
+        setTodayResponseCount(responseEnvelope.data.items.length);
+      }
+    } catch {
+      // 홈의 오늘 할 일은 보조 정보이므로 일부 API가 실패해도 화면 전체를 막지 않습니다.
+    }
+  }, [date]);
+
   useEffect(() => {
     void loadScheduleNotifications();
     void loadAnnualSchedule();
     void loadAnnualGoalNotices();
-  }, [loadAnnualGoalNotices, loadAnnualSchedule, loadScheduleNotifications]);
+    void loadTodayOverview();
+  }, [loadAnnualGoalNotices, loadAnnualSchedule, loadScheduleNotifications, loadTodayOverview]);
 
   useEffect(() => {
     if (!detailScheduleKey) {
@@ -585,20 +644,159 @@ export function HomePage() {
           </button>
         </div>
         <div className="rounded-control bg-cream/70 p-3">
-          <p className="text-sm font-bold text-cocoa">{detailGoalNotice.title}</p>
-          <p className="mt-2 text-2xl font-bold tracking-[-0.03em] text-ink">
-            {detailGoalNotice.value}
+          <p className="text-xs font-bold text-cocoa">
+            {goalNoticeCategoryLabels[detailGoalNotice.category]}
           </p>
+          <p className="mt-1 text-lg font-bold text-ink">{detailGoalNotice.title}</p>
+          <dl className="mt-3 grid gap-2 text-sm leading-6">
+            <div>
+              <dt className="font-bold text-cocoa">공지 내용</dt>
+              <dd className="text-ink">{detailGoalNotice.value || "-"}</dd>
+            </div>
+          </dl>
           {detailGoalNotice.note ? (
-            <p className="mt-2 text-sm leading-6 text-muted">{detailGoalNotice.note}</p>
+            <div className="mt-3 rounded-control border border-latte bg-white px-3 py-2">
+              <p className="text-xs font-bold text-cocoa">공지 메모</p>
+              <p className="mt-1 text-sm leading-6 text-muted">{detailGoalNotice.note}</p>
+            </div>
           ) : null}
         </div>
       </div>
     );
   }
 
+  const todayTasks = [
+    {
+      title: "일일 운영",
+      value: dailyOperationSaved ? "작성 완료" : "작성 전",
+      note: dailyOperationSaved ? "오늘 마감 기록이 저장되었습니다." : "매출·제품·점검 내용을 저장해 주세요.",
+      to: "/daily-log/today",
+      icon: ClipboardList,
+      isUrgent: !dailyOperationSaved
+    },
+    {
+      title: "오늘 예약",
+      value: `${pendingReservationCount}건 대기`,
+      note: `전체 ${todayReservationCount}건 / 픽업완료 ${todayReservationCount - pendingReservationCount}건`,
+      to: "/reservation?view=list",
+      icon: PackageCheck,
+      isUrgent: pendingReservationCount > 0
+    },
+    {
+      title: "손님 반응",
+      value: `${todayResponseCount}건 기록`,
+      note: todayResponseCount > 0 ? "오늘 들은 손님 반응이 저장되었습니다." : "칭찬·불만·문의 한 줄이라도 남겨두면 좋아요.",
+      to: "/response",
+      icon: MessageSquareText,
+      isUrgent: todayResponseCount === 0
+    }
+  ];
+
   return (
-    <div className="mx-auto grid max-w-7xl gap-4">
+    <div className="mx-auto grid max-w-none gap-4">
+      <section className="min-w-0">
+        <div className="mb-5 flex items-baseline justify-between gap-3">
+          <div>
+            <h2 className="text-[19px] font-bold tracking-[-0.015em] text-ink">안녕하세요, 김도현님</h2>
+          </div>
+          <span className="text-[12.5px] text-muted">{date}</span>
+        </div>
+        <div className="grid gap-3 md:grid-cols-3">
+          {todayTasks.map((task) => {
+            const Icon = task.icon;
+            return (
+              <Link
+                key={task.title}
+                to={task.to}
+                className="min-h-[92px] rounded-panel border border-latte bg-white px-[18px] py-4 shadow-none transition hover:border-bread"
+              >
+                <span className="flex items-center justify-between gap-2">
+                  <span className="text-[11.5px] font-medium text-muted">{task.title}</span>
+                  <Icon className="hidden h-5 w-5 text-bread" aria-hidden="true" />
+                </span>
+                <span className="mt-2 block text-[19px] font-bold text-ink">{task.value}</span>
+                <span className="mt-1 block text-[10.5px] leading-5 text-muted">{task.note}</span>
+              </Link>
+            );
+          })}
+        </div>
+      </section>
+
+      <section className="grid gap-3 lg:grid-cols-[1.12fr_0.88fr]">
+        <div className="rounded-panel bg-bread px-5 py-[18px] text-white">
+          <p className="text-[11.5px] opacity-85">7월 매출 목표</p>
+          <p className="mt-1 text-base font-bold">4,800만원 중 오늘 목표 확인</p>
+          <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-white/25">
+            <div className="h-full w-[48%] rounded-full bg-white" />
+          </div>
+        </div>
+        <div className="rounded-panel border border-latte bg-white px-5 py-[18px]">
+          <p className="text-[11.5px] text-muted">직원 공지</p>
+          <p className="mt-2 text-[13px] leading-6 text-ink">
+            {allGoalNotices.find((notice) => notice.category === "staff")?.value ||
+              "마감 재고와 예약 픽업 시간을 함께 확인해주세요."}
+          </p>
+        </div>
+      </section>
+
+      <section className="grid gap-3 lg:grid-cols-2">
+        <div className="rounded-panel border border-latte bg-white px-5 py-4">
+          <p className="mb-3 text-[11.5px] font-semibold uppercase tracking-[0.03em] text-muted">
+            연간 스케줄
+          </p>
+          <div className="divide-y divide-[#F1EAE0]">
+            {allScheduleItems.slice(0, 4).map((item) => (
+              <div
+                key={scheduleItemKey(item)}
+                className="grid grid-cols-[3.5rem_2.8rem_1fr] items-center gap-2 py-2.5 text-[12.5px]"
+              >
+                <span className="text-[11px] font-bold text-muted">
+                  {String(item.month).padStart(2, "0")}.{String(item.day).padStart(2, "0")}
+                </span>
+                <span className="rounded-full bg-[#F4E3D8] px-2 py-0.5 text-center text-[10.5px] text-cocoa">
+                  {scheduleBadgeLabel(item.tone)}
+                </span>
+                <span className="truncate text-ink">{item.title} 일정</span>
+              </div>
+            ))}
+            {allScheduleItems.length === 0 ? (
+              <div className="py-8 text-center text-sm text-muted">등록된 스케줄 없음</div>
+            ) : null}
+          </div>
+        </div>
+
+        <div className="rounded-panel border border-latte bg-white px-5 py-4">
+          <p className="mb-3 text-[11.5px] font-semibold uppercase tracking-[0.03em] text-muted">
+            알림 ({notifications.length}건)
+          </p>
+          <div className="divide-y divide-[#F1EAE0]">
+            {notifications.slice(0, 3).map((notification) => (
+              <Link
+                key={notification.id}
+                to={notification.link ?? "/notification"}
+                className="flex items-start gap-2 py-2.5 text-xs leading-5 text-cocoa"
+              >
+                <span
+                  className={[
+                    "mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full",
+                    notification.severity === "CRITICAL"
+                      ? "bg-red"
+                      : notification.severity === "WARN"
+                        ? "bg-amber"
+                        : "bg-bread"
+                  ].join(" ")}
+                />
+                <span>{notification.title}</span>
+              </Link>
+            ))}
+            {notifications.length === 0 ? (
+              <div className="py-8 text-center text-sm text-muted">알림 없음</div>
+            ) : null}
+          </div>
+        </div>
+      </section>
+
+      <div className="sr-only">
       <section className="panel min-w-0">
         <div className="mb-4 flex flex-wrap gap-2" role="tablist" aria-label="홈 화면 선택">
           {(
@@ -625,7 +823,7 @@ export function HomePage() {
           ))}
         </div>
         {activeHomeTab === "goal" ? (
-          <section className="panel min-w-0">
+          <section className="min-w-0">
             <div className="panel-heading">
               <div>
                 <p className="text-sm text-muted">직원 공통 확인사항</p>
@@ -640,13 +838,15 @@ export function HomePage() {
                   key={goalNoticeKey(notice)}
                   className="rounded-control border border-latte bg-cream/70 p-4 text-left transition hover:border-bread hover:bg-white"
                   type="button"
-                  aria-label={`${notice.title} 상세 보기`}
+                  aria-label={`${notice.title} ${notice.value} 상세 보기`}
                   onClick={() => setDetailGoalNoticeKey(goalNoticeKey(notice))}
                 >
-                  <span className="flex items-center gap-2 text-sm font-bold text-cocoa">
+                  <span className="flex items-center gap-2 text-xs font-bold text-cocoa">
                     <TrendingUp className="h-4 w-4" aria-hidden="true" />
-                    {notice.title}
+                    {goalNoticeCategoryLabels[notice.category]}
                   </span>
+                  <span className="mt-2 block text-base font-bold text-ink">{notice.title}</span>
+                  <span className="mt-1 block text-sm leading-6 text-muted">{notice.value}</span>
                 </button>
               ))}
             </div>
@@ -897,6 +1097,8 @@ export function HomePage() {
           ) : null}
         </div>
       </section>
+      </div>
     </div>
   );
 }
+

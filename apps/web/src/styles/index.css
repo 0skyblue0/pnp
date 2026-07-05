@@ -9,8 +9,8 @@
     BlinkMacSystemFont,
     "Segoe UI",
     sans-serif;
-  color: #2b2118;
-  background: #f8f3ea;
+  color: #2b2621;
+  background: #ede7df;
   font-feature-settings: "cv01", "ss03";
   text-rendering: optimizeLegibility;
 }
@@ -23,10 +23,7 @@ body {
   margin: 0;
   min-width: 320px;
   overflow-x: hidden;
-  background:
-    radial-gradient(circle at 10% 0%, rgba(138, 90, 58, 0.18), transparent 30rem),
-    radial-gradient(circle at 90% 12%, rgba(231, 215, 197, 0.72), transparent 28rem),
-    linear-gradient(135deg, #fffdf8 0%, #f7efe4 46%, #efe0cf 100%);
+  background: #ede7df;
 }
 
 #root {
@@ -40,7 +37,17 @@ body {
 }
 
 * {
-  scrollbar-color: rgba(138, 90, 58, 0.36) rgba(255, 253, 248, 0.58);
+  scrollbar-color: #d8cdbd #f7f3ec;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #d8cdbd;
+  border-radius: 8px;
 }
 
 @layer base {
@@ -61,24 +68,28 @@ body {
 
 @layer components {
   .panel {
-    @apply min-w-0 rounded-panel border border-white/80 bg-cream/90 p-4 shadow-panel ring-1 ring-cocoa/10 backdrop-blur lg:p-5;
+    @apply min-w-0 rounded-panel border border-latte bg-white p-4 shadow-none lg:p-5;
   }
 
   .panel-heading {
-    @apply mb-4 flex items-start justify-between gap-3 border-b border-latte/70 pb-3;
+    @apply mb-4 flex items-start justify-between gap-3 border-b border-latte pb-3;
   }
 
   .section-title {
-    @apply text-lg font-bold tracking-[-0.015em] text-ink;
+    @apply text-[19px] font-bold tracking-[-0.015em] text-ink;
   }
 
   .field-label {
-    @apply mb-2 block text-sm font-bold tracking-[-0.005em] text-cocoa;
+    @apply mb-1.5 block text-[11px] font-medium tracking-[-0.005em] text-muted;
   }
 
   .input {
-    @apply min-h-11 max-w-full rounded-control border border-latte/90 bg-white/95 px-3 py-2 text-base font-medium text-ink shadow-sm outline-none transition placeholder:text-muted/60 hover:border-bread/50 focus:border-bread focus:bg-white focus:shadow-control focus:ring-4 focus:ring-bread/15;
+    @apply min-h-10 max-w-full rounded-control border border-latte bg-white px-3 py-2 text-[13px] font-medium text-ink shadow-none outline-none transition placeholder:text-muted/60 hover:border-[#d8cdbd] focus:border-bread focus:bg-white focus:ring-2 focus:ring-bread/15;
   }
+}
+
+.font-serif {
+  font-family: "Noto Serif KR", serif;
 }
 
 input[type="date"],

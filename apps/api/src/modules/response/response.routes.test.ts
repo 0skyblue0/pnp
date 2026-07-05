@@ -101,6 +101,7 @@ describe("response suggestion route", () => {
       expect(requestBody.model).toBe("pnp-response-classifier");
       expect(requestBody.temperature).toBe(0);
       expect(requestBody.messages[0]?.content).toContain("고객 반응 분류 전용 프로필");
+      expect(requestBody.messages[0]?.content).toContain("제품, 서비스·응대, 구매·운영, 손님경험, 기타");
       expect(requestBody.messages.at(-1)?.content).toContain("[PHONE]");
       expect(requestBody.messages.at(-1)?.content).not.toContain("010-1234-5678");
 
@@ -188,7 +189,37 @@ describe("response suggestion route", () => {
     expect(body).toMatchObject({
       error: {
         code: "HERMES_SUGGESTION_FAILED",
-        message: "AI 추천에 실패했습니다. 잠시 후 다시 시도하거나 직접 분류하세요."
+        message: "AI 분류 API 실행에 실패했습니다. 관리자에게 연결 상태를 확인해 주세요."
+      }
+    });
+
+    await app.close();
+  });
+
+  it("stops with an error instead of deterministic fallback when Hermes is not configured", async () => {
+    const prisma = buildPrismaMock();
+    prisma.responseCriterion.findMany.mockResolvedValue([
+      { id: 2000, parentId: null, depth: 1, name: "제품", sortOrder: 1, isActive: true }
+    ]);
+
+    const app = Fastify({ logger: false });
+    decorateTestConfig(app, { HERMES_API_BASE_URL: "", HERMES_API_KEY: "" });
+    app.decorate("prisma", prisma as never);
+    await app.register(registerResponseRoutes, { prefix: "/response" });
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/response/suggest",
+      payload: { fullText: "청주에서 방문한 손님 계셨습니다." }
+    });
+
+    expect(response.statusCode).toBe(503);
+    const body = response.json<{ error?: { code?: string; message?: string }; data?: unknown }>();
+    expect(body).toMatchObject({
+      data: null,
+      error: {
+        code: "HERMES_NOT_CONFIGURED",
+        message: "AI 분류 API가 설정되지 않았습니다. 관리자에게 연결 상태를 확인해 주세요."
       }
     });
 

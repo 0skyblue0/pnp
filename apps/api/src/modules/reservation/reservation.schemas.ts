@@ -3,6 +3,7 @@ import { z } from "zod";
 export const dateOnlySchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 export const reservationStatusSchema = z.enum(["PENDING", "COMPLETED"]);
 export const reservationPurposeSchema = z.enum(["GIFT", "SELF", "UNKNOWN"]);
+export const reservationCuttingOptionSchema = z.enum(["NONE", "HALF", "SLICE", "HALF_SLICE"]);
 
 const productReferenceShape = {
   productId: z.coerce.number().int().positive().optional(),
@@ -19,7 +20,8 @@ function hasProductReference(value: {
 export const reservationItemSchema = z
   .object({
     ...productReferenceShape,
-    quantity: z.coerce.number().int().min(1).max(999)
+    quantity: z.coerce.number().int().min(1).max(999),
+    cuttingOption: reservationCuttingOptionSchema.default("NONE")
   })
   .refine(hasProductReference, {
     message: "productId or productName is required"
@@ -30,15 +32,32 @@ export const createReservationSchema = z.object({
   customerName: z.string().trim().min(1).max(80),
   contactPhone: z.string().trim().min(1).max(40),
   pickupAt: z.string().trim().min(1),
+  isPaid: z.coerce.boolean().default(false),
+  isCut: z.coerce.boolean().default(false),
+  isBag: z.coerce.boolean().default(false),
   purpose: reservationPurposeSchema.default("UNKNOWN"),
   allergyNote: z.string().trim().max(2000).optional(),
   memo: z.string().trim().max(2000).optional(),
   items: z.array(reservationItemSchema).min(1).max(20)
 });
 
+export const updateReservationSchema = createReservationSchema.partial().extend({
+  items: z.array(reservationItemSchema).min(1).max(20).optional()
+});
+
 export const updateReservationStatusSchema = z.object({
   status: reservationStatusSchema,
   cancelReason: z.string().trim().max(2000).optional()
+});
+
+export const updateReservationPaymentSchema = z.object({
+  isPaid: z.coerce.boolean()
+});
+
+export const upsertRegularCustomerSchema = z.object({
+  customerName: z.string().trim().min(1).max(80),
+  contactPhone: z.string().trim().max(40).optional(),
+  fixedMemo: z.string().trim().min(1).max(2000)
 });
 
 export const listReservationQuerySchema = z.object({

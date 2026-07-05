@@ -1,6 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { RefreshCcw, Save, Sparkles } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 
 import { apiGet, apiPost } from "../../shared/api/client.js";
@@ -35,6 +35,13 @@ function pathLabel(path: CriterionPathItem[]): string {
   return criterionPathLabel(path);
 }
 
+const responseExamples = [
+  "빵이 너무 딱딱하다고 하심",
+  "청주에서 일부러 방문했다고 하심",
+  "직원이 친절하다고 하심",
+  "소금빵이 없어서 아쉬워하심"
+];
+
 export function ResponseEntryPage({ embedded = false }: { embedded?: boolean } = {}) {
   const {
     register,
@@ -63,6 +70,7 @@ export function ResponseEntryPage({ embedded = false }: { embedded?: boolean } =
   const [aiSuggestionPath, setAiSuggestionPath] = useState<CriterionPathItem[] | null>(null);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const dateInputRef = useRef<HTMLInputElement | null>(null);
 
   const selectedCriterionId = watch("criterionId");
   const fullText = watch("fullText");
@@ -82,6 +90,22 @@ export function ResponseEntryPage({ embedded = false }: { embedded?: boolean } =
         .filter((criterion): criterion is ResponseCriterionDto => criterion !== undefined),
     [criteria, selectedMajorId, selectedMiddleId, selectedMinorId]
   );
+  const dateField = register("date");
+
+  function openDatePicker() {
+    const input = dateInputRef.current;
+    if (!input) {
+      return;
+    }
+    input.focus();
+    if (typeof input.showPicker === "function") {
+      try {
+        input.showPicker();
+      } catch {
+        // 이미 열린 상태이거나 브라우저가 직접 클릭만 허용하는 경우에는 기본 focus만 유지합니다.
+      }
+    }
+  }
 
   const loadCriteria = useCallback(async () => {
     setIsLoadingCriteria(true);
@@ -139,6 +163,11 @@ export function ResponseEntryPage({ embedded = false }: { embedded?: boolean } =
     setValue("criterionId", criterionId, { shouldValidate: true });
   }
 
+  function stopSuggestionWithAlert(message: string) {
+    setSaveError(message);
+    globalThis.alert(message);
+  }
+
   async function suggestWithAi() {
     const text = fullText?.trim() ?? "";
     if (!text) {
@@ -159,7 +188,7 @@ export function ResponseEntryPage({ embedded = false }: { embedded?: boolean } =
       );
 
       if (envelope.error) {
-        setSaveError(envelope.error.message);
+        stopSuggestionWithAlert(envelope.error.message);
         return;
       }
 
@@ -169,7 +198,7 @@ export function ResponseEntryPage({ embedded = false }: { embedded?: boolean } =
       setValue("llmAssisted", true, { shouldValidate: true });
       setSaveMessage(`AI 추천 적용됨: ${pathLabel(envelope.data.criterionPath)}`);
     } catch (unknownError) {
-      setSaveError(
+      stopSuggestionWithAlert(
         unknownError instanceof Error ? unknownError.message : "AI 추천을 가져오지 못했습니다."
       );
     } finally {
@@ -215,7 +244,7 @@ export function ResponseEntryPage({ embedded = false }: { embedded?: boolean } =
             <p className="text-sm text-muted">입력</p>
             <h2 className="section-title">손님 반응 입력</h2>
             <p className="mt-1 text-sm text-muted">
-              손님이 말한 내용을 그대로 적고 AI 분류하기를 누른 뒤 직원이 확인해서 저장합니다.
+              칭찬, 불만, 문의처럼 나중에 매장 개선에 쓸 손님 말을 한 줄로 남깁니다.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -237,6 +266,11 @@ export function ResponseEntryPage({ embedded = false }: { embedded?: boolean } =
         </div>
 
         <div className="grid gap-5">
+          <div className="grid gap-2 rounded-control border border-latte bg-cream/50 p-3 text-sm text-cocoa sm:grid-cols-3">
+            <span className="font-bold">1. 손님이 한 말 입력</span>
+            <span className="font-bold">2. AI 분류 후 직원 확인</span>
+            <span className="font-bold">3. 맞으면 저장</span>
+          </div>
           {saveMessage ? (
             <div className="rounded-control border border-green/20 bg-green/10 px-3 py-2 text-sm font-semibold text-green">
               {saveMessage}
@@ -248,9 +282,17 @@ export function ResponseEntryPage({ embedded = false }: { embedded?: boolean } =
             </div>
           ) : null}
 
-          <label className="grid max-w-[12rem] gap-2">
+          <label className="grid max-w-[12rem] cursor-pointer gap-2" onClick={openDatePicker}>
             <span className="field-label">날짜</span>
-            <input className="input w-48 max-w-full" type="date" {...register("date")} />
+            <input
+              className="input w-48 max-w-full cursor-pointer"
+              type="date"
+              {...dateField}
+              ref={(element) => {
+                dateField.ref(element);
+                dateInputRef.current = element;
+              }}
+            />
           </label>
 
           <div className="grid gap-4">
@@ -334,11 +376,30 @@ export function ResponseEntryPage({ embedded = false }: { embedded?: boolean } =
             ) : null}
           </label>
 
+          <div className="grid gap-2">
+            <span className="field-label">예시 문구</span>
+            <div className="flex flex-wrap gap-2">
+              {responseExamples.map((example) => (
+                <button
+                  key={example}
+                  className="rounded-full border border-latte bg-white px-3 py-1.5 text-xs font-bold text-cocoa hover:border-bread"
+                  type="button"
+                  onClick={() => {
+                    setValue("fullText", example, { shouldValidate: true });
+                    setSaveError(null);
+                  }}
+                >
+                  {example}
+                </button>
+              ))}
+            </div>
+          </div>
+
           <label className="grid gap-2">
             <span className="field-label">손님 반응 내용</span>
             <textarea
               className="input min-h-32 resize-y"
-              placeholder="예: 청주에서 방문한 손님 계셨습니다."
+              placeholder="예: 청주에서 방문한 손님 계셨습니다. / 바게트가 딱딱하다고 하셨습니다."
               {...register("fullText")}
             />
           </label>
@@ -347,3 +408,5 @@ export function ResponseEntryPage({ embedded = false }: { embedded?: boolean } =
     </form>
   );
 }
+
+

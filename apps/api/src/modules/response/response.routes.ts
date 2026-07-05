@@ -264,15 +264,22 @@ type ResponseSuggestion = {
 const hermesSystemPrompt = [
   "당신은 고객 반응 분류 전용 프로필입니다.",
   "오직 제공된 등록 기준 목록 안에서만 criterionId를 하나 고릅니다.",
-  "대분류는 불만, 손님경험, 운영보고, 기타 중 하나입니다.",
-  "예: '청주에서 방문한 손님 계셨습니다.'처럼 먼 지역 방문이 언급되면 손님경험 > 일상 > 장거리손님을 우선 검토합니다.",
+  "대분류는 제품, 서비스·응대, 구매·운영, 손님경험, 기타 중 하나입니다.",
+  "불만/칭찬 감정보다 실제 원인을 먼저 고릅니다: 제품 맛·식감·제안은 제품, 응대는 서비스·응대, 품절·수요·객단가·배달·예약은 구매·운영, 유동인구·시간대·가족단위·날씨·장거리·주차는 손님경험입니다.",
+  "예: '청주에서 방문한 손님 계셨습니다.'처럼 먼 지역 방문이 언급되면 손님경험 > 장거리 방문 > 장거리손님을 우선 검토합니다.",
+  "예: '비가 와서 배달 주문이 거의 없었습니다.'는 단맛이 아니라 구매·운영 > 배달·플랫폼 > 배달 주문 적음입니다.",
+  "예: '유동인구가 낮았습니다.'는 기타가 아니라 손님경험 > 방문 시간대 > 유동인구 낮음입니다.",
+  "예: '쌀빵이 있길 희망했습니다.'는 기타가 아니라 제품 > 제품 제안 > 쌀빵/건강빵 요청입니다.",
   "후속 질문, 설명, 작업 제안, 인사말은 절대 하지 않습니다.",
   "응답은 JSON 객체 하나만 반환합니다: {\"criterionId\": number, \"shortSummary\": string, \"reason\": string}.",
   "shortSummary는 한국어 한 줄, 최대 60자입니다.",
-  "불만, 위생, 품절, 제품/서비스 문제는 우선적으로 반영합니다."
+  "위생, 품절, 제품 품질, 서비스 문제는 우선적으로 구체적인 세부 기준까지 반영합니다."
 ].join("\n");
 
-const suggestionFailureMessage = "AI 추천에 실패했습니다. 잠시 후 다시 시도하거나 직접 분류하세요.";
+const suggestionNotConfiguredMessage =
+  "AI 분류 API가 설정되지 않았습니다. 관리자에게 연결 상태를 확인해 주세요.";
+const suggestionFailureMessage =
+  "AI 분류 API 실행에 실패했습니다. 관리자에게 연결 상태를 확인해 주세요.";
 
 function buildCriterionPath(
   criteriaById: Map<number, SuggestCriterion>,
@@ -323,7 +330,8 @@ function buildHermesUserPrompt(input: SuggestResponseInput, criteria: SuggestCri
       rules: [
         "registered_criteria_only",
         "one_line_summary",
-        "complaints_and_product_mentions_first",
+        "choose_operational_root_cause_first",
+        "product_service_purchase_experience_major_categories",
         "json_only"
       ],
       registeredCriteria: criteria.map((criterion) => ({
@@ -339,66 +347,13 @@ function buildHermesUserPrompt(input: SuggestResponseInput, criteria: SuggestCri
   );
 }
 
-function findCriterionByPath(criteria: SuggestCriterion[], pathNames: string[]): SuggestCriterion | undefined {
-  const criteriaById = new Map(criteria.map((criterion) => [criterion.id, criterion]));
-
-  return criteria.find((criterion) => {
-    const path = buildCriterionPath(criteriaById, criterion).map((item) => item.name);
-    return path.length === pathNames.length && path.every((name, index) => name === pathNames[index]);
-  });
-}
-
-function deterministicSuggestion(input: SuggestResponseInput, criteria: SuggestCriterion[]): ResponseSuggestion {
-  const text = input.fullText.replace(/\s+/g, " ").trim();
-  const rules: Array<{ path: string[]; keywords: string[]; summary: string }> = [
-    { path: ["손님경험", "일상", "장거리손님"], keywords: ["청주", "대전", "대구", "부산", "광주", "멀리", "장거리", "타지역", "지방"], summary: "장거리 방문 손님 언급" },
-    { path: ["손님경험", "일상", "칭찬"], keywords: ["칭찬", "맛있", "좋았", "친절", "감사", "만족"], summary: "손님 칭찬 반응" },
-    { path: ["불만", "위생", "이물발견"], keywords: ["이물", "머리카락", "벌레", "이물질"], summary: "위생 이물 관련 불만" },
-    { path: ["불만", "위생", "변질이상"], keywords: ["상했", "변질", "쉰", "냄새", "곰팡"], summary: "변질 이상 관련 불만" },
-    { path: ["불만", "제품", "품절"], keywords: ["품절", "없어서", "재고 없", "매진"], summary: "제품 품절 불만" },
-    { path: ["운영보고", "제품보고", "품절/재고부족"], keywords: ["재고부족", "재고 부족", "부족", "빨리 나감"], summary: "제품 재고 부족 보고" },
-    { path: ["불만", "제품", "맛"], keywords: ["맛", "짜", "달", "싱겁", "시큼", "쓰다"], summary: "제품 맛 관련 반응" },
-    { path: ["불만", "제품", "퀄리티"], keywords: ["딱딱", "질기", "탄", "부서", "퀄리티", "상태"], summary: "제품 퀄리티 관련 반응" },
-    { path: ["불만", "서비스", "응대지연"], keywords: ["기다", "늦", "지연", "대기"], summary: "응대 지연 관련 불만" },
-    { path: ["불만", "서비스", "주문오류"], keywords: ["주문오류", "주문 오류", "잘못", "다른 제품"], summary: "주문 오류 관련 불만" },
-    { path: ["불만", "서비스", "포장불량"], keywords: ["포장", "봉투", "박스"], summary: "포장 관련 반응" },
-    { path: ["불만", "서비스", "누락"], keywords: ["누락", "빠졌", "안 들어"], summary: "상품 누락 관련 불만" },
-    { path: ["불만", "매장환경", "청결"], keywords: ["청결", "더럽", "지저분"], summary: "매장 청결 관련 반응" },
-    { path: ["불만", "매장환경", "동선/대기"], keywords: ["동선", "줄", "혼잡", "대기"], summary: "동선과 대기 관련 반응" },
-    { path: ["불만", "매장환경", "주차/접근"], keywords: ["주차", "접근", "찾기", "위치"], summary: "주차와 접근 관련 반응" },
-    { path: ["손님경험", "제안기타", "신제품"], keywords: ["신제품", "새 제품", "새로운"], summary: "신제품 제안" },
-    { path: ["손님경험", "제안기타", "온라인스토어"], keywords: ["온라인", "스토어", "배송"], summary: "온라인스토어 관련 제안" },
-    { path: ["운영보고", "제품보고", "수요"], keywords: ["찾는 손님", "많이 찾", "수요", "인기"], summary: "제품 수요 보고" },
-    { path: ["운영보고", "제품보고", "문의"], keywords: ["문의", "물어", "언제 나오"], summary: "제품 문의 보고" },
-    { path: ["운영보고", "현상보고", "방문패턴"], keywords: ["방문", "손님 계셨", "손님이 오", "왔습니다"], summary: "방문 패턴 보고" },
-    { path: ["운영보고", "현상보고", "구매패턴"], keywords: ["구매", "사가", "많이 사", "세트"], summary: "구매 패턴 보고" },
-    { path: ["기타", "기타", "기타"], keywords: [], summary: "기타 손님 반응" }
-  ];
-
-  const selectedRule = rules.find((rule) => rule.keywords.some((keyword) => text.includes(keyword))) ?? rules.at(-1);
-  const criterion = selectedRule ? findCriterionByPath(criteria, selectedRule.path) : undefined;
-  const fallbackCriterion = criterion ?? findCriterionByPath(criteria, ["기타", "기타", "기타"]) ?? criteria.at(-1);
-
-  if (!fallbackCriterion) {
-    throw new HttpError(400, "RESPONSE_CRITERION_EMPTY", "등록된 반응 기준이 없습니다.");
-  }
-
-  const criteriaById = new Map(criteria.map((item) => [item.id, item]));
-  return {
-    criterionId: fallbackCriterion.id,
-    criterionPath: buildCriterionPath(criteriaById, fallbackCriterion),
-    shortSummary: (selectedRule?.summary ?? "손님 반응 기록").slice(0, 60),
-    reason: "Hermes API가 설정되지 않아 등록 기준 기반으로 우선 분류했습니다."
-  };
-}
-
 async function requestHermesSuggestion(
   app: FastifyInstance,
   input: SuggestResponseInput,
   criteria: SuggestCriterion[]
 ): Promise<ResponseSuggestion> {
   if (!app.config.HERMES_API_BASE_URL || !app.config.HERMES_API_KEY) {
-    throw new HttpError(503, "HERMES_NOT_CONFIGURED", "Hermes API server is not configured");
+    throw new HttpError(503, "HERMES_NOT_CONFIGURED", suggestionNotConfiguredMessage);
   }
 
   const criteriaById = new Map(criteria.map((criterion) => [criterion.id, criterion]));
@@ -716,14 +671,7 @@ export async function registerResponseRoutes(app: FastifyInstance): Promise<void
       orderBy: [{ depth: "asc" }, { parentId: "asc" }, { sortOrder: "asc" }, { name: "asc" }]
     });
 
-    try {
-      return sendOk(reply, await requestHermesSuggestion(app, input, criteria));
-    } catch (error) {
-      if (error instanceof HttpError && error.code === "HERMES_NOT_CONFIGURED") {
-        return sendOk(reply, deterministicSuggestion(input, criteria));
-      }
-      throw error;
-    }
+    return sendOk(reply, await requestHermesSuggestion(app, input, criteria));
   });
 
   app.post("/", async (request, reply) => {

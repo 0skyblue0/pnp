@@ -715,6 +715,11 @@ export function ManagementPage() {
           </div>
         ) : null}
 
+        <div className="mb-4 rounded-control border border-bread/30 bg-cream/60 px-3 py-3 text-sm leading-6 text-cocoa">
+          관리 탭은 매일 입력하는 곳이 아니라 제품, 직원, 손님 반응 분류, 홈 공지를 깨끗하게 유지하는 기준 정보입니다.
+          테스트처럼 보이는 이름이나 쓰지 않는 항목은 비활성 처리하면 예약·손님 반응 입력에서 실수가 줄어듭니다.
+        </div>
+
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
           <div className="rounded-control border border-stone-200 px-3 py-3">
             <p className="text-sm text-muted">제품</p>

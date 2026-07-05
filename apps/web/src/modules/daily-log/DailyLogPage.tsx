@@ -1,8 +1,9 @@
 import { ClipboardCheck, Save, Trash2 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 
 import { todayInStoreTime } from "../../shared/time/storeTime.js";
 import { Button } from "../../shared/ui/Button.js";
+import { productLineup } from "../../shared/productLineup.js";
 import {
   providedDailyOperationDefaultMonth,
   providedDailyOperationRecords
@@ -11,7 +12,9 @@ import {
 type DailyTab = "basic" | "products" | "sales" | "notes";
 type DailyViewMode = "entry" | "lookup";
 type LookupMode = "date" | "range" | "week" | "month";
+type LookupSortOrder = "desc" | "asc";
 type StaffPeriod = "today" | "tomorrow";
+type MissingDailyItem = { tab: DailyTab; label: string };
 type StaffCategory =
   | "dayOff"
   | "vacation"
@@ -101,50 +104,6 @@ const tabs: Array<{ id: DailyTab; label: string; description: string }> = [
   { id: "notes", label: "메모·점검", description: "매장관리, 직원 특이사항, 위생·시설 점검" }
 ];
 
-const productLineup = [
-  "바게트",
-  "바게트(H)",
-  "화이트바게트",
-  "화이트바게트(H)",
-  "깜빠뉴",
-  "깜빠뉴(H)",
-  "식빵",
-  "식빵(H)",
-  "호밀빵",
-  "호밀빵(H)",
-  "블랙올리브",
-  "허브",
-  "치아바타",
-  "화이트치아바타",
-  "크로와상",
-  "뺑오쇼콜라",
-  "플레인 스콘",
-  "크렌베리 스콘",
-  "브레첼",
-  "스틱브레첼",
-  "버터브레첼",
-  "호밀쇼콜라오렌지",
-  "호밀비트",
-  "호밀후르츠",
-  "구름빵",
-  "무화과호밀스틱",
-  "봄날깜빠뉴",
-  "봄날깜빠뉴(H)",
-  "여름메밀빵",
-  "여름메밀빵(H)",
-  "가을애깜빠뉴",
-  "가을애깜빠뉴(H)",
-  "슈톨렌",
-  "여름파네토네",
-  "파네토네",
-  "햄치즈샌드위치",
-  "치킨샌드위치",
-  "바질치킨",
-  "멜란자네",
-  "수프+샌드위치",
-  "수프+빵"
-];
-
 const manualSoldProducts = new Set(["구름빵", "호밀쇼콜라오렌지", "호밀비트", "호밀후르츠"]);
 
 const defaultChannels: ChannelRow[] = ["선물", "쿠팡이츠", "배민", "제로페이", "택배", "납품"].map(
@@ -218,6 +177,14 @@ function createDefaultDraft(): DailyOperationDraft {
 function numeric(value: string): number {
   const parsed = Number(value.replaceAll(",", ""));
   return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function formatAmountInput(value: string): string {
+  const digits = value.replace(/\D/g, "");
+  if (digits.length === 0) {
+    return "";
+  }
+  return Number(digits).toLocaleString("ko-KR");
 }
 
 function formatCurrency(value: number): string {
@@ -382,9 +349,7 @@ function formatDateInput(date: Date): string {
 
 function weekRange(baseDate: string): { startDate: string; endDate: string } {
   const date = new Date(`${baseDate}T00:00:00`);
-  const day = date.getDay();
-  const mondayOffset = day === 0 ? -6 : 1 - day;
-  const start = addDays(date, mondayOffset);
+  const start = date;
   const end = addDays(start, 6);
   return { startDate: formatDateInput(start), endDate: formatDateInput(end) };
 }
@@ -445,8 +410,77 @@ function percentChange(current: number, previous: number): string {
   return `${sign}${changed.toFixed(1)}%`;
 }
 
+function collectMissingDailyItems(
+  draft: DailyOperationDraft,
+  productRows: ProductRow[]
+): MissingDailyItem[] {
+  const missing: MissingDailyItem[] = [];
+  const requiredDraftFields: Array<{ key: keyof DailyOperationDraft; label: string; tab: DailyTab }> = [
+    { key: "author", label: "작성자", tab: "basic" },
+    { key: "outsideTemp", label: "외부 온도", tab: "basic" },
+    { key: "insideTemp", label: "매장 온도", tab: "basic" },
+    { key: "outsideHumidity", label: "외부 습도", tab: "basic" },
+    { key: "insideHumidity", label: "매장 습도", tab: "basic" },
+    { key: "weather", label: "날씨", tab: "basic" },
+    { key: "posSalesAmount", label: "POS 매출액", tab: "sales" },
+    { key: "posSalesCount", label: "POS 매출건수", tab: "sales" },
+    { key: "firstWorker", label: "첫 근무자", tab: "notes" },
+    { key: "firstWorkerTime", label: "첫 근무 시간", tab: "notes" },
+    { key: "lastWorker", label: "마지막 근무자", tab: "notes" },
+    { key: "lastWorkerTime", label: "마지막 근무 시간", tab: "notes" },
+    { key: "hygieneChecker", label: "위생 확인자", tab: "notes" },
+    { key: "finalChecker", label: "마감 확인자", tab: "notes" }
+  ];
+
+  requiredDraftFields.forEach(({ key, label, tab }) => {
+    if (!String(draft[key]).trim()) {
+      missing.push({ tab, label });
+    }
+  });
+
+  const hasAnyProductInput = productRows.some((row) =>
+    [
+      row.producedQty,
+      row.lossQty,
+      row.tastingQty,
+      row.otherInQty,
+      row.otherOutQty,
+      row.stockQty,
+      row.soldQty
+    ].some((value) => numeric(value) > 0)
+  );
+  if (!hasAnyProductInput) {
+    missing.push({ tab: "products", label: "제품 생산·재고·판매 수량" });
+  }
+
+  return missing;
+}
+
+function focusLabelForMissingItem(item: MissingDailyItem): string | null {
+  const labelMap: Record<string, string> = {
+    "작성자": "작성자",
+    "외부 온도": "외부온도",
+    "매장 온도": "내부온도",
+    "외부 습도": "외부습도",
+    "매장 습도": "내부습도",
+    "날씨": "날씨",
+    "POS 매출액": "POS 매출액",
+    "POS 매출건수": "POS 매출건수",
+    "첫 근무자": "첫 출근자 이름",
+    "첫 근무 시간": "첫 출근자 출근시간",
+    "마지막 근무자": "최종퇴근자 이름",
+    "마지막 근무 시간": "최종퇴근자 퇴근시간",
+    "위생 확인자": "위생 점검자",
+    "마감 확인자": "최종 점검자",
+    "제품 생산·재고·판매 수량": "바게트 생산량"
+  };
+
+  return labelMap[item.label] ?? null;
+}
+
 export function DailyLogPage() {
   const today = todayInStoreTime();
+  const entryPanelRef = useRef<HTMLElement | null>(null);
   const [viewMode, setViewMode] = useState<DailyViewMode>("entry");
   const [activeTab, setActiveTab] = useState<DailyTab>("basic");
   const [draft, setDraft] = useState<DailyOperationDraft>(() => createDefaultDraft());
@@ -463,7 +497,9 @@ export function DailyLogPage() {
   const [lookupStartDate, setLookupStartDate] = useState(today);
   const [lookupEndDate, setLookupEndDate] = useState(today);
   const [lookupMonth, setLookupMonth] = useState(providedDailyOperationDefaultMonth);
+  const [lookupSortOrder, setLookupSortOrder] = useState<LookupSortOrder>("desc");
   const [message, setMessage] = useState<string | null>(null);
+  const [missingItems, setMissingItems] = useState<MissingDailyItem[]>([]);
 
   const channelSales = useMemo(() => summarizeChannels(channelRows), [channelRows]);
   const totalSales = numeric(draft.posSalesAmount) + channelSales.amount;
@@ -487,11 +523,17 @@ export function DailyLogPage() {
   }, [lookupDate, lookupEndDate, lookupMode, lookupMonth, lookupStartDate]);
   const lookupRecords = useMemo(
     () =>
-      savedRecords.filter(
-        (record) =>
-          record.draft.date >= lookupRange.startDate && record.draft.date <= lookupRange.endDate
-      ),
-    [lookupRange.endDate, lookupRange.startDate, savedRecords]
+      savedRecords
+        .filter(
+          (record) =>
+            record.draft.date >= lookupRange.startDate && record.draft.date <= lookupRange.endDate
+        )
+        .sort((left, right) =>
+          lookupSortOrder === "desc"
+            ? right.draft.date.localeCompare(left.draft.date)
+            : left.draft.date.localeCompare(right.draft.date)
+        ),
+    [lookupRange.endDate, lookupRange.startDate, lookupSortOrder, savedRecords]
   );
   const comparisonRange = useMemo(() => previousRange(lookupRange), [lookupRange]);
   const comparisonRecords = useMemo(
@@ -507,6 +549,7 @@ export function DailyLogPage() {
   function updateDraft<K extends keyof DailyOperationDraft>(key: K, value: DailyOperationDraft[K]) {
     setDraft((current) => ({ ...current, [key]: value }));
     setMessage(null);
+    setMissingItems([]);
   }
 
   function updateProductRow(productName: string, key: keyof ProductRow, value: string) {
@@ -514,6 +557,7 @@ export function DailyLogPage() {
       rows.map((row) => (row.productName === productName ? { ...row, [key]: value } : row))
     );
     setMessage(null);
+    setMissingItems([]);
   }
 
   function updateChannelRow(name: string, key: keyof Omit<ChannelRow, "name">, value: string) {
@@ -521,6 +565,7 @@ export function DailyLogPage() {
       rows.map((row) => (row.name === name ? { ...row, [key]: value } : row))
     );
     setMessage(null);
+    setMissingItems([]);
   }
 
   function updateStaffSpecialRow(period: StaffPeriod, category: StaffCategory, value: string) {
@@ -532,9 +577,39 @@ export function DailyLogPage() {
       }
     }));
     setMessage(null);
+    setMissingItems([]);
+  }
+
+  function moveToMissingItem(item: MissingDailyItem) {
+    setViewMode("entry");
+    setActiveTab(item.tab);
+
+    window.setTimeout(() => {
+      entryPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+
+      const focusLabel = focusLabelForMissingItem(item);
+      if (!focusLabel) {
+        return;
+      }
+
+      const target = Array.from(
+        document.querySelectorAll<HTMLElement>("input, textarea, select, button")
+      ).find((element) => element.getAttribute("aria-label") === focusLabel);
+
+      target?.focus({ preventScroll: true });
+    }, 0);
   }
 
   function saveDraft() {
+    const missing = collectMissingDailyItems(draft, productRows);
+    if (missing.length > 0) {
+      setMissingItems(missing);
+      setMessage(null);
+      moveToMissingItem(missing[0] ?? { tab: "basic", label: "작성자" });
+      return;
+    }
+
+    setMissingItems([]);
     const deletedDates = loadDeletedDailyRecordDates();
     if (deletedDates.delete(draft.date)) {
       storeDeletedDailyRecordDates(deletedDates);
@@ -583,23 +658,23 @@ export function DailyLogPage() {
   }
 
   return (
-    <div className="mx-auto grid max-w-7xl gap-4">
-      <section className="panel">
-        <div className="panel-heading">
+    <div className="mx-auto grid max-w-none gap-4">
+      <section ref={entryPanelRef} className="min-w-0">
+        <div className="mb-4 flex items-center justify-between gap-3">
           <div>
-            <p className="text-sm text-muted">일일 운영</p>
-            <h2 className="section-title">매장 운영일지</h2>
-            <p className="mt-1 text-sm text-muted">
-              매출, 제품 수량, POS 외 매출, 점검사항을 하루 단위로 입력합니다.
-            </p>
+            <h2 className="section-title">일일 운영 기록</h2>
+            <h2 className="sr-only">매장 운영일지</h2>
           </div>
+          <div className="flex items-center gap-3">
+            <span className="text-[12.5px] text-muted">{draft.date.replaceAll("-", ".")}</span>
           {viewMode === "entry" ? (
-            <Button icon={Save} type="button" onClick={saveDraft}>
-              일일 운영 저장
+            <Button aria-label="일일 운영 저장" icon={Save} type="button" onClick={saveDraft}>
+              저장
             </Button>
           ) : null}
+          </div>
         </div>
-        <div className="mb-4 flex flex-wrap gap-2" role="tablist" aria-label="일일 운영 화면 선택">
+        <div className="sr-only" role="tablist" aria-label="일일 운영 화면 선택">
           {(
             [
               ["entry", "입력"],
@@ -633,8 +708,28 @@ export function DailyLogPage() {
             {message}
           </div>
         ) : null}
+        {missingItems.length > 0 ? (
+          <div className="mb-4 rounded-control border border-red/20 bg-red/10 px-3 py-2 text-sm font-semibold text-red">
+            <p>일일 운영 작성 완료 전 빠진 항목을 확인해 주세요.</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {missingItems.map((item) => {
+                const tabLabel = tabs.find((tab) => tab.id === item.tab)?.label ?? "입력";
+                return (
+                  <button
+                    key={`${item.tab}-${item.label}`}
+                    className="rounded-full border border-red/20 bg-white px-3 py-1 text-xs font-bold text-red"
+                    type="button"
+                    onClick={() => moveToMissingItem(item)}
+                  >
+                    {tabLabel}: {item.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ) : null}
         {viewMode === "entry" ? (
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="sr-only grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <SummaryCard label="총 매출액" value={formatCurrency(totalSales)} />
             <SummaryCard
               label="총 매출건수"
@@ -649,11 +744,11 @@ export function DailyLogPage() {
         ) : null}
       </section>
 
-      <section className="panel">
+      <section className={viewMode === "entry" ? "grid gap-4" : "panel"}>
         {viewMode === "entry" ? (
           <>
             <div
-              className="mb-4 flex flex-wrap gap-2"
+              className="sr-only"
               role="tablist"
               aria-label="일일 운영 입력 분류"
             >
@@ -675,21 +770,24 @@ export function DailyLogPage() {
                 </button>
               ))}
             </div>
-            <p className="mb-4 text-sm text-muted">
-              {tabs.find((tab) => tab.id === activeTab)?.description}
-            </p>
-
-            {activeTab === "basic" ? (
+            <section className="panel">
+              <p className="mb-4 text-sm text-muted">환경 · 근무 정보</p>
+              <h3 className="sr-only">환경 · 근무 정보</h3>
               <BasicSection draft={draft} updateDraft={updateDraft} />
-            ) : null}
-            {activeTab === "products" ? (
+            </section>
+            <section className="panel">
+              <p className="mb-4 text-sm text-muted">제품별 생산 · 판매 (판매량 자동 계산)</p>
+              <h3 className="sr-only">제품별 생산 · 판매</h3>
               <ProductsSection
                 rows={productRows}
                 totals={productTotals}
                 updateRow={updateProductRow}
               />
-            ) : null}
-            {activeTab === "sales" ? (
+            </section>
+            <section className="grid gap-4 lg:grid-cols-2">
+              <div className="panel">
+                <p className="mb-4 text-sm text-muted">매출 요약 (자동 계산)</p>
+                <h3 className="sr-only">매출 요약</h3>
               <SalesSection
                 channelRows={channelRows}
                 draft={draft}
@@ -700,15 +798,18 @@ export function DailyLogPage() {
                 channelSalesCount={channelSales.count}
                 averageSpend={averageSpend}
               />
-            ) : null}
-            {activeTab === "notes" ? (
+              </div>
+              <div className="panel">
+                <p className="mb-4 text-sm text-muted">메모 · 점검</p>
+                <h3 className="sr-only">메모 · 점검</h3>
               <NotesSection
                 draft={draft}
                 staffSpecialRows={staffSpecialRows}
                 updateDraft={updateDraft}
                 updateStaffSpecialRow={updateStaffSpecialRow}
               />
-            ) : null}
+              </div>
+            </section>
           </>
         ) : (
           <DailyLookupSection
@@ -720,6 +821,7 @@ export function DailyLogPage() {
             lookupStartDate={lookupStartDate}
             lookupEndDate={lookupEndDate}
             lookupMonth={lookupMonth}
+            lookupSortOrder={lookupSortOrder}
             lookupRange={lookupRange}
             previousLookupRange={comparisonRange}
             setLookupMode={setLookupMode}
@@ -727,6 +829,7 @@ export function DailyLogPage() {
             setLookupStartDate={setLookupStartDate}
             setLookupEndDate={setLookupEndDate}
             setLookupMonth={setLookupMonth}
+            setLookupSortOrder={setLookupSortOrder}
             onEditRecord={loadRecordForEdit}
             onDeleteRecord={deleteRecord}
           />
@@ -745,6 +848,7 @@ function DailyLookupSection({
   lookupStartDate,
   lookupEndDate,
   lookupMonth,
+  lookupSortOrder,
   lookupRange,
   previousLookupRange,
   setLookupMode,
@@ -752,6 +856,7 @@ function DailyLookupSection({
   setLookupStartDate,
   setLookupEndDate,
   setLookupMonth,
+  setLookupSortOrder,
   onEditRecord,
   onDeleteRecord
 }: {
@@ -763,6 +868,7 @@ function DailyLookupSection({
   lookupStartDate: string;
   lookupEndDate: string;
   lookupMonth: string;
+  lookupSortOrder: LookupSortOrder;
   lookupRange: { startDate: string; endDate: string };
   previousLookupRange: { startDate: string; endDate: string };
   setLookupMode: (mode: LookupMode) => void;
@@ -770,6 +876,7 @@ function DailyLookupSection({
   setLookupStartDate: (date: string) => void;
   setLookupEndDate: (date: string) => void;
   setLookupMonth: (month: string) => void;
+  setLookupSortOrder: (sortOrder: LookupSortOrder) => void;
   onEditRecord: (record: DailyOperationSavedRecord) => void;
   onDeleteRecord: (record: DailyOperationSavedRecord) => void;
 }) {
@@ -800,6 +907,17 @@ function DailyLookupSection({
               <option value="week">주간검색</option>
               <option value="month">월별검색</option>
               <option value="range">기간설정</option>
+            </select>
+          </label>
+          <label className="grid min-w-0 gap-2">
+            <span className="field-label">나열 방식</span>
+            <select
+              className="input min-w-0 w-full"
+              value={lookupSortOrder}
+              onChange={(event) => setLookupSortOrder(event.target.value as LookupSortOrder)}
+            >
+              <option value="desc">최신순</option>
+              <option value="asc">오래된 순</option>
             </select>
           </label>
           {lookupMode === "date" || lookupMode === "week" ? (
@@ -875,111 +993,162 @@ function DailyLookupSection({
               const isExpanded = expandedDates.includes(record.draft.date);
               const isProductDetail = productDetailDates.includes(record.draft.date);
               const productDetails = record.productRows.filter(hasProductDetail);
+              const memoSummaryCount = summaryMemoItems(record.draft).length;
 
               return (
                 <article
                   key={record.draft.date}
                   aria-label={`${record.draft.date} 일지 요약`}
-                  className="rounded-control border border-latte bg-white/90 p-3 shadow-control"
+                  className="overflow-hidden rounded-control border border-latte bg-white/90 shadow-control"
                 >
-                  <div className="flex flex-wrap items-start justify-between gap-3 border-b border-latte/70 pb-3">
-                    <div className="grid min-w-0 gap-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="whitespace-nowrap text-base font-bold text-cocoa">
-                          {record.draft.date}
-                        </span>
-                        <span className="whitespace-nowrap rounded-full bg-cream px-2 py-0.5 text-xs font-bold text-muted">
-                          작성자 {record.draft.author || "-"}
-                        </span>
-                        <span className="whitespace-nowrap rounded-full bg-cream px-2 py-0.5 text-xs font-bold text-muted">
-                          날씨 {record.draft.weather || "-"}
-                        </span>
+                  <div className="overflow-x-auto">
+                    <div
+                      role="table"
+                      aria-label={`${record.draft.date} 일지 한줄 요약`}
+                      className="w-full min-w-[860px] text-sm"
+                    >
+                      <div
+                        role="row"
+                        className="grid grid-cols-[1.06fr_0.86fr_0.62fr_1fr_1fr_1.24fr_0.84fr_0.9fr_0.96fr_0.58fr_1.28fr] overflow-hidden rounded-control border border-latte bg-white"
+                      >
+                        <LookupSummaryCell label="날짜" value={record.draft.date} strong />
+                        <LookupSummaryCell label="작성자" value={record.draft.author || "-"} />
+                        <LookupSummaryCell label="날씨" value={record.draft.weather || "-"} />
+                        <LookupSummaryCell
+                          label="POS 매출액"
+                          value={formatCurrency(numeric(record.draft.posSalesAmount))}
+                        />
+                        <LookupSummaryCell
+                          label="POS 외 매출액"
+                          value={formatCurrency(channelSummary.amount)}
+                        />
+                        <LookupSummaryCell
+                          label="총매출액"
+                          value={formatCurrency(recordSales)}
+                          strong
+                        />
+                        <LookupSummaryCell
+                          label="매출건수"
+                          value={`${recordCount.toLocaleString("ko-KR")}건`}
+                        />
+                        <LookupSummaryCell
+                          label="객단가"
+                          value={formatCurrency(recordCount > 0 ? recordSales / recordCount : 0)}
+                        />
+                        <LookupSummaryCell
+                          label="제품판매량"
+                          value={`${products.sold.toLocaleString("ko-KR")}개`}
+                        />
+                        <LookupSummaryCell
+                          label="메모"
+                          value={memoSummaryCount > 0 ? `${memoSummaryCount}건` : "-"}
+                        />
+                        <div
+                          role="cell"
+                          className="flex items-center justify-center gap-1 border-l border-latte bg-cream/40 px-1.5 py-2"
+                        >
+                          <button
+                            className="rounded-control border border-latte bg-white px-2.5 py-1.5 text-sm font-bold text-cocoa hover:border-cocoa"
+                            type="button"
+                            onClick={() =>
+                              setExpandedDates((current) =>
+                                current.includes(record.draft.date)
+                                  ? current.filter((date) => date !== record.draft.date)
+                                  : [...current, record.draft.date]
+                              )
+                            }
+                          >
+                            {isExpanded ? "접기" : "상세"}
+                          </button>
                       </div>
                     </div>
-                    <div className="flex flex-wrap justify-end gap-2">
-                      <button
-                        className="rounded-control border border-latte bg-white px-3 py-1.5 text-xs font-bold text-cocoa hover:border-cocoa"
-                        type="button"
-                        onClick={() =>
-                          setExpandedDates((current) =>
-                            current.includes(record.draft.date)
-                              ? current.filter((date) => date !== record.draft.date)
-                              : [...current, record.draft.date]
-                          )
-                        }
-                      >
-                        {isExpanded ? "접기" : "상세"}
-                      </button>
-                      {isExpanded ? (
-                        <>
-                          <button
-                            className="rounded-control border border-cocoa bg-white px-3 py-1.5 text-xs font-bold text-cocoa hover:bg-cream"
-                            type="button"
-                            onClick={() => onEditRecord(record)}
-                          >
-                            수정
-                          </button>
-                          <button
-                            className="inline-flex items-center gap-1 rounded-control border border-red/40 bg-white px-3 py-1.5 text-xs font-bold text-red hover:bg-red/10"
-                            type="button"
-                            onClick={() => onDeleteRecord(record)}
-                          >
-                            <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
-                            삭제
-                          </button>
-                        </>
-                      ) : null}
-                    </div>
                   </div>
-
-                  <div className="mt-3 grid gap-3 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
-                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                      <LookupMetric
-                        label="POS"
-                        value={formatCurrency(numeric(record.draft.posSalesAmount))}
-                      />
-                      <LookupMetric label="POS 외" value={formatCurrency(channelSummary.amount)} />
-                      <LookupMetric label="총 매출액" value={formatCurrency(recordSales)} strong />
-                      <LookupMetric
-                        label="총 매출건수"
-                        value={`${recordCount.toLocaleString("ko-KR")}건`}
-                      />
-                      <LookupMetric
-                        label="객단가"
-                        value={formatCurrency(recordCount > 0 ? recordSales / recordCount : 0)}
-                      />
-                      <LookupMetric
-                        label="제품 판매량"
-                        value={`${products.sold.toLocaleString("ko-KR")}개`}
-                      />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="mb-2 text-sm font-bold text-cocoa">주요 메모</p>
-                      <MemoSummary draft={record.draft} />
-                    </div>
                   </div>
 
                   {isExpanded ? (
-                    <div className="mt-3 border-t border-latte/70 pt-3">
-                      <div className="grid gap-3 lg:grid-cols-3">
-                        <div className="rounded-control border border-latte bg-white p-3">
-                          <p className="font-bold text-cocoa">기본·점검</p>
-                          <p className="mt-2 text-sm text-muted">
-                            온도 {record.draft.outsideTemp || "-"}/{record.draft.insideTemp || "-"}℃
-                            · 습도 {record.draft.outsideHumidity || "-"}/
-                            {record.draft.insideHumidity || "-"}%
-                          </p>
-                          <p className="mt-1 text-sm text-muted">
-                            첫 출근 {record.draft.firstWorker || "-"}{" "}
-                            {record.draft.firstWorkerTime || ""} / 최종퇴근{" "}
-                            {record.draft.lastWorker || "-"} {record.draft.lastWorkerTime || ""}
-                          </p>
-                          <p className="mt-1 text-sm text-muted">
-                            위생 {record.draft.hygieneChecker || "-"} · 최종{" "}
-                            {record.draft.finalChecker || "-"}
-                          </p>
+                    <div className="grid gap-3 border-t border-latte bg-cream/20 p-3 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
+                      <div className="grid grid-cols-2 overflow-hidden rounded-control border border-latte bg-white sm:grid-cols-3">
+                        <LookupMetric
+                          label="POS 매출액"
+                          value={formatCurrency(numeric(record.draft.posSalesAmount))}
+                        />
+                        <LookupMetric
+                          label="POS 외 매출액"
+                          value={formatCurrency(channelSummary.amount)}
+                        />
+                        <LookupMetric
+                          label="총 매출액"
+                          value={formatCurrency(recordSales)}
+                          strong
+                        />
+                        <LookupMetric
+                          label="총 매출건수"
+                          value={`${recordCount.toLocaleString("ko-KR")}건`}
+                        />
+                        <LookupMetric
+                          label="객단가"
+                          value={formatCurrency(recordCount > 0 ? recordSales / recordCount : 0)}
+                        />
+                        <LookupMetric
+                          label="제품 판매량"
+                          value={`${products.sold.toLocaleString("ko-KR")}개`}
+                        />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="mb-2 flex items-center justify-between gap-2">
+                          <p className="text-sm font-bold text-cocoa">메모 원문</p>
+                          <div className="flex items-center justify-end gap-1.5">
+                            <button
+                              className="rounded-control border border-cocoa bg-white px-2.5 py-1.5 text-sm font-bold text-cocoa hover:bg-cream"
+                              type="button"
+                              onClick={() => onEditRecord(record)}
+                            >
+                              수정
+                            </button>
+                            <button
+                              className="inline-flex items-center gap-1 rounded-control border border-red/40 bg-white px-2.5 py-1.5 text-sm font-bold text-red hover:bg-red/10"
+                              type="button"
+                              onClick={() => onDeleteRecord(record)}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+                              삭제
+                            </button>
+                          </div>
                         </div>
-                        <div className="rounded-control border border-latte bg-white p-3">
+                        <MemoSummary draft={record.draft} />
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {isExpanded ? (
+                    <div className="border-t border-latte/70 bg-white p-3">
+                      <div className="grid gap-3 lg:grid-cols-2">
+                        <div
+                          role="group"
+                          aria-label="기본·점검"
+                          className="rounded-control border border-latte bg-white p-3"
+                        >
+                          <p className="font-bold text-cocoa">기본·점검</p>
+                          <div className="mt-2 grid gap-1.5">
+                            <DetailInfoItem
+                              label="온습도"
+                              value={`온도 ${record.draft.outsideTemp || "-"}/${record.draft.insideTemp || "-"}℃ · 습도 ${record.draft.outsideHumidity || "-"}/${record.draft.insideHumidity || "-"}%`}
+                            />
+                            <DetailInfoItem
+                              label="근무자"
+                              value={`첫 출근 ${record.draft.firstWorker || "-"} ${record.draft.firstWorkerTime || ""} / 최종퇴근 ${record.draft.lastWorker || "-"} ${record.draft.lastWorkerTime || ""}`}
+                            />
+                            <DetailInfoItem
+                              label="점검자"
+                              value={`위생 ${record.draft.hygieneChecker || "-"} · 최종 ${record.draft.finalChecker || "-"}`}
+                            />
+                          </div>
+                        </div>
+                        <div
+                          role="group"
+                          aria-label="제품 합계"
+                          className="rounded-control border border-latte bg-white p-3"
+                        >
                           <div className="flex items-center justify-between gap-2">
                             <p className="font-bold text-cocoa">제품 합계</p>
                             <div
@@ -1020,16 +1189,16 @@ function DailyLookupSection({
                             </div>
                           </div>
                           {!isProductDetail ? (
-                            <>
-                              <p className="mt-2 text-sm text-muted">
-                                생산 {products.produced} · 손실 {products.loss} · 시식{" "}
-                                {products.tasting}
-                              </p>
-                              <p className="mt-1 text-sm text-muted">
-                                기타 +{products.otherIn} / -{products.otherOut} · 재고{" "}
-                                {products.stock} · 판매 {products.sold}
-                              </p>
-                            </>
+                            <div className="mt-2 grid gap-1.5">
+                              <DetailInfoItem
+                                label="생산·손실·시식"
+                                value={`생산 ${products.produced} · 손실 ${products.loss} · 시식 ${products.tasting}`}
+                              />
+                              <DetailInfoItem
+                                label="기타·재고·판매"
+                                value={`기타 +${products.otherIn} / -${products.otherOut} · 재고 ${products.stock} · 판매 ${products.sold}`}
+                              />
+                            </div>
                           ) : productDetails.length > 0 ? (
                             <div className="mt-2 max-h-56 overflow-auto rounded-control border border-latte">
                               <table className="w-full text-left text-xs">
@@ -1062,22 +1231,6 @@ function DailyLookupSection({
                             </p>
                           )}
                         </div>
-                        <div className="rounded-control border border-latte bg-white p-3">
-                          <p className="font-bold text-cocoa">메모</p>
-                          <p className="mt-2 text-sm text-muted">
-                            제품의견/손실: {record.draft.productOpinionAndLoss || "-"}
-                          </p>
-                          <p className="mt-1 text-sm text-muted">
-                            지시/전달: {record.draft.instructions || "-"}
-                          </p>
-                          <p className="mt-1 text-sm text-muted">
-                            내일 준비: {record.draft.tomorrowPrep || "-"}
-                          </p>
-                          <p className="mt-1 text-sm text-muted">
-                            시설/청결: {record.draft.facilityIssue || "-"} /{" "}
-                            {record.draft.cleaningWork || "-"}
-                          </p>
-                        </div>
                       </div>
                     </div>
                   ) : null}
@@ -1093,11 +1246,18 @@ function DailyLookupSection({
 
 function memoItems(draft: DailyOperationDraft): Array<{ label: string; value: string }> {
   return [
-    { label: "제품의견/손실", value: draft.productOpinionAndLoss },
-    { label: "지시/전달", value: draft.instructions },
     { label: "내일 준비", value: draft.tomorrowPrep },
-    { label: "시설", value: draft.facilityIssue },
-    { label: "청결/위생", value: draft.cleaningWork }
+    { label: "지시/전달", value: draft.instructions },
+    { label: "청결/위생", value: draft.cleaningWork },
+    { label: "제품의견/손실", value: draft.productOpinionAndLoss },
+    { label: "시설", value: draft.facilityIssue }
+  ].filter((item) => item.value.trim().length > 0);
+}
+
+function summaryMemoItems(draft: DailyOperationDraft): Array<{ label: string; value: string }> {
+  return [
+    { label: "내일 준비", value: draft.tomorrowPrep },
+    { label: "지시/전달", value: draft.instructions }
   ].filter((item) => item.value.trim().length > 0);
 }
 
@@ -1127,6 +1287,17 @@ function MemoSummary({ draft }: { draft: DailyOperationDraft }) {
   );
 }
 
+function DetailInfoItem({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-control border border-latte bg-white/80 px-2 py-1.5">
+      <span className="mr-1 inline-flex rounded bg-cocoa/10 px-1.5 py-0.5 text-[11px] font-bold text-cocoa">
+        {label}
+      </span>
+      <span className="break-words text-xs text-ink [overflow-wrap:anywhere]">{value}</span>
+    </div>
+  );
+}
+
 function LookupMetric({
   label,
   value,
@@ -1137,16 +1308,47 @@ function LookupMetric({
   strong?: boolean;
 }) {
   return (
-    <div className="rounded-control border border-latte bg-cream/50 px-2 py-2">
-      <p className="text-[11px] font-bold text-muted">{label}</p>
+    <div className="flex flex-col items-center justify-center gap-1 border-l border-t border-latte bg-white px-3 py-3 text-center first:border-l-0 sm:[&:nth-child(3n+1)]:border-l-0 [&:nth-child(-n+2)]:border-t-0 sm:[&:nth-child(3)]:border-t-0">
+      <p className="text-xs font-bold text-muted">{label}</p>
       <p
         className={[
-          "mt-0.5 text-sm",
-          strong ? "font-bold text-cocoa" : "font-semibold text-ink"
+          "text-base font-bold leading-snug",
+          strong ? "text-cocoa" : "text-ink"
         ].join(" ")}
       >
         {value}
       </p>
+    </div>
+  );
+}
+
+function LookupSummaryCell({
+  label,
+  value,
+  strong = false
+}: {
+  label?: string;
+  value: string;
+  strong?: boolean;
+}) {
+  return (
+    <div
+      role="cell"
+      className={[
+        "flex min-w-0 items-center justify-center border-l border-latte px-2 py-2 text-center first:border-l-0",
+        strong ? "font-bold text-cocoa" : "font-semibold text-muted"
+      ].join(" ")}
+    >
+      <span className="min-w-0 leading-relaxed">
+        {label ? <span className="block text-xs text-cocoa">{label}</span> : null}
+        <span className={[
+          "block text-ink",
+          strong ? "whitespace-normal" : "whitespace-normal break-keep"
+        ].join(" ")}
+        >
+          {value}
+        </span>
+      </span>
     </div>
   );
 }
@@ -1265,7 +1467,7 @@ function SalesSection({
           label="POS 매출액"
           type="number"
           value={draft.posSalesAmount}
-          onChange={(value) => updateDraft("posSalesAmount", value)}
+          onChange={(value) => updateDraft("posSalesAmount", formatAmountInput(value))}
         />
         <TextInput
           label="POS 매출건수"
@@ -1511,7 +1713,7 @@ function ChannelsSection({
               label="매출액"
               type="number"
               value={row.amount}
-              onChange={(value) => updateRow(row.name, "amount", value)}
+              onChange={(value) => updateRow(row.name, "amount", formatAmountInput(value))}
             />
           </div>
         </div>
@@ -1731,18 +1933,36 @@ function TextInput({
   type?: string;
   suffix?: string;
 }) {
+  const pickerInputRef = useRef<HTMLInputElement>(null);
   const isNumeric = type === "number";
   const isDatePicker = type === "date" || type === "month";
   const pickerText =
     type === "month" && value
       ? value.replace(/^(\d{4})-(\d{2})$/, "$1년 $2월")
       : value || (type === "month" ? "YYYY-MM" : "YYYY-MM-DD");
+  const openPicker = () => {
+    const input = pickerInputRef.current;
+    if (!input) {
+      return;
+    }
+    input.focus();
+    if (typeof input.showPicker === "function") {
+      try {
+        input.showPicker();
+      } catch {
+        // 일부 브라우저는 이미 열린 상태이거나 직접 클릭이 아닐 때 showPicker를 막습니다.
+      }
+    }
+  };
 
   if (isDatePicker) {
     return (
       <label className="grid min-w-0 gap-2">
         <span className="field-label">{label}</span>
-        <div className="input relative flex min-w-0 items-center justify-between gap-3 overflow-hidden">
+        <div
+          className="input relative flex min-w-0 cursor-pointer items-center justify-between gap-3 overflow-hidden"
+          onClick={openPicker}
+        >
           <span className={value ? "truncate text-ink" : "truncate text-muted/60"}>
             {pickerText}
           </span>
@@ -1750,6 +1970,7 @@ function TextInput({
             📅
           </span>
           <input
+            ref={pickerInputRef}
             aria-label={label}
             className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
             type={type}

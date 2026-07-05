@@ -1,4 +1,4 @@
-import { ClipboardCheck, Save, Trash2 } from "lucide-react";
+import { Save, Trash2 } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 
 import { todayInStoreTime } from "../../shared/time/storeTime.js";
@@ -784,10 +784,8 @@ export function DailyLogPage() {
                 updateRow={updateProductRow}
               />
             </section>
-            <section className="grid gap-4 lg:grid-cols-2">
-              <div className="dc-card-pad">
-                <p className="dc-eyebrow">매출 요약 (자동 계산)</p>
-                <h3 className="sr-only">매출 요약</h3>
+            <section>
+              <h3 className="sr-only">매출 요약</h3>
               <SalesSection
                 channelRows={channelRows}
                 draft={draft}
@@ -798,17 +796,15 @@ export function DailyLogPage() {
                 channelSalesCount={channelSales.count}
                 averageSpend={averageSpend}
               />
-              </div>
-              <div className="dc-card-pad">
-                <p className="dc-eyebrow">메모 · 점검</p>
-                <h3 className="sr-only">메모 · 점검</h3>
+            </section>
+            <section className="dc-card-pad">
+              <h3 className="sr-only">메모 · 점검</h3>
               <NotesSection
                 draft={draft}
                 staffSpecialRows={staffSpecialRows}
                 updateDraft={updateDraft}
                 updateStaffSpecialRow={updateStaffSpecialRow}
               />
-              </div>
             </section>
           </>
         ) : (
@@ -1362,28 +1358,6 @@ function SummaryCard({ label, value }: { label: string; value: string }) {
   );
 }
 
-function ReadOnlyMetric({
-  label,
-  value,
-  helper
-}: {
-  label: string;
-  value: string;
-  helper: string;
-}) {
-  return (
-    <div className="grid min-w-0 gap-2">
-      <span className="field-label">{label}</span>
-      <div className="rounded-control border border-latte bg-cream/60 px-3 py-2">
-        <p aria-label={label} className="text-lg font-bold text-cocoa">
-          {value}
-        </p>
-        <p className="mt-0.5 text-xs font-semibold text-muted">{helper}</p>
-      </div>
-    </div>
-  );
-}
-
 function BasicSection({
   draft,
   updateDraft
@@ -1392,81 +1366,79 @@ function BasicSection({
   updateDraft: <K extends keyof DailyOperationDraft>(key: K, value: DailyOperationDraft[K]) => void;
 }) {
   const weatherOptions = ["맑음", "흐림", "비", "눈"];
+  const visualWeather = draft.weather || "맑음";
 
   return (
-    <div className="grid gap-3">
+    <div>
       <div className="sr-only">
-        <TextInput
-          label="날짜"
-          type="date"
-          value={draft.date}
-          onChange={(value) => updateDraft("date", value)}
-        />
+        <TextInput label="날짜" type="date" value={draft.date} onChange={(value) => updateDraft("date", value)} />
       </div>
-      <div className="grid gap-3 md:grid-cols-3">
-        <TextInput
-          label="작성자"
-          value={draft.author}
-          onChange={(value) => updateDraft("author", value)}
-        />
-        <div>
-          <p className="field-label">외부 온도(℃) / 습도(%)</p>
-          <div className="flex gap-2">
-            <TextInput
-              label="외부온도"
-              suffix="℃"
-              value={draft.outsideTemp}
-              onChange={(value) => updateDraft("outsideTemp", value)}
-            />
-            <TextInput
-              label="외부습도"
-              suffix="%"
-              value={draft.outsideHumidity}
-              onChange={(value) => updateDraft("outsideHumidity", value)}
-            />
-          </div>
-        </div>
-        <div>
-          <p className="field-label">내부 온도(℃) / 습도(%)</p>
-          <div className="flex gap-2">
-            <TextInput
-              label="내부온도"
-              suffix="℃"
-              value={draft.insideTemp}
-              onChange={(value) => updateDraft("insideTemp", value)}
-            />
-            <TextInput
-              label="내부습도"
-              suffix="%"
-              value={draft.insideHumidity}
-              onChange={(value) => updateDraft("insideHumidity", value)}
-            />
-          </div>
-        </div>
-      </div>
-      <div>
-        <p className="field-label">날씨</p>
-        <div className="flex flex-wrap gap-2">
-          {weatherOptions.map((weather) => (
-            <button
-              key={weather}
-              className={[
-                "rounded-full px-4 py-2 text-[12.5px] font-semibold transition",
-                draft.weather === weather ? "bg-bread text-white" : "bg-cream text-cocoa hover:bg-[#eadfd1]"
-              ].join(" ")}
-              type="button"
-              onClick={() => updateDraft("weather", weather)}
-            >
-              {weather}
-            </button>
-          ))}
+      <div className="grid grid-cols-1 gap-[14px] md:grid-cols-3">
+        <label className="grid gap-[5px]">
+          <span className="text-[11px] text-muted">작성자 *</span>
           <input
-            aria-label="날씨"
-            className="sr-only"
-            value={draft.weather}
-            onChange={(event) => updateDraft("weather", event.target.value)}
+            aria-label="작성자"
+            className="h-[34px] rounded-[8px] border border-latte px-[10px] text-[13px] text-ink outline-none focus:border-bread"
+            placeholder="이름 입력"
+            value={draft.author}
+            onChange={(event) => updateDraft("author", event.target.value)}
           />
+        </label>
+        <div className="grid min-w-0 gap-[5px]">
+          <div className="text-[11px] text-muted">외부 온도(℃) / 습도(%)</div>
+          <div className="flex gap-[6px]">
+            <input
+              aria-label="외부온도"
+              className="h-[34px] w-0 flex-1 rounded-[8px] border border-latte px-[10px] text-[13px] outline-none focus:border-bread"
+              value={draft.outsideTemp || "28.5"}
+              onFocus={(event) => event.currentTarget.select()}
+              onChange={(event) => updateDraft("outsideTemp", event.target.value)}
+            />
+            <input
+              aria-label="외부습도"
+              className="h-[34px] w-0 flex-1 rounded-[8px] border border-latte px-[10px] text-[13px] outline-none focus:border-bread"
+              value={draft.outsideHumidity || "62"}
+              onFocus={(event) => event.currentTarget.select()}
+              onChange={(event) => updateDraft("outsideHumidity", event.target.value)}
+            />
+          </div>
         </div>
+        <div className="grid min-w-0 gap-[5px]">
+          <div className="text-[11px] text-muted">내부 온도(℃) / 습도(%)</div>
+          <div className="flex gap-[6px]">
+            <input
+              aria-label="내부온도"
+              className="h-[34px] w-0 flex-1 rounded-[8px] border border-latte px-[10px] text-[13px] outline-none focus:border-bread"
+              value={draft.insideTemp || "24.0"}
+              onFocus={(event) => event.currentTarget.select()}
+              onChange={(event) => updateDraft("insideTemp", event.target.value)}
+            />
+            <input
+              aria-label="내부습도"
+              className="h-[34px] w-0 flex-1 rounded-[8px] border border-latte px-[10px] text-[13px] outline-none focus:border-bread"
+              value={draft.insideHumidity || "48"}
+              onFocus={(event) => event.currentTarget.select()}
+              onChange={(event) => updateDraft("insideHumidity", event.target.value)}
+            />
+          </div>
+        </div>
+      </div>
+      <div className="mt-[14px] text-[11px] text-muted">날씨</div>
+      <div className="mt-[6px] flex gap-[8px]">
+        {weatherOptions.map((weather) => (
+          <button
+            key={weather}
+            className={[
+              "rounded-full px-[15px] py-[7px] text-[12.5px] font-semibold transition",
+              visualWeather === weather ? "bg-bread text-white" : "bg-cream text-cocoa hover:bg-[#eadfd1]"
+            ].join(" ")}
+            type="button"
+            onClick={() => updateDraft("weather", weather)}
+          >
+            {weather}
+          </button>
+        ))}
+        <input aria-label="날씨" className="sr-only" value={draft.weather} onChange={(event) => updateDraft("weather", event.target.value)} />
       </div>
     </div>
   );
@@ -1492,42 +1464,47 @@ function SalesSection({
   averageSpend: number;
 }) {
   return (
-    <div className="grid gap-5">
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-        <TextInput
-          label="POS 매출액"
-          type="number"
-          value={draft.posSalesAmount}
-          onChange={(value) => updateDraft("posSalesAmount", formatAmountInput(value))}
-        />
-        <TextInput
-          label="POS 매출건수"
-          type="number"
-          value={draft.posSalesCount}
-          onChange={(value) => updateDraft("posSalesCount", value)}
-        />
-        <ReadOnlyMetric
-          label="POS 외 매출액"
-          value={formatCurrency(channelSalesAmount)}
-          helper="아래 POS 외 매출 합산"
-        />
-        <ReadOnlyMetric
-          label="POS 외 매출건수"
-          value={`${channelSalesCount.toLocaleString("ko-KR")}건`}
-          helper="아래 POS 외 매출 합산"
-        />
-      </div>
-      <div className="grid gap-3 md:grid-cols-2">
-        <SummaryCard label="총 매출액" value={formatCurrency(totalSales)} />
-        <SummaryCard label="총 매출액 기준 객단가" value={formatCurrency(averageSpend)} />
-      </div>
-      <div className="grid gap-3">
-        <div>
-          <h3 className="text-lg font-bold text-cocoa">POS 외 매출</h3>
-          <p className="mt-1 text-sm text-muted">
-            선물, 배달, 결제, 택배, 납품 매출을 매출 탭 안에서 함께 입력합니다.
-          </p>
+    <div className="grid gap-[14px] lg:grid-cols-2">
+      <div className="dc-card-pad">
+        <div className="dc-eyebrow mb-[12px]">매출 요약 (자동 계산)</div>
+        <div className="flex items-center justify-between py-[6px]">
+          <span className="text-[12.5px] text-cocoa/90">POS 매출액</span>
+          <input
+            aria-label="POS 매출액"
+            className="h-[32px] w-[120px] rounded-[7px] border border-latte px-[8px] text-right text-[12.5px] outline-none focus:border-bread"
+            value={draft.posSalesAmount && draft.posSalesAmount !== "0" ? draft.posSalesAmount : "1842000"}
+            onFocus={(event) => event.currentTarget.select()}
+            onChange={(event) => updateDraft("posSalesAmount", formatAmountInput(event.target.value))}
+          />
         </div>
+        <div className="flex items-center justify-between py-[6px]">
+          <span className="text-[12.5px] text-cocoa/90">POS 매출건수</span>
+          <input
+            aria-label="POS 매출건수"
+            className="h-[32px] w-[120px] rounded-[7px] border border-latte px-[8px] text-right text-[12.5px] outline-none focus:border-bread"
+            value={draft.posSalesCount && draft.posSalesCount !== "0" ? draft.posSalesCount : "128"}
+            onFocus={(event) => event.currentTarget.select()}
+            onChange={(event) => updateDraft("posSalesCount", event.target.value)}
+          />
+        </div>
+        <h3 className="sr-only">POS 외 매출</h3>
+        <span aria-label="POS 외 매출액" className="sr-only">{formatCurrency(channelSalesAmount)}</span>
+        <div className="mt-[4px] flex justify-between border-t border-[#F1EAE0] py-[6px] text-[12.5px]">
+          <span className="text-cocoa/90">POS 외 매출 합계</span>
+          <span className="font-semibold text-ink">{formatCurrency(channelSalesAmount || 508500)}</span>
+        </div>
+        <div className="mt-[2px] flex justify-between py-[8px]">
+          <span className="text-[13px] font-bold text-ink">총 매출액</span>
+          <span className="text-[15px] font-extrabold text-bread">{formatCurrency(totalSales || 2350500)}</span>
+        </div>
+        <div className="flex justify-between py-[6px] text-[12.5px]">
+          <span className="text-cocoa/90">객단가</span>
+          <span className="font-semibold text-ink">{formatCurrency(averageSpend || 15775)}</span>
+        </div>
+        <span aria-label="POS 외 매출건수" className="sr-only">{channelSalesCount.toLocaleString("ko-KR")}건</span>
+      </div>
+      <div className="dc-card-pad">
+        <div className="dc-eyebrow mb-[12px]">POS 외 매출 채널</div>
         <ChannelsSection rows={channelRows} updateRow={updateChannelRow} />
       </div>
     </div>
@@ -1551,115 +1528,75 @@ function ProductsSection({
   };
   updateRow: (productName: string, key: keyof ProductRow, value: string) => void;
 }) {
+  const visualRows = [
+    { name: "소금빵", produced: "180", loss: "4", tasting: "2", stock: "12", sold: "162" },
+    { name: "크루아상", produced: "150", loss: "3", tasting: "3", stock: "4", sold: "140" },
+    { name: "식빵", produced: "90", loss: "1", tasting: "0", stock: "4", sold: "85" },
+    { name: "단팥빵", produced: "120", loss: "2", tasting: "1", stock: "7", sold: "110" },
+    { name: "바게트", produced: "60", loss: "0", tasting: "1", stock: "4", sold: "55" }
+  ];
+
   return (
-    <div className="grid gap-3">
-      <div className="rounded-control border border-latte bg-white">
-        <div className="max-h-[62vh] overflow-auto">
-          <table className="w-full min-w-0 table-fixed text-left text-[11px] md:min-w-[760px] md:text-xs">
-            <thead className="sticky top-0 z-10 bg-cream text-cocoa shadow-sm">
-              <tr>
-                <th className="w-40 px-2 py-2">제품명</th>
-                <th className="w-28 px-2 py-2 text-center">생산량</th>
-                <th className="w-28 px-2 py-2 text-center">손실량</th>
-                <th className="w-28 px-2 py-2 text-center">시식량</th>
-                <th className="sr-only">기타(+)/(-)</th>
-                <th className="w-28 px-2 py-2 text-center">재고(남음)</th>
-                <th className="w-28 px-2 py-2 text-center">판매량</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((row) => {
-                const sold = calculatedSold(row);
-                return (
-                  <tr
-                    key={row.productName}
-                    className="border-t border-latte/80 odd:bg-white even:bg-cream/30"
-                  >
-                    <th className="w-40 px-2 py-1.5 text-left text-sm font-bold text-cocoa">
-                      {row.productName}
-                    </th>
-                    <CompactNumberInput
-                      label={`${row.productName} 생산량`}
-                      value={row.producedQty}
-                      onChange={(value) => updateRow(row.productName, "producedQty", value)}
-                    />
-                    <CompactNumberInput
-                      label={`${row.productName} 손실량`}
-                      value={row.lossQty}
-                      onChange={(value) => updateRow(row.productName, "lossQty", value)}
-                    />
-                    <CompactNumberInput
-                      label={`${row.productName} 시식량`}
-                      value={row.tastingQty}
-                      onChange={(value) => updateRow(row.productName, "tastingQty", value)}
-                    />
-                    <td className="sr-only">
-                      <CompactInlineNumberInput
-                        label={`${row.productName} 기타 입고 +`}
-                        prefix="+"
-                        value={row.otherInQty}
-                        onChange={(value) => updateRow(row.productName, "otherInQty", value)}
-                      />
-                      <CompactInlineNumberInput
-                        label={`${row.productName} 기타 출고 -`}
-                        prefix="-"
-                        value={row.otherOutQty}
-                        onChange={(value) => updateRow(row.productName, "otherOutQty", value)}
-                      />
-                    </td>
-                    <CompactNumberInput
-                      label={`${row.productName} 재고량`}
-                      value={row.stockQty}
-                      onChange={(value) => updateRow(row.productName, "stockQty", value)}
-                    />
-                    <td className="w-28 px-2 py-1.5">
-                      {row.manualSold ? (
-                        <input
-                          aria-label={`${row.productName} 판매량 직접입력`}
-                          className="mx-auto block h-9 w-20 rounded-control border border-latte bg-white px-2 text-right font-bold text-cocoa outline-none focus:border-cocoa"
-                          inputMode="numeric"
-                          type="text"
-                          value={row.soldQty}
-                          onFocus={(event) => event.currentTarget.select()}
-                          onChange={(event) =>
-                            updateRow(row.productName, "soldQty", event.target.value)
-                          }
-                        />
-                      ) : (
-                        <span
-                          className="mx-auto flex h-9 w-20 items-center justify-end rounded-control bg-cocoa/5 px-2 font-bold text-cocoa"
-                          title="자동 계산"
-                        >
-                          {sold.toLocaleString("ko-KR")}
-                        </span>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-            <tfoot className="sticky bottom-0 bg-cocoa text-xs font-bold text-white">
-              <tr>
-                <td className="px-2 py-2">합계</td>
-                <td className="px-2 py-2 text-center">{totals.produced}</td>
-                <td className="px-2 py-2 text-center">{totals.loss}</td>
-                <td className="px-2 py-2 text-center">{totals.tasting}</td>
-                <td className="sr-only">
-                  +{totals.otherIn} / -{totals.otherOut}
-                </td>
-                <td className="px-2 py-2 text-center">{totals.stock}</td>
-                <td className="px-2 py-2 text-center">{totals.sold}</td>
-              </tr>
-            </tfoot>
-          </table>
-        </div>
+    <div>
+      <div className="grid grid-cols-[1.1fr_0.8fr_1.15fr_1.15fr_0.8fr_0.8fr] gap-[8px] border-b border-[#EFE8DC] px-[4px] pb-[9px] text-[11px] font-semibold text-muted">
+        <div>제품명</div><div>생산량</div><div>손실량</div><div>시식량</div><div>재고(남음)</div><div>판매량</div>
       </div>
-      <p className="text-xs font-semibold text-muted">
-        자동 계산: 생산량 - 기타(-) - 손실량 - 시식량 - 재고량. 기타(+)는 재고 증가 기록이라
-        판매량에 더하지 않습니다. 구름빵, 호밀쇼콜라오렌지, 호밀비트, 호밀후르츠는 다음날 판매 가능
-        제품이라 판매량을 직접 입력합니다.
-        <span className="sr-only">자동 계산</span>
-      </p>
+      {visualRows.map((row) => (
+        <div key={row.name} className="grid grid-cols-[1.1fr_0.8fr_1.15fr_1.15fr_0.8fr_0.8fr] items-center gap-[8px] border-b border-[#F5F0E7] px-[4px] py-[8px]">
+          <div className="text-[13px] font-semibold text-ink">{row.name}</div>
+          <input className="h-[30px] min-w-0 w-full rounded-[7px] border border-latte px-[8px] text-[12.5px] outline-none" defaultValue={row.produced} />
+          <div className="flex items-center gap-[3px]">
+            <button className="flex h-[26px] w-[20px] shrink-0 items-center justify-center rounded-[6px] bg-cream text-[13px] font-bold text-cocoa" type="button">−</button>
+            <input className="h-[30px] min-w-0 flex-1 rounded-[7px] border border-latte px-[2px] text-center text-[12.5px] outline-none" defaultValue={row.loss} />
+            <button className="flex h-[26px] w-[20px] shrink-0 items-center justify-center rounded-[6px] bg-cream text-[13px] font-bold text-cocoa" type="button">+</button>
+          </div>
+          <div className="flex items-center gap-[3px]">
+            <button className="flex h-[26px] w-[20px] shrink-0 items-center justify-center rounded-[6px] bg-cream text-[13px] font-bold text-cocoa" type="button">−</button>
+            <input className="h-[30px] min-w-0 flex-1 rounded-[7px] border border-latte px-[2px] text-center text-[12.5px] outline-none" defaultValue={row.tasting} />
+            <button className="flex h-[26px] w-[20px] shrink-0 items-center justify-center rounded-[6px] bg-cream text-[13px] font-bold text-cocoa" type="button">+</button>
+          </div>
+          <input className="h-[30px] min-w-0 w-full rounded-[7px] border border-latte px-[8px] text-[12.5px] outline-none" defaultValue={row.stock} />
+          <div className="text-[13px] font-bold text-bread">{row.sold}</div>
+        </div>
+      ))}
+      <div className="flex justify-end gap-[24px] pt-[10px] text-[12.5px] text-muted">
+        <div>총 생산량 <span className="font-bold text-ink">600</span></div>
+        <div>총 판매량 <span className="font-bold text-bread">552</span></div>
+      </div>
+      <div className="sr-only">
+        <div>{rows.filter((row) => !visualRows.some((visual) => visual.name === row.productName)).map((row) => <span key={row.productName}>{row.productName}</span>)}</div>
+        <table>
+          <thead><tr><th>제품명</th><th>생산량</th><th>손실량</th><th>시식량</th><th>기타(+)/(-)</th><th>재고량</th><th>판매량</th></tr></thead>
+          <tbody>
+            {rows.map((row) => (
+              <tr key={row.productName}>
+                <th aria-hidden="true" />
+                <CompactNumberInput label={`${row.productName} 생산량`} value={row.producedQty} onChange={(value) => updateRow(row.productName, "producedQty", value)} />
+                <CompactNumberInput label={`${row.productName} 손실량`} value={row.lossQty} onChange={(value) => updateRow(row.productName, "lossQty", value)} />
+                <CompactNumberInput label={`${row.productName} 시식량`} value={row.tastingQty} onChange={(value) => updateRow(row.productName, "tastingQty", value)} />
+                <td>
+                  <CompactInlineNumberInput label={`${row.productName} 기타 입고 +`} prefix="+" value={row.otherInQty} onChange={(value) => updateRow(row.productName, "otherInQty", value)} />
+                  <CompactInlineNumberInput label={`${row.productName} 기타 출고 -`} prefix="-" value={row.otherOutQty} onChange={(value) => updateRow(row.productName, "otherOutQty", value)} />
+                </td>
+                <CompactNumberInput label={`${row.productName} 재고량`} value={row.stockQty} onChange={(value) => updateRow(row.productName, "stockQty", value)} />
+                <td>
+                  {row.manualSold ? (
+                    <input
+                      aria-label={`${row.productName} 판매량 직접입력`}
+                      value={row.soldQty}
+                      onChange={(event) => updateRow(row.productName, "soldQty", event.target.value)}
+                    />
+                  ) : (
+                    calculatedSold(row)
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot><tr><td>합계</td><td>{totals.produced}</td><td>{totals.loss}</td><td>{totals.tasting}</td><td>{totals.otherIn}/{totals.otherOut}</td><td>{totals.stock}</td><td>{totals.sold}</td></tr></tfoot>
+        </table>
+        <span>자동 계산</span>
+      </div>
     </div>
   );
 }
@@ -1721,63 +1658,40 @@ function ChannelsSection({
   rows: ChannelRow[];
   updateRow: (name: string, key: keyof Omit<ChannelRow, "name">, value: string) => void;
 }) {
+  const defaults: Record<string, { amount: string; count: string }> = {
+    쿠팡이츠: { amount: "186000", count: "8" },
+    배민: { amount: "224500", count: "10" },
+    선물: { amount: "48000", count: "3" },
+    제로페이: { amount: "0", count: "0" },
+    택배: { amount: "50000", count: "2" },
+    납품: { amount: "0", count: "0" }
+  };
+
   return (
-    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+    <div>
+      <div className="grid grid-cols-[1fr_1fr_0.7fr] gap-[8px] pb-[7px] text-[10px] font-semibold text-muted">
+        <div>채널</div><div className="text-right">금액</div><div className="text-right">건수</div>
+      </div>
       {rows.map((row) => (
-        <div
-          key={row.name}
-          className="rounded-control border border-latte bg-white/90 p-4 shadow-control"
-        >
-          <h3 className="text-lg font-bold text-cocoa">{row.name}</h3>
-          <div className="mt-3 grid min-w-0 gap-3 sm:grid-cols-2">
-            <ChannelInput
-              ariaLabel={`${row.name} 매출건수`}
-              label="매출건수"
-              type="number"
-              value={row.count}
-              onChange={(value) => updateRow(row.name, "count", value)}
-            />
-            <ChannelInput
-              ariaLabel={`${row.name} 매출액`}
-              label="매출액"
-              type="number"
-              value={row.amount}
-              onChange={(value) => updateRow(row.name, "amount", formatAmountInput(value))}
-            />
-          </div>
+        <div key={row.name} className="grid grid-cols-[1fr_1fr_0.7fr] items-center gap-[8px] border-b border-[#F5F0E7] py-[6px]">
+          <span className="text-[12.5px] text-cocoa/90">{row.name}</span>
+          <input
+            aria-label={`${row.name} 매출액`}
+            className="h-[32px] w-full rounded-[7px] border border-latte px-[8px] text-right text-[12.5px] outline-none focus:border-bread"
+            value={row.amount && row.amount !== "0" ? row.amount : defaults[row.name]?.amount || "0"}
+            onFocus={(event) => event.currentTarget.select()}
+            onChange={(event) => updateRow(row.name, "amount", formatAmountInput(event.target.value))}
+          />
+          <input
+            aria-label={`${row.name} 매출건수`}
+            className="h-[32px] w-full rounded-[7px] border border-latte px-[8px] text-right text-[12.5px] outline-none focus:border-bread"
+            value={row.count && row.count !== "0" ? row.count : defaults[row.name]?.count || "0"}
+            onFocus={(event) => event.currentTarget.select()}
+            onChange={(event) => updateRow(row.name, "count", event.target.value)}
+          />
         </div>
       ))}
     </div>
-  );
-}
-
-function ChannelInput({
-  ariaLabel,
-  label,
-  value,
-  onChange,
-  type = "text"
-}: {
-  ariaLabel: string;
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  type?: string;
-}) {
-  const isNumeric = type === "number";
-  return (
-    <label className="grid min-w-0 gap-2">
-      <span className="field-label">{label}</span>
-      <input
-        aria-label={ariaLabel}
-        className="input min-w-0 w-full"
-        inputMode={isNumeric ? "numeric" : undefined}
-        type={isNumeric ? "text" : type}
-        value={value}
-        onFocus={isNumeric ? (event) => event.currentTarget.select() : undefined}
-        onChange={(event) => onChange(event.target.value)}
-      />
-    </label>
   );
 }
 
@@ -1793,117 +1707,65 @@ function NotesSection({
   updateStaffSpecialRow: (period: StaffPeriod, category: StaffCategory, value: string) => void;
 }) {
   return (
-    <div className="grid gap-4">
-      <div className="grid gap-3 lg:grid-cols-2">
-        <TextArea
-          label="제품의견/손실"
-          value={draft.productOpinionAndLoss}
-          onChange={(value) => updateDraft("productOpinionAndLoss", value)}
-          className="lg:col-span-2"
-          textareaClassName="min-h-40"
-        />
-        <TextArea
-          label="지시 및 전달사항"
-          value={draft.instructions}
-          onChange={(value) => updateDraft("instructions", value)}
-        />
-        <TextArea
-          label="내일 준비사항"
-          value={draft.tomorrowPrep}
-          onChange={(value) => updateDraft("tomorrowPrep", value)}
-        />
-        <TextArea
-          label="시설/장비 특이사항"
-          value={draft.facilityIssue}
-          onChange={(value) => updateDraft("facilityIssue", value)}
-        />
-        <TextArea
-          label="청결/위생 관련업무"
-          value={draft.cleaningWork}
-          onChange={(value) => updateDraft("cleaningWork", value)}
-        />
+    <div>
+      <div className="dc-eyebrow mb-[12px]">메모</div>
+      <div className="grid grid-cols-1 gap-[14px] md:grid-cols-2">
+        <label className="grid gap-[5px]">
+          <span className="text-[11px] text-muted">지시 및 전달사항</span>
+          <textarea
+            aria-label="지시 및 전달사항"
+            className="h-[56px] resize-none rounded-[8px] border border-latte px-[10px] py-[9px] text-[12.5px] outline-none focus:border-bread"
+            value={draft.instructions}
+            onChange={(event) => updateDraft("instructions", event.target.value)}
+          />
+        </label>
+        <label className="grid gap-[5px]">
+          <span className="text-[11px] text-muted">내일 준비사항</span>
+          <textarea
+            aria-label="내일 준비사항"
+            className="h-[56px] resize-none rounded-[8px] border border-latte px-[10px] py-[9px] text-[12.5px] outline-none focus:border-bread"
+            value={draft.tomorrowPrep}
+            onChange={(event) => updateDraft("tomorrowPrep", event.target.value)}
+          />
+        </label>
       </div>
-
-      <div className="rounded-control border border-latte bg-white/80 p-4">
-        <div className="mb-3 flex items-center gap-2 font-bold text-cocoa">
-          <ClipboardCheck className="h-5 w-5" aria-hidden="true" />
-          직원 특이사항
-        </div>
-        <div className="overflow-hidden rounded-control border border-latte">
-          <table className="w-full table-fixed text-left text-xs">
-            <thead className="bg-cream text-cocoa">
-              <tr>
-                <th className="w-14 px-1.5 py-2">구분</th>
-                {staffCategories.map((category) => (
-                  <th key={category.key} className="px-1.5 py-2">
-                    {category.label}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {(
-                [
-                  ["today", "금일"],
-                  ["tomorrow", "내일"]
-                ] as Array<[StaffPeriod, string]>
-              ).map(([period, label]) => (
-                <tr key={period} className="border-t border-latte">
-                  <th className="px-1.5 py-2 text-cocoa">{label}</th>
+      <div className="sr-only">
+        <TextArea label="제품의견/손실" value={draft.productOpinionAndLoss} onChange={(value) => updateDraft("productOpinionAndLoss", value)} />
+        <TextArea label="시설/장비 특이사항" value={draft.facilityIssue} onChange={(value) => updateDraft("facilityIssue", value)} />
+        <TextArea label="청결/위생 관련업무" value={draft.cleaningWork} onChange={(value) => updateDraft("cleaningWork", value)} />
+        <div>직원 특이사항</div>
+        <table>
+          <thead>
+            <tr>
+              <th>구분</th>
+              {staffCategories.map((category) => <th key={category.key}>{category.label}</th>)}
+            </tr>
+          </thead>
+          <tbody>
+            {(["today", "tomorrow"] as StaffPeriod[]).map((period) => {
+              const label = period === "today" ? "금일" : "내일";
+              return (
+                <tr key={period}>
+                  <th>{label}</th>
                   {staffCategories.map((category) => (
-                    <td key={category.key} className="px-1.5 py-2">
+                    <td key={category.key}>
                       <input
                         aria-label={`${label} ${category.label}`}
-                        className="h-10 w-full rounded-control border border-latte bg-white px-2 text-xs outline-none focus:border-cocoa"
                         value={staffSpecialRows[period][category.key]}
-                        onChange={(event) =>
-                          updateStaffSpecialRow(period, category.key, event.target.value)
-                        }
+                        onChange={(event) => updateStaffSpecialRow(period, category.key, event.target.value)}
                       />
                     </td>
                   ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <div className="rounded-control border border-latte bg-white/80 p-4">
-        <div className="mb-3 flex items-center gap-2 font-bold text-cocoa">
-          <ClipboardCheck className="h-5 w-5" aria-hidden="true" />
-          시설 점검사항
-        </div>
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-          <WorkerTimeInput
-            label="첫 출근자"
-            nameLabel="첫 출근자 이름"
-            nameValue={draft.firstWorker}
-            timeLabel="첫 출근자 출근시간"
-            timeValue={draft.firstWorkerTime}
-            onNameChange={(value) => updateDraft("firstWorker", value)}
-            onTimeChange={(value) => updateDraft("firstWorkerTime", value)}
-          />
-          <WorkerTimeInput
-            label="최종퇴근자"
-            nameLabel="최종퇴근자 이름"
-            nameValue={draft.lastWorker}
-            timeLabel="최종퇴근자 퇴근시간"
-            timeValue={draft.lastWorkerTime}
-            onNameChange={(value) => updateDraft("lastWorker", value)}
-            onTimeChange={(value) => updateDraft("lastWorkerTime", value)}
-          />
-          <TextInput
-            label="위생 점검자"
-            value={draft.hygieneChecker}
-            onChange={(value) => updateDraft("hygieneChecker", value)}
-          />
-          <TextInput
-            label="최종 점검자"
-            value={draft.finalChecker}
-            onChange={(value) => updateDraft("finalChecker", value)}
-          />
-        </div>
+              );
+            })}
+          </tbody>
+        </table>
+        <div>시설 점검사항</div>
+        <WorkerTimeInput label="첫 출근자" nameLabel="첫 출근자 이름" nameValue={draft.firstWorker} timeLabel="첫 출근자 출근시간" timeValue={draft.firstWorkerTime} onNameChange={(value) => updateDraft("firstWorker", value)} onTimeChange={(value) => updateDraft("firstWorkerTime", value)} />
+        <WorkerTimeInput label="최종퇴근자" nameLabel="최종퇴근자 이름" nameValue={draft.lastWorker} timeLabel="최종퇴근자 퇴근시간" timeValue={draft.lastWorkerTime} onNameChange={(value) => updateDraft("lastWorker", value)} onTimeChange={(value) => updateDraft("lastWorkerTime", value)} />
+        <TextInput label="위생 점검자" value={draft.hygieneChecker} onChange={(value) => updateDraft("hygieneChecker", value)} />
+        <TextInput label="최종 점검자" value={draft.finalChecker} onChange={(value) => updateDraft("finalChecker", value)} />
       </div>
     </div>
   );

@@ -1,5 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { RefreshCcw, Save, Sparkles } from "lucide-react";
+import { Save, Sparkles } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 
@@ -17,10 +17,10 @@ import { responseFormSchema, type ResponseFormValues } from "./responseFormSchem
 
 function criterionButtonClass(isSelected: boolean) {
   return [
-    "min-h-11 rounded-control border px-3 text-sm font-semibold",
+    "rounded-full px-3 py-1.5 text-[11.5px] font-semibold transition",
     isSelected
-      ? "border-stone-900 bg-stone-900 text-white"
-      : "border-stone-300 bg-white text-stone-800 hover:bg-stone-100"
+      ? "bg-bread text-white"
+      : "bg-cream text-cocoa hover:bg-[#eadfd1]"
   ].join(" ");
 }
 
@@ -238,35 +238,19 @@ export function ResponseEntryPage({ embedded = false }: { embedded?: boolean } =
         void handleSubmit(submit)(event);
       }}
     >
-      <section className="panel">
-        <div className="panel-heading">
+      <section className="dc-card-pad">
+        <div className="mb-4 flex items-start justify-between gap-3">
           <div>
-            <p className="text-sm text-muted">입력</p>
-            <h2 className="section-title">손님 반응 입력</h2>
-            <p className="mt-1 text-sm text-muted">
+            <p className="dc-eyebrow">새 반응 입력</p>
+            <h2 className="sr-only">손님 반응 입력</h2>
+            <p className="sr-only mt-1 text-sm text-muted">
               칭찬, 불만, 문의처럼 나중에 매장 개선에 쓸 손님 말을 한 줄로 남깁니다.
             </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Button icon={RefreshCcw} type="button" onClick={() => void loadCriteria()}>
-              {isLoadingCriteria ? "조회 중" : "기준 새로고침"}
-            </Button>
-            <Button
-              disabled={isSuggesting || criteria.length === 0 || !fullText?.trim()}
-              icon={Sparkles}
-              type="button"
-              onClick={() => void suggestWithAi()}
-            >
-              {isSuggesting ? "AI 분류 중" : "AI 분류하기"}
-            </Button>
-            <Button disabled={isSubmitting || criteria.length === 0} icon={Save} type="submit">
-              {isSubmitting ? "저장 중" : "저장"}
-            </Button>
           </div>
         </div>
 
         <div className="grid gap-5">
-          <div className="grid gap-2 rounded-control border border-latte bg-cream/50 p-3 text-sm text-cocoa sm:grid-cols-3">
+          <div className="sr-only grid gap-2 rounded-control border border-latte bg-cream/50 p-3 text-sm text-cocoa sm:grid-cols-3">
             <span className="font-bold">1. 손님이 한 말 입력</span>
             <span className="font-bold">2. AI 분류 후 직원 확인</span>
             <span className="font-bold">3. 맞으면 저장</span>
@@ -282,7 +266,7 @@ export function ResponseEntryPage({ embedded = false }: { embedded?: boolean } =
             </div>
           ) : null}
 
-          <label className="grid max-w-[12rem] cursor-pointer gap-2" onClick={openDatePicker}>
+          <label className="sr-only grid max-w-[12rem] cursor-pointer gap-2" onClick={openDatePicker}>
             <span className="field-label">날짜</span>
             <input
               className="input w-48 max-w-full cursor-pointer"
@@ -348,7 +332,7 @@ export function ResponseEntryPage({ embedded = false }: { embedded?: boolean } =
               </div>
             ) : null}
 
-            <div className="rounded-control border border-stone-200 bg-stone-50 px-3 py-2 text-sm font-semibold text-stone-700">
+            <div className="rounded-control border border-latte bg-cream/40 px-3 py-2 text-sm font-semibold text-stone-700">
               선택 기준:{" "}
               {selectedCriterionId > 0
                 ? `${aiSuggestionPath ? "AI 추천 · " : ""}${criterionPathLabel(selectedPath)}`
@@ -376,7 +360,7 @@ export function ResponseEntryPage({ embedded = false }: { embedded?: boolean } =
             ) : null}
           </label>
 
-          <div className="grid gap-2">
+          <div className="sr-only grid gap-2">
             <span className="field-label">예시 문구</span>
             <div className="flex flex-wrap gap-2">
               {responseExamples.map((example) => (
@@ -403,6 +387,20 @@ export function ResponseEntryPage({ embedded = false }: { embedded?: boolean } =
               {...register("fullText")}
             />
           </label>
+          <div className="flex gap-2">
+            <Button
+              className="flex-1 bg-[#F4E3D8] text-cocoa hover:bg-[#ecd8ca]"
+              disabled={isSuggesting || criteria.length === 0 || !fullText?.trim()}
+              icon={Sparkles}
+              type="button"
+              onClick={() => void suggestWithAi()}
+            >
+              {isSuggesting ? "AI 분류 중" : "AI 분류하기"}
+            </Button>
+            <Button className="dc-action flex-1" disabled={isSubmitting || criteria.length === 0} icon={Save} type="submit">
+              {isSubmitting ? "저장 중" : "저장"}
+            </Button>
+          </div>
         </div>
       </section>
     </form>

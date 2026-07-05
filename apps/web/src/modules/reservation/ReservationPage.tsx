@@ -755,7 +755,7 @@ export function ReservationPage() {
             <h2 className="section-title">예약 · {date.replaceAll("-", ".")}</h2>
           </div>
           <div className="flex flex-wrap items-end gap-2">
-            <label className="grid min-w-40 max-w-full cursor-pointer gap-1">
+            <label className="sr-only grid min-w-40 max-w-full cursor-pointer gap-1">
               <span className="sr-only">조회 날짜</span>
               <input
                 aria-label="예약 조회 날짜"
@@ -768,7 +768,7 @@ export function ReservationPage() {
             </label>
             <button
               type="button"
-              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-[0.9rem] bg-white px-3 text-sm font-extrabold text-cocoa shadow-sm ring-1 ring-latte transition hover:-translate-y-0.5 hover:bg-cream hover:shadow-md active:translate-y-0"
+              className="sr-only inline-flex min-h-10 items-center justify-center gap-2 rounded-[0.9rem] bg-white px-3 text-sm font-extrabold text-cocoa shadow-sm ring-1 ring-latte transition hover:-translate-y-0.5 hover:bg-cream hover:shadow-md active:translate-y-0"
               onClick={() => void loadReservations()}
             >
               <RefreshCcw className="h-4 w-4" aria-hidden="true" />

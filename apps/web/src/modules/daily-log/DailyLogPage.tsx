@@ -1391,52 +1391,83 @@ function BasicSection({
   draft: DailyOperationDraft;
   updateDraft: <K extends keyof DailyOperationDraft>(key: K, value: DailyOperationDraft[K]) => void;
 }) {
+  const weatherOptions = ["맑음", "흐림", "비", "눈"];
+
   return (
-    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-      <TextInput
-        label="날짜"
-        type="date"
-        value={draft.date}
-        onChange={(value) => updateDraft("date", value)}
-      />
-      <TextInput
-        label="작성자"
-        value={draft.author}
-        onChange={(value) => updateDraft("author", value)}
-      />
-      <TextInput
-        label="외부온도"
-        suffix="℃"
-        value={draft.outsideTemp}
-        onChange={(value) => updateDraft("outsideTemp", value)}
-      />
-      <TextInput
-        label="내부온도"
-        suffix="℃"
-        value={draft.insideTemp}
-        onChange={(value) => updateDraft("insideTemp", value)}
-      />
-      <TextInput
-        label="외부습도"
-        suffix="%"
-        value={draft.outsideHumidity}
-        onChange={(value) => updateDraft("outsideHumidity", value)}
-      />
-      <TextInput
-        label="내부습도"
-        suffix="%"
-        value={draft.insideHumidity}
-        onChange={(value) => updateDraft("insideHumidity", value)}
-      />
-      <label className="grid gap-2 xl:col-span-2">
-        <span className="field-label">날씨</span>
-        <input
-          className="input"
-          value={draft.weather}
-          onChange={(event) => updateDraft("weather", event.target.value)}
-          placeholder="예: 맑음, 비, 흐림"
+    <div className="grid gap-3">
+      <div className="sr-only">
+        <TextInput
+          label="날짜"
+          type="date"
+          value={draft.date}
+          onChange={(value) => updateDraft("date", value)}
         />
-      </label>
+      </div>
+      <div className="grid gap-3 md:grid-cols-3">
+        <TextInput
+          label="작성자"
+          value={draft.author}
+          onChange={(value) => updateDraft("author", value)}
+        />
+        <div>
+          <p className="field-label">외부 온도(℃) / 습도(%)</p>
+          <div className="flex gap-2">
+            <TextInput
+              label="외부온도"
+              suffix="℃"
+              value={draft.outsideTemp}
+              onChange={(value) => updateDraft("outsideTemp", value)}
+            />
+            <TextInput
+              label="외부습도"
+              suffix="%"
+              value={draft.outsideHumidity}
+              onChange={(value) => updateDraft("outsideHumidity", value)}
+            />
+          </div>
+        </div>
+        <div>
+          <p className="field-label">내부 온도(℃) / 습도(%)</p>
+          <div className="flex gap-2">
+            <TextInput
+              label="내부온도"
+              suffix="℃"
+              value={draft.insideTemp}
+              onChange={(value) => updateDraft("insideTemp", value)}
+            />
+            <TextInput
+              label="내부습도"
+              suffix="%"
+              value={draft.insideHumidity}
+              onChange={(value) => updateDraft("insideHumidity", value)}
+            />
+          </div>
+        </div>
+      </div>
+      <div>
+        <p className="field-label">날씨</p>
+        <div className="flex flex-wrap gap-2">
+          {weatherOptions.map((weather) => (
+            <button
+              key={weather}
+              className={[
+                "rounded-full px-4 py-2 text-[12.5px] font-semibold transition",
+                draft.weather === weather ? "bg-bread text-white" : "bg-cream text-cocoa hover:bg-[#eadfd1]"
+              ].join(" ")}
+              type="button"
+              onClick={() => updateDraft("weather", weather)}
+            >
+              {weather}
+            </button>
+          ))}
+          <input
+            aria-label="날씨"
+            className="sr-only"
+            value={draft.weather}
+            onChange={(event) => updateDraft("weather", event.target.value)}
+          />
+        </div>
+      </div>
     </div>
   );
 }
@@ -1524,15 +1555,15 @@ function ProductsSection({
     <div className="grid gap-3">
       <div className="rounded-control border border-latte bg-white">
         <div className="max-h-[62vh] overflow-auto">
-          <table className="w-full min-w-0 table-fixed text-left text-[11px] md:min-w-[880px] md:text-xs">
+          <table className="w-full min-w-0 table-fixed text-left text-[11px] md:min-w-[760px] md:text-xs">
             <thead className="sticky top-0 z-10 bg-cream text-cocoa shadow-sm">
               <tr>
-                <th className="w-40 px-2 py-2">제품</th>
+                <th className="w-40 px-2 py-2">제품명</th>
                 <th className="w-28 px-2 py-2 text-center">생산량</th>
                 <th className="w-28 px-2 py-2 text-center">손실량</th>
                 <th className="w-28 px-2 py-2 text-center">시식량</th>
-                <th className="w-36 px-2 py-2 text-center">기타(+)/(-)</th>
-                <th className="w-28 px-2 py-2 text-center">재고량</th>
+                <th className="sr-only">기타(+)/(-)</th>
+                <th className="w-28 px-2 py-2 text-center">재고(남음)</th>
                 <th className="w-28 px-2 py-2 text-center">판매량</th>
               </tr>
             </thead>
@@ -1544,7 +1575,7 @@ function ProductsSection({
                     key={row.productName}
                     className="border-t border-latte/80 odd:bg-white even:bg-cream/30"
                   >
-                    <th className="sticky left-0 z-[1] bg-inherit px-2 py-1.5 text-sm font-bold text-cocoa">
+                    <th className="w-40 px-2 py-1.5 text-left text-sm font-bold text-cocoa">
                       {row.productName}
                     </th>
                     <CompactNumberInput
@@ -1562,21 +1593,19 @@ function ProductsSection({
                       value={row.tastingQty}
                       onChange={(value) => updateRow(row.productName, "tastingQty", value)}
                     />
-                    <td className="w-36 px-2 py-1.5">
-                      <div className="flex justify-center gap-2">
-                        <CompactInlineNumberInput
-                          label={`${row.productName} 기타 입고 +`}
-                          prefix="+"
-                          value={row.otherInQty}
-                          onChange={(value) => updateRow(row.productName, "otherInQty", value)}
-                        />
-                        <CompactInlineNumberInput
-                          label={`${row.productName} 기타 출고 -`}
-                          prefix="-"
-                          value={row.otherOutQty}
-                          onChange={(value) => updateRow(row.productName, "otherOutQty", value)}
-                        />
-                      </div>
+                    <td className="sr-only">
+                      <CompactInlineNumberInput
+                        label={`${row.productName} 기타 입고 +`}
+                        prefix="+"
+                        value={row.otherInQty}
+                        onChange={(value) => updateRow(row.productName, "otherInQty", value)}
+                      />
+                      <CompactInlineNumberInput
+                        label={`${row.productName} 기타 출고 -`}
+                        prefix="-"
+                        value={row.otherOutQty}
+                        onChange={(value) => updateRow(row.productName, "otherOutQty", value)}
+                      />
                     </td>
                     <CompactNumberInput
                       label={`${row.productName} 재고량`}
@@ -1615,7 +1644,7 @@ function ProductsSection({
                 <td className="px-2 py-2 text-center">{totals.produced}</td>
                 <td className="px-2 py-2 text-center">{totals.loss}</td>
                 <td className="px-2 py-2 text-center">{totals.tasting}</td>
-                <td className="px-2 py-2 text-center">
+                <td className="sr-only">
                   +{totals.otherIn} / -{totals.otherOut}
                 </td>
                 <td className="px-2 py-2 text-center">{totals.stock}</td>

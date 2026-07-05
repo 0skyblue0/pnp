@@ -24,18 +24,9 @@ export function AppLayout() {
   const dateText = todayLabel();
 
   return (
-    <div className="min-h-screen bg-paper px-3 py-5 text-ink sm:px-6 sm:py-8 lg:px-10 lg:py-11">
-      <div className="mx-auto mb-5 w-full max-w-[1180px]">
-        <p className="text-[12.5px] font-semibold uppercase tracking-[0.03em] text-muted">
-          폴앤폴리나 · 직원 관리 시스템
-        </p>
-        <h1 className="mt-1 text-[22px] font-bold tracking-[-0.02em] text-ink">
-          실사용 프로토타입 — 상단 네비게이션형
-        </h1>
-      </div>
-
-      <div className="mx-auto flex min-h-[820px] w-full max-w-[1180px] flex-col overflow-hidden rounded-[20px] border border-latte bg-cream shadow-[0_24px_60px_rgba(43,38,34,0.18)]">
-        <header className="flex shrink-0 flex-col gap-3 border-b border-latte bg-white px-4 py-3 sm:px-7 lg:h-[68px] lg:flex-row lg:items-center lg:gap-7 lg:py-0">
+    <div className="min-h-screen bg-paper text-ink">
+      <header className="sticky top-0 z-30 border-b border-latte bg-white/95 px-4 py-3 backdrop-blur sm:px-6 lg:py-0">
+        <div className="mx-auto flex w-full max-w-[1180px] flex-col gap-3 lg:h-[68px] lg:flex-row lg:items-center lg:gap-7">
           <NavLink to="/home" className="shrink-0" aria-label="Paul & Paulina 홈" title="홈으로 이동">
             <span className="block font-serif text-[19px] font-bold tracking-[0.01em] text-ink">
               Paul&amp;Paulina
@@ -91,12 +82,12 @@ export function AppLayout() {
               <span className="hidden sm:inline">김</span>
             </NavLink>
           </div>
-        </header>
+        </div>
+      </header>
 
-        <main className="min-h-0 flex-1 overflow-y-auto bg-cream px-4 py-7 sm:px-7 lg:px-9 lg:py-7">
-          <Outlet />
-        </main>
-      </div>
+      <main className="mx-auto w-full max-w-[1180px] px-4 py-6 sm:px-6 lg:px-0 lg:py-7">
+        <Outlet />
+      </main>
     </div>
   );
 }

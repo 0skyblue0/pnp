@@ -668,7 +668,7 @@ export function DailyLogPage() {
           <div className="flex items-center gap-3">
             <span className="text-[12.5px] text-muted">{draft.date.replaceAll("-", ".")}</span>
           {viewMode === "entry" ? (
-            <Button aria-label="일일 운영 저장" icon={Save} type="button" onClick={saveDraft}>
+            <Button aria-label="일일 운영 저장" className="dc-action min-h-0" icon={Save} type="button" onClick={saveDraft}>
               저장
             </Button>
           ) : null}
@@ -770,13 +770,13 @@ export function DailyLogPage() {
                 </button>
               ))}
             </div>
-            <section className="panel">
-              <p className="mb-4 text-sm text-muted">환경 · 근무 정보</p>
+            <section className="dc-card-pad">
+              <p className="dc-eyebrow">환경 · 근무 정보</p>
               <h3 className="sr-only">환경 · 근무 정보</h3>
               <BasicSection draft={draft} updateDraft={updateDraft} />
             </section>
-            <section className="panel">
-              <p className="mb-4 text-sm text-muted">제품별 생산 · 판매 (판매량 자동 계산)</p>
+            <section className="dc-card-pad">
+              <p className="dc-eyebrow">제품별 생산 · 판매 (판매량 자동 계산)</p>
               <h3 className="sr-only">제품별 생산 · 판매</h3>
               <ProductsSection
                 rows={productRows}
@@ -785,8 +785,8 @@ export function DailyLogPage() {
               />
             </section>
             <section className="grid gap-4 lg:grid-cols-2">
-              <div className="panel">
-                <p className="mb-4 text-sm text-muted">매출 요약 (자동 계산)</p>
+              <div className="dc-card-pad">
+                <p className="dc-eyebrow">매출 요약 (자동 계산)</p>
                 <h3 className="sr-only">매출 요약</h3>
               <SalesSection
                 channelRows={channelRows}
@@ -799,8 +799,8 @@ export function DailyLogPage() {
                 averageSpend={averageSpend}
               />
               </div>
-              <div className="panel">
-                <p className="mb-4 text-sm text-muted">메모 · 점검</p>
+              <div className="dc-card-pad">
+                <p className="dc-eyebrow">메모 · 점검</p>
                 <h3 className="sr-only">메모 · 점검</h3>
               <NotesSection
                 draft={draft}

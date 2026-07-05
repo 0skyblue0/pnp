@@ -693,11 +693,10 @@ export function ManagementPage() {
 
   return (
     <div className="mx-auto grid max-w-7xl gap-4">
-      <section className="panel">
-        <div className="panel-heading">
+      <section className="order-1 min-w-0">
+        <div className="mb-4 flex items-center justify-between gap-3">
           <div>
-            <p className="text-sm text-muted">관리</p>
-            <h2 className="section-title">기준 정보</h2>
+            <h2 className="section-title">관리</h2>
           </div>
           <Button icon={RefreshCcw} type="button" onClick={() => void loadManagementData()}>
             {isLoading ? "조회 중" : "새로고침"}
@@ -715,37 +714,37 @@ export function ManagementPage() {
           </div>
         ) : null}
 
-        <div className="mb-4 rounded-control border border-bread/30 bg-cream/60 px-3 py-3 text-sm leading-6 text-cocoa">
+        <div className="sr-only mb-4 rounded-control border border-bread/30 bg-cream/60 px-3 py-3 text-sm leading-6 text-cocoa">
           관리 탭은 매일 입력하는 곳이 아니라 제품, 직원, 손님 반응 분류, 홈 공지를 깨끗하게 유지하는 기준 정보입니다.
           테스트처럼 보이는 이름이나 쓰지 않는 항목은 비활성 처리하면 예약·손님 반응 입력에서 실수가 줄어듭니다.
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
-          <div className="rounded-control border border-stone-200 px-3 py-3">
-            <p className="text-sm text-muted">제품</p>
-            <p className="mt-1 text-2xl font-semibold">{products.length}</p>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="dc-card px-3 py-3">
+            <p className="text-[10px] text-muted">전체 제품</p>
+            <p className="mt-1 text-[15px] font-bold text-ink">{products.length}</p>
           </div>
-          <div className="rounded-control border border-stone-200 px-3 py-3">
-            <p className="text-sm text-muted">활성 제품</p>
-            <p className="mt-1 text-2xl font-semibold">
+          <div className="dc-card px-3 py-3">
+            <p className="text-[10px] text-muted">활성 제품</p>
+            <p className="mt-1 text-[15px] font-bold text-ink">
               {products.filter((product) => product.isActive).length}
             </p>
           </div>
-          <div className="rounded-control border border-stone-200 px-3 py-3">
-            <p className="text-sm text-muted">직원</p>
-            <p className="mt-1 text-2xl font-semibold">{staff.length}</p>
+          <div className="dc-card px-3 py-3">
+            <p className="text-[10px] text-muted">전체 직원</p>
+            <p className="mt-1 text-[15px] font-bold text-ink">{staff.length}</p>
           </div>
-          <div className="rounded-control border border-stone-200 px-3 py-3">
-            <p className="text-sm text-muted">활성 직원</p>
-            <p className="mt-1 text-2xl font-semibold">
+          <div className="dc-card px-3 py-3">
+            <p className="text-[10px] text-muted">활성 직원</p>
+            <p className="mt-1 text-[15px] font-bold text-ink">
               {staff.filter((person) => person.isActive).length}
             </p>
           </div>
-          <div className="rounded-control border border-stone-200 px-3 py-3">
+          <div className="sr-only rounded-control border border-stone-200 px-3 py-3">
             <p className="text-sm text-muted">반응 기준</p>
             <p className="mt-1 text-2xl font-semibold">{responseCriteria.length}</p>
           </div>
-          <div className="rounded-control border border-stone-200 px-3 py-3">
+          <div className="sr-only rounded-control border border-stone-200 px-3 py-3">
             <p className="text-sm text-muted">활성 기준</p>
             <p className="mt-1 text-2xl font-semibold">
               {responseCriteria.filter((criterion) => criterion.isActive).length}
@@ -754,7 +753,7 @@ export function ManagementPage() {
         </div>
       </section>
 
-      <section className="panel">
+      <section className="panel order-4">
         <div className="panel-heading">
           <div>
             <p className="text-sm text-muted">홈 화면</p>
@@ -877,7 +876,7 @@ export function ManagementPage() {
         </div>
       </section>
 
-      <section className="panel">
+      <section className="panel order-5">
         <div className="panel-heading">
           <div>
             <p className="text-sm text-muted">반응 분류</p>
@@ -1164,7 +1163,7 @@ export function ManagementPage() {
         ) : null}
       </section>
 
-      <section className="panel">
+      <section className="panel order-2">
         <div className="panel-heading">
           <div>
             <p className="text-sm text-muted">제품 마스터</p>
@@ -1344,7 +1343,7 @@ export function ManagementPage() {
         ) : null}
       </section>
 
-      <section className="panel">
+      <section className="panel order-3">
         <div className="panel-heading">
           <div>
             <p className="text-sm text-muted">계정</p>

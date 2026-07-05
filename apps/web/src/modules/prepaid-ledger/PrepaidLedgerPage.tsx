@@ -277,7 +277,7 @@ export function PrepaidLedgerPage() {
               value={query}
               onChange={(event) => setQuery(event.target.value)}
             />
-            <Button icon={Plus} type="button" onClick={() => document.getElementById("new-prepaid-form")?.scrollIntoView({ behavior: "smooth" })}>
+            <Button className="dc-action min-h-0" icon={Plus} type="button" onClick={() => document.getElementById("new-prepaid-form")?.scrollIntoView({ behavior: "smooth" })}>
               신규 등록
             </Button>
           </div>
@@ -294,7 +294,7 @@ export function PrepaidLedgerPage() {
           </div>
         ) : null}
 
-        <div className="panel mb-4 grid gap-2 sm:grid-cols-[5rem_1fr]">
+        <div className="dc-card mb-4 flex gap-7 px-5 py-[15px]">
           <div>
             <p className="text-[11px] text-muted">검색된 손님 수</p>
             <p className="mt-1 text-lg font-bold text-ink">{formatCurrency(customers.length)}명</p>
@@ -305,14 +305,14 @@ export function PrepaidLedgerPage() {
           </div>
         </div>
 
-        <div className="panel overflow-hidden px-5 py-2">
-          <div className="grid grid-cols-[1fr_1.2fr_0.9fr_1.4fr_2fr] gap-3 border-b border-latte py-3 text-[11px] font-semibold text-muted">
+        <div className="dc-card overflow-hidden px-[22px] py-2">
+          <div className="dc-row-head grid grid-cols-[1fr_1.3fr_1fr_2fr_2.2fr] gap-2">
             <div>이름</div><div>연락처</div><div>잔액</div><div>최근 거래</div><div>액션</div>
           </div>
           {sortedCustomers.map((customer) => {
             const last = customer.transactions[0];
             return (
-              <div key={customer.id} className="grid grid-cols-[1fr_1.2fr_0.9fr_1.4fr_2fr] gap-3 border-b border-[#F5F0E7] py-3 text-[13px] last:border-b-0">
+              <div key={customer.id} className="dc-row grid grid-cols-[1fr_1.3fr_1fr_2fr_2.2fr] gap-2 items-center">
                 <div className="font-bold text-ink">{customer.customerName}</div>
                 <div className="text-muted">{customer.contactPhone || "-"}</div>
                 <div className="font-bold text-ink">잔액 {formatCurrency(customer.balance)}원</div>

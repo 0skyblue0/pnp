@@ -86,6 +86,30 @@ body {
   .input {
     @apply min-h-10 max-w-full rounded-control border border-latte bg-white px-3 py-2 text-[13px] font-medium text-ink shadow-none outline-none transition placeholder:text-muted/60 hover:border-[#d8cdbd] focus:border-bread focus:bg-white focus:ring-2 focus:ring-bread/15;
   }
+
+  .dc-card {
+    @apply rounded-panel border border-latte bg-white shadow-none;
+  }
+
+  .dc-card-pad {
+    @apply rounded-panel border border-latte bg-white px-5 py-[18px] shadow-none;
+  }
+
+  .dc-eyebrow {
+    @apply mb-3 text-[11.5px] font-semibold uppercase tracking-[0.03em] text-muted;
+  }
+
+  .dc-row-head {
+    @apply border-b border-[#EFE8DC] px-1 py-3 text-[11px] font-semibold text-muted;
+  }
+
+  .dc-row {
+    @apply border-b border-[#F5F0E7] px-1 py-3 text-[13px] text-ink last:border-b-0;
+  }
+
+  .dc-action {
+    @apply rounded-[9px] bg-bread px-4 py-2 text-[13px] font-semibold text-white transition hover:bg-cocoa;
+  }
 }
 
 .font-serif {

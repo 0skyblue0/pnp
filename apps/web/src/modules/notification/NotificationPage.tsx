@@ -1,10 +1,9 @@
-import { Bell, CheckCheck } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
 import { apiGet, apiPatch } from "../../shared/api/client.js";
 import type { ListEnvelope } from "../../shared/api/types.js";
-import { Button } from "../../shared/ui/Button.js";
+
 
 type NotificationDto = {
   id: number;
@@ -79,20 +78,17 @@ export function NotificationPage() {
   }, []);
 
   return (
-    <section className="panel mx-auto max-w-4xl">
-      <div className="panel-heading">
-        <div>
-          <p className="text-sm text-muted">M13</p>
-          <h2 className="section-title">알림 센터</h2>
-        </div>
-        <Button
+    <section className="mx-auto grid max-w-none gap-4">
+      <div className="mb-0 flex items-baseline justify-between gap-3">
+        <h2 className="section-title">알림</h2>
+        <button
+          className="text-[12.5px] font-semibold text-bread hover:text-cocoa"
           disabled={isLoading}
-          icon={CheckCheck}
           type="button"
           onClick={() => void markAllRead()}
         >
-          모두 읽음
-        </Button>
+          전체 읽음 처리
+        </button>
       </div>
 
       {error ? (
@@ -101,33 +97,14 @@ export function NotificationPage() {
         </div>
       ) : null}
 
-      <div className="space-y-3">
+      <div className="dc-card px-[22px] py-1">
         {notifications.map((notification) => {
           const content = (
             <>
-              <span
-                className={[
-                  "grid h-10 w-10 place-items-center rounded-control",
-                  severityClasses(notification.severity)
-                ].join(" ")}
-              >
-                <Bell className="h-5 w-5" aria-hidden="true" />
-              </span>
-              <span className="min-w-0">
-                <span className="block truncate font-semibold">{notification.title}</span>
-                <span className="block truncate text-sm text-muted">
-                  {notification.body ?? notification.type} ·{" "}
-                  {formatCreatedAt(notification.createdAt)}
-                </span>
-              </span>
-              <span
-                className={[
-                  "rounded-control px-2 py-1 text-xs font-semibold",
-                  notification.isRead ? "bg-stone-100 text-muted" : "bg-blue/10 text-blue"
-                ].join(" ")}
-              >
-                {notification.isRead ? "읽음" : "신규"}
-              </span>
+              <span className={["rounded-full px-2.5 py-1 text-[10px] font-bold", severityClasses(notification.severity)].join(" ")}>{notification.severity}</span>
+              <span className="min-w-0 flex-1 truncate text-[13px] text-ink">{notification.title}</span>
+              <span className="shrink-0 text-[11px] text-muted">{formatCreatedAt(notification.createdAt)}</span>
+              <span className={["w-11 shrink-0 text-right text-[11px] font-semibold", notification.isRead ? "text-muted" : "text-bread"].join(" ")}>{notification.isRead ? "읽음" : "안읽음"}</span>
             </>
           );
 
@@ -135,7 +112,7 @@ export function NotificationPage() {
             return (
               <Link
                 key={notification.id}
-                className="grid min-h-16 grid-cols-[44px_1fr_auto] items-center gap-3 rounded-control border border-stone-200 px-3 hover:bg-stone-50"
+                className="flex items-center gap-3 border-b border-[#F1EAE0] py-3.5 opacity-100 last:border-b-0 hover:bg-cream/40"
                 to={notification.link}
               >
                 {content}
@@ -146,7 +123,7 @@ export function NotificationPage() {
           return (
             <div
               key={notification.id}
-              className="grid min-h-16 grid-cols-[44px_1fr_auto] items-center gap-3 rounded-control border border-stone-200 px-3"
+              className="flex items-center gap-3 border-b border-[#F1EAE0] py-3.5 opacity-100 last:border-b-0"
             >
               {content}
             </div>

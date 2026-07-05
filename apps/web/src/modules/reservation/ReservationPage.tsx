@@ -777,7 +777,7 @@ export function ReservationPage() {
             {!showReservationForm ? (
               <button
                 type="button"
-                className="inline-flex min-h-10 items-center justify-center rounded-control bg-bread px-4 text-[13px] font-semibold text-white transition hover:bg-cocoa"
+                className="dc-action inline-flex min-h-0 items-center justify-center"
                 onClick={openNewReservationForm}
               >
                 + 새 예약 등록
@@ -798,8 +798,8 @@ export function ReservationPage() {
             {error}
           </div>
         ) : null}
-        <div className="overflow-hidden rounded-panel border border-latte bg-white px-5 py-2">
-          <div className="grid grid-cols-[0.7fr_1fr_1.35fr_2.2fr_1fr_1fr_1.15fr_0.7fr] gap-2 border-b border-latte px-1 py-3 text-[11px] font-semibold text-muted">
+        <div className="dc-card overflow-hidden px-[22px] py-2">
+          <div className="dc-row-head grid grid-cols-[0.7fr_1fr_1.35fr_2.2fr_1fr_1fr_1.15fr_0.7fr] gap-2">
             <div>시간</div><div>이름</div><div>연락처</div><div>제품</div><div>컷팅</div><div>결제</div><div>상태</div><div>수정</div>
           </div>
           {sortedReservations.map((reservation) => {
@@ -813,7 +813,7 @@ export function ReservationPage() {
             return (
               <div
                 key={reservation.id}
-                className="grid grid-cols-[0.7fr_1fr_1.35fr_2.2fr_1fr_1fr_1.15fr_0.7fr] gap-2 border-b border-[#F5F0E7] px-1 py-3 text-[13px] text-ink last:border-b-0"
+                className="dc-row grid grid-cols-[0.7fr_1fr_1.35fr_2.2fr_1fr_1fr_1.15fr_0.7fr] gap-2"
               >
                 <div className="font-semibold">{formatPickupTimeOnly(reservation.pickupAt)}</div>
                 <div>{reservation.customerName || "-"}</div>

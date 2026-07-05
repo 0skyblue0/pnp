@@ -48,8 +48,8 @@ type ReservationItemForm = {
   cuttingOption: CuttingOption;
 };
 
-const quickTimes = ["10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00", "19:00"];
-const pickupHours = Array.from({ length: 13 }, (_, index) => String(index + 8).padStart(2, "0"));
+const quickTimes = ["11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00", "19:00"];
+const pickupHours = Array.from({ length: 9 }, (_, index) => String(index + 11).padStart(2, "0"));
 const pickupMinutes = ["00", "10", "20", "30", "40", "50"];
 const halfCuttableProducts = new Set(["바게트", "깜빠뉴", "호밀빵", "화이트바게트", "식빵"]);
 const sliceableProducts = new Set(["식빵"]);
@@ -94,6 +94,13 @@ function formatDateWithWeekday(value: string): string {
 function defaultPickupAt(): string {
   const value = new Date(Date.now() + 60 * 60 * 1000);
   value.setMinutes(Math.ceil(value.getMinutes() / 10) * 10, 0, 0);
+  if (value.getHours() < 11) {
+    value.setHours(11, 0, 0, 0);
+  }
+  if (value.getHours() > 19 || (value.getHours() === 19 && value.getMinutes() > 0)) {
+    value.setDate(value.getDate() + 1);
+    value.setHours(11, 0, 0, 0);
+  }
   return formatLocalDateTime(value);
 }
 
@@ -140,7 +147,7 @@ function datePart(value: string): string {
 }
 
 function timePart(value: string): string {
-  return value.slice(11, 16) || "10:00";
+  return value.slice(11, 16) || "11:00";
 }
 
 function combineDateTime(date: string, time: string): string {

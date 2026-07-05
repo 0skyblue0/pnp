@@ -110,16 +110,6 @@ const defaultChannels: ChannelRow[] = ["선물", "쿠팡이츠", "배민", "제�
   (name) => ({ name, count: "0", amount: "0" })
 );
 
-const staffCategories: Array<{ key: StaffCategory; label: string }> = [
-  { key: "dayOff", label: "휴무" },
-  { key: "vacation", label: "휴가" },
-  { key: "lateEarly", label: "지각/조퇴" },
-  { key: "support", label: "지원" },
-  { key: "birthday", label: "생일" },
-  { key: "newStaff", label: "신입" },
-  { key: "etc", label: "기타사항" }
-];
-
 function createProductRows(): ProductRow[] {
   return productLineup.map((productName) => ({
     productName,
@@ -1706,67 +1696,108 @@ function NotesSection({
   updateDraft: <K extends keyof DailyOperationDraft>(key: K, value: DailyOperationDraft[K]) => void;
   updateStaffSpecialRow: (period: StaffPeriod, category: StaffCategory, value: string) => void;
 }) {
+  const memoFields: Array<{
+    label: string;
+    key: keyof Pick<DailyOperationDraft, "productOpinionAndLoss" | "instructions" | "tomorrowPrep" | "facilityIssue" | "cleaningWork">;
+  }> = [
+    { label: "제품의견/손실", key: "productOpinionAndLoss" },
+    { label: "지시 및 전달사항", key: "instructions" },
+    { label: "내일 준비사항", key: "tomorrowPrep" },
+    { label: "시설/장비 특이사항", key: "facilityIssue" },
+    { label: "청결/위생 관련업무", key: "cleaningWork" }
+  ];
+  const visibleStaffCategories: Array<{ primaryKey: StaffCategory; secondaryKey?: StaffCategory; label: string }> = [
+    { primaryKey: "dayOff", label: "휴무" },
+    { primaryKey: "vacation", label: "휴가" },
+    { primaryKey: "lateEarly", label: "지각/조퇴" },
+    { primaryKey: "support", label: "지원" },
+    { primaryKey: "birthday", secondaryKey: "newStaff", label: "생일 신입" },
+    { primaryKey: "etc", label: "기타사항" }
+  ];
+
   return (
-    <div>
-      <div className="dc-eyebrow mb-[12px]">메모</div>
-      <div className="grid grid-cols-1 gap-[14px] md:grid-cols-2">
-        <label className="grid gap-[5px]">
-          <span className="text-[11px] text-muted">지시 및 전달사항</span>
-          <textarea
-            aria-label="지시 및 전달사항"
-            className="h-[56px] resize-none rounded-[8px] border border-latte px-[10px] py-[9px] text-[12.5px] outline-none focus:border-bread"
-            value={draft.instructions}
-            onChange={(event) => updateDraft("instructions", event.target.value)}
-          />
-        </label>
-        <label className="grid gap-[5px]">
-          <span className="text-[11px] text-muted">내일 준비사항</span>
-          <textarea
-            aria-label="내일 준비사항"
-            className="h-[56px] resize-none rounded-[8px] border border-latte px-[10px] py-[9px] text-[12.5px] outline-none focus:border-bread"
-            value={draft.tomorrowPrep}
-            onChange={(event) => updateDraft("tomorrowPrep", event.target.value)}
-          />
-        </label>
-      </div>
-      <div className="sr-only">
-        <TextArea label="제품의견/손실" value={draft.productOpinionAndLoss} onChange={(value) => updateDraft("productOpinionAndLoss", value)} />
-        <TextArea label="시설/장비 특이사항" value={draft.facilityIssue} onChange={(value) => updateDraft("facilityIssue", value)} />
-        <TextArea label="청결/위생 관련업무" value={draft.cleaningWork} onChange={(value) => updateDraft("cleaningWork", value)} />
-        <div>직원 특이사항</div>
-        <table>
-          <thead>
-            <tr>
-              <th>구분</th>
-              {staffCategories.map((category) => <th key={category.key}>{category.label}</th>)}
-            </tr>
-          </thead>
-          <tbody>
-            {(["today", "tomorrow"] as StaffPeriod[]).map((period) => {
-              const label = period === "today" ? "금일" : "내일";
-              return (
-                <tr key={period}>
-                  <th>{label}</th>
-                  {staffCategories.map((category) => (
-                    <td key={category.key}>
-                      <input
-                        aria-label={`${label} ${category.label}`}
-                        value={staffSpecialRows[period][category.key]}
-                        onChange={(event) => updateStaffSpecialRow(period, category.key, event.target.value)}
-                      />
-                    </td>
-                  ))}
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-        <div>시설 점검사항</div>
-        <WorkerTimeInput label="첫 출근자" nameLabel="첫 출근자 이름" nameValue={draft.firstWorker} timeLabel="첫 출근자 출근시간" timeValue={draft.firstWorkerTime} onNameChange={(value) => updateDraft("firstWorker", value)} onTimeChange={(value) => updateDraft("firstWorkerTime", value)} />
-        <WorkerTimeInput label="최종퇴근자" nameLabel="최종퇴근자 이름" nameValue={draft.lastWorker} timeLabel="최종퇴근자 퇴근시간" timeValue={draft.lastWorkerTime} onNameChange={(value) => updateDraft("lastWorker", value)} onTimeChange={(value) => updateDraft("lastWorkerTime", value)} />
-        <TextInput label="위생 점검자" value={draft.hygieneChecker} onChange={(value) => updateDraft("hygieneChecker", value)} />
-        <TextInput label="최종 점검자" value={draft.finalChecker} onChange={(value) => updateDraft("finalChecker", value)} />
-      </div>
+    <div className="grid gap-[14px]">
+      <section>
+        <div className="dc-eyebrow mb-[12px]">메모</div>
+        <div className="grid grid-cols-1 gap-[14px] md:grid-cols-2">
+          {memoFields.map((field, index) => (
+            <label key={field.key} className={[
+              "grid gap-[5px]",
+              index === 0 ? "md:col-span-2" : ""
+            ].filter(Boolean).join(" ")}>
+              <span className="text-[11px] text-muted">{field.label}</span>
+              <textarea
+                aria-label={field.label}
+                className="h-[56px] resize-none rounded-[8px] border border-latte px-[10px] py-[9px] text-[12.5px] outline-none focus:border-bread"
+                value={draft[field.key]}
+                onChange={(event) => updateDraft(field.key, event.target.value)}
+              />
+            </label>
+          ))}
+        </div>
+      </section>
+
+      <section className="rounded-[12px] border border-latte bg-cream/30 px-4 py-3">
+        <div className="dc-eyebrow mb-[12px]">직원 특이사항</div>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[760px] text-left text-[12px]">
+            <thead>
+              <tr className="border-b border-[#EFE8DC] text-[11px] text-muted">
+                <th className="w-16 py-2 pr-2">구분</th>
+                {visibleStaffCategories.map((category) => <th className="px-1 py-2" key={category.label}>{category.label}</th>)}
+              </tr>
+            </thead>
+            <tbody>
+              {(["today", "tomorrow"] as StaffPeriod[]).map((period) => {
+                const label = period === "today" ? "금일" : "내일";
+                return (
+                  <tr key={period} className="border-b border-[#F5F0E7] last:border-b-0">
+                    <th className="py-2 pr-2 text-cocoa">{label}</th>
+                    {visibleStaffCategories.map((category) => {
+                      const secondaryKey = category.secondaryKey;
+                      const keys = [category.primaryKey, secondaryKey].filter(Boolean) as StaffCategory[];
+                      const value = keys
+                        .map((key) => staffSpecialRows[period][key])
+                        .filter(Boolean)
+                        .join(" / ");
+                      return (
+                        <td key={category.label} className="px-1 py-2">
+                          <input
+                            aria-label={`${label} ${category.label}`}
+                            className="h-9 w-full rounded-[8px] border border-latte bg-white px-2 text-[12px] outline-none focus:border-bread"
+                            placeholder="이름/내용"
+                            value={value}
+                            onChange={(event) => {
+                              updateStaffSpecialRow(period, category.primaryKey, event.target.value);
+                              if (secondaryKey) {
+                                updateStaffSpecialRow(period, secondaryKey, "");
+                              }
+                            }}
+                          />
+                        </td>
+                      );
+                    })}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section className="rounded-[12px] border border-latte bg-cream/30 px-4 py-3">
+        <div className="dc-eyebrow mb-[12px]">시설 점검사항</div>
+        <div className="grid gap-3 md:grid-cols-2">
+          <WorkerTimeInput label="첫출근자" nameLabel="첫 출근자 이름" nameValue={draft.firstWorker} timeLabel="첫 출근자 출근시간" timeValue={draft.firstWorkerTime || "06:00"} onNameChange={(value) => updateDraft("firstWorker", value)} onTimeChange={(value) => updateDraft("firstWorkerTime", value)} />
+          <WorkerTimeInput label="최종퇴근자" nameLabel="최종퇴근자 이름" nameValue={draft.lastWorker} timeLabel="최종퇴근자 퇴근시간" timeValue={draft.lastWorkerTime || "19:30"} onNameChange={(value) => updateDraft("lastWorker", value)} onTimeChange={(value) => updateDraft("lastWorkerTime", value)} />
+          <TextInput label="위생&마감 점검" value={draft.hygieneChecker} onChange={(value) => updateDraft("hygieneChecker", value)} />
+          <TextInput label="최종 점검" value={draft.finalChecker} onChange={(value) => updateDraft("finalChecker", value)} />
+          <div className="sr-only">
+            <TextInput label="위생 점검자" value={draft.hygieneChecker} onChange={(value) => updateDraft("hygieneChecker", value)} />
+            <TextInput label="최종 점검자" value={draft.finalChecker} onChange={(value) => updateDraft("finalChecker", value)} />
+          </div>
+        </div>
+      </section>
     </div>
   );
 }
@@ -1892,27 +1923,4 @@ function TextInput({
   );
 }
 
-function TextArea({
-  label,
-  value,
-  onChange,
-  className = "",
-  textareaClassName = "min-h-28"
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  className?: string;
-  textareaClassName?: string;
-}) {
-  return (
-    <label className={["grid gap-2", className].filter(Boolean).join(" ")}>
-      <span className="field-label">{label}</span>
-      <textarea
-        className={["input resize-y", textareaClassName].join(" ")}
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-      />
-    </label>
-  );
-}
+

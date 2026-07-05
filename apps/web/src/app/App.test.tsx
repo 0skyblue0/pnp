@@ -466,6 +466,29 @@ describe("App", () => {
     expect(operationLink).toHaveClass(ACTIVE_NAV_CLASS);
   });
 
+  it("keeps reservation quick dates while allowing calendar and 10-minute pickup time selection", async () => {
+    render(
+      <AppProviders>
+        <App />
+      </AppProviders>
+    );
+
+    fireEvent.click(screen.getByRole("link", { name: "예약" }));
+    fireEvent.click(await screen.findByRole("button", { name: "+ 새 예약 등록" }));
+
+    expect(screen.getByRole("button", { name: "오늘" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "내일" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "모레" })).toBeInTheDocument();
+    expect(screen.getByLabelText("픽업 날짜")).toHaveAttribute("type", "date");
+
+    const hourSelect = screen.getByLabelText("픽업 시");
+    expect(within(hourSelect).queryByRole("option", { name: "08시" })).not.toBeInTheDocument();
+    expect(within(hourSelect).getByRole("option", { name: "11시" })).toBeInTheDocument();
+    expect(within(hourSelect).getByRole("option", { name: "19시" })).toBeInTheDocument();
+    expect(within(hourSelect).queryByRole("option", { name: "20시" })).not.toBeInTheDocument();
+    expect(within(screen.getByLabelText("픽업 분")).getByRole("option", { name: "10분" })).toBeInTheDocument();
+  });
+
   it("renders statistics inside the integrated lookup screen", async () => {
     vi.mocked(fetch).mockImplementation(
       async () =>
@@ -723,8 +746,16 @@ describe("App", () => {
     expect(screen.getByText("자동 계산")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("tab", { name: "메모·점검" }));
+    expect(screen.getByText("제품의견/손실")).toBeInTheDocument();
+    expect(screen.getByText("시설/장비 특이사항")).toBeInTheDocument();
+    expect(screen.getByText("청결/위생 관련업무")).toBeInTheDocument();
+    expect(screen.getByText("직원 특이사항")).toBeInTheDocument();
+    expect(screen.getByText("시설 점검사항")).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText("제품의견/손실"), {
       target: { value: "닭가슴살 재고 확인 필요합니다" }
+    });
+    fireEvent.change(screen.getByLabelText("시설/장비 특이사항"), {
+      target: { value: "냉장고 점검 필요" }
     });
     fireEvent.change(screen.getByLabelText("지시 및 전달사항"), {
       target: { value: "오후 진열대 보충" }
@@ -1060,6 +1091,38 @@ describe("App", () => {
         note: "화이트바게트 픽업",
         occurredAt: "2026-07-01T10:00:00.000Z",
         createdAt: "2026-07-01T10:00:00.000Z"
+      },
+      {
+        id: "t3",
+        type: "CHARGE",
+        amount: 10000,
+        note: "추가 선결제 3",
+        occurredAt: "2026-07-01T11:00:00.000Z",
+        createdAt: "2026-07-01T11:00:00.000Z"
+      },
+      {
+        id: "t4",
+        type: "USE",
+        amount: 3000,
+        note: "사용 내역 4",
+        occurredAt: "2026-07-01T12:00:00.000Z",
+        createdAt: "2026-07-01T12:00:00.000Z"
+      },
+      {
+        id: "t5",
+        type: "CHARGE",
+        amount: 7000,
+        note: "추가 선결제 5",
+        occurredAt: "2026-07-01T13:00:00.000Z",
+        createdAt: "2026-07-01T13:00:00.000Z"
+      },
+      {
+        id: "t6",
+        type: "USE",
+        amount: 2000,
+        note: "여섯번째 상세 내역",
+        occurredAt: "2026-07-01T14:00:00.000Z",
+        createdAt: "2026-07-01T14:00:00.000Z"
       }
     ];
     const customer = {
@@ -1158,13 +1221,16 @@ describe("App", () => {
     expect(screen.getByText("현재 잔액")).toBeInTheDocument();
     expect(screen.getAllByText("38,000원")).toHaveLength(2);
     expect(screen.getByText("화이트바게트 픽업")).toBeInTheDocument();
+    expect(screen.queryByText("여섯번째 상세 내역")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "김선결 전체 거래 내역 6건 보기" }));
+    expect(screen.getByText("여섯번째 상세 내역")).toBeInTheDocument();
     expect(
       screen.getByText("잘못 눌렀다면 최근 내역의 “되돌리기”를 누른 뒤 정확한 금액으로 다시 입력합니다.")
     ).toBeInTheDocument();
 
     vi.spyOn(window, "confirm").mockReturnValue(true);
     const cancelButtons = screen.getAllByRole("button", { name: "되돌리기" });
-    expect(cancelButtons).toHaveLength(2);
+    expect(cancelButtons).toHaveLength(6);
     const cancelButton = cancelButtons[1] as HTMLElement;
     fireEvent.click(cancelButton);
     await waitFor(() => expect(cancelledTransactionPath).toBe("/api/v1/prepaid-ledger/1/transactions/t2"));

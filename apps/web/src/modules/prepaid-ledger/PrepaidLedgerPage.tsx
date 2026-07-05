@@ -106,6 +106,7 @@ export function PrepaidLedgerPage() {
   const [newForm, setNewForm] = useState<NewLedgerForm>(() => emptyNewLedgerForm());
   const [useForms, setUseForms] = useState<Record<string, UseLedgerForm>>({});
   const [chargeForms, setChargeForms] = useState<Record<string, ChargeLedgerForm>>({});
+  const [expandedTransactionCustomers, setExpandedTransactionCustomers] = useState<string[]>([]);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -425,6 +426,10 @@ export function PrepaidLedgerPage() {
             {sortedCustomers.map((customer) => {
               const useForm = useForms[customer.id] ?? { amount: "", note: "" };
               const chargeForm = chargeForms[customer.id] ?? { amount: "", note: "" };
+              const showAllTransactions = expandedTransactionCustomers.includes(customer.id);
+              const displayedTransactions = showAllTransactions
+                ? customer.transactions
+                : customer.transactions.slice(0, 5);
               return (
                 <article
                   key={customer.id}
@@ -450,11 +455,15 @@ export function PrepaidLedgerPage() {
                     <div className="grid content-start gap-2">
                       <div>
                         <p className="text-xs font-extrabold text-cocoa">최근 내역</p>
-                        <p className="mt-0.5 text-[11px] font-semibold text-muted">최근 5개만 먼저 보여줍니다.</p>
+                        <p className="mt-0.5 text-[11px] font-semibold text-muted">
+                          {showAllTransactions
+                            ? `전체 ${customer.transactions.length}개 내역을 상세히 보여줍니다.`
+                            : "최근 5개만 먼저 보여줍니다."}
+                        </p>
                       </div>
                       {customer.transactions.length > 0 ? (
                         <div className="grid gap-2">
-                          {customer.transactions.slice(0, 5).map((transaction) => (
+                          {displayedTransactions.map((transaction) => (
                             <div
                               key={transaction.id}
                               className="grid gap-2 rounded-[0.9rem] border border-latte bg-cream/35 px-3 py-2 text-sm sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
@@ -483,6 +492,23 @@ export function PrepaidLedgerPage() {
                               </button>
                             </div>
                           ))}
+                          {customer.transactions.length > 5 ? (
+                            <button
+                              type="button"
+                              className="rounded-[0.9rem] border border-latte bg-white px-3 py-2 text-xs font-extrabold text-cocoa transition hover:bg-cream"
+                              onClick={() =>
+                                setExpandedTransactionCustomers((current) =>
+                                  current.includes(customer.id)
+                                    ? current.filter((id) => id !== customer.id)
+                                    : [...current, customer.id]
+                                )
+                              }
+                            >
+                              {showAllTransactions
+                                ? `${customer.customerName} 최근 거래 5개만 보기`
+                                : `${customer.customerName} 전체 거래 내역 ${customer.transactions.length}건 보기`}
+                            </button>
+                          ) : null}
                         </div>
                       ) : (
                         <p className="rounded-control bg-cream/50 px-3 py-4 text-center text-sm font-semibold text-muted">

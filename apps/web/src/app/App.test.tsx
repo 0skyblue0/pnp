@@ -407,6 +407,24 @@ describe("App", () => {
     expect(
       await screen.findByRole("heading", { name: "홈 목표·매출 공지 관리" })
     ).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "관리" })).toBeInTheDocument();
+    expect(screen.getByText("전체 제품")).toBeInTheDocument();
+    expect(screen.getByText("활성 제품")).toBeInTheDocument();
+    expect(screen.getByText("전체 직원")).toBeInTheDocument();
+    expect(screen.getByText("활성 직원")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "제품 관리" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "직원 관리" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "반응 기준 관리" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "홈 공지 관리" })).toBeInTheDocument();
+    expect(screen.getAllByText("제품명").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("카테고리").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("시즌").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("기간").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("상태").length).toBeGreaterThan(0);
+    fireEvent.click(screen.getByRole("button", { name: "반응 기준 관리" }));
+    expect(screen.getByText(/대분류\(제품·서비스·응대·구매·운영·손님경험·기타\)/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "홈 공지 관리" }));
+    expect(screen.getByText(/홈 화면에 노출되는 매출 목표 공지/)).toBeInTheDocument();
     expect(screen.getByText("전년 대비 +8%")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "홈 공지 추가" }));
     fireEvent.change(screen.getByLabelText("공지 종류"), { target: { value: "staff" } });

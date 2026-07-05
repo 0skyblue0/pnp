@@ -78,6 +78,8 @@ type GoalNoticeForm = {
   note: string;
 };
 
+type AdminTab = "product" | "staff" | "criteria" | "notice";
+
 const emptyProductForm: ProductForm = {
   name: "",
   category: "",
@@ -113,6 +115,13 @@ const goalNoticeCategoryLabels: Record<AnnualGoalNoticeCategory, string> = {
   operation: "운영 목표",
   staff: "직원 공지"
 };
+
+const adminTabs: Array<{ key: AdminTab; label: string }> = [
+  { key: "product", label: "제품 관리" },
+  { key: "staff", label: "직원 관리" },
+  { key: "criteria", label: "반응 기준 관리" },
+  { key: "notice", label: "홈 공지 관리" }
+];
 
 function roleLabel(role: StaffDto["role"]): string {
   if (role === "OWNER") {
@@ -179,6 +188,7 @@ export function ManagementPage() {
   const [isStaffFormOpen, setIsStaffFormOpen] = useState(false);
   const [isCriterionFormOpen, setIsCriterionFormOpen] = useState(false);
   const [isGoalNoticeFormOpen, setIsGoalNoticeFormOpen] = useState(false);
+  const [activeAdminTab, setActiveAdminTab] = useState<AdminTab>("product");
   const [productForm, setProductForm] = useState<ProductForm>(emptyProductForm);
   const [staffForm, setStaffForm] = useState<StaffForm>(emptyStaffForm);
   const [criterionForm, setCriterionForm] = useState<CriterionForm>(emptyCriterionForm);
@@ -681,6 +691,7 @@ export function ManagementPage() {
     selectedMiddleId === null ? [] : criteriaByParent(responseCriteria, selectedMiddleId);
   const selectedMajor = majorCriteria.find((criterion) => criterion.id === selectedMajorId);
   const selectedMiddle = middleCriteria.find((criterion) => criterion.id === selectedMiddleId);
+  const visibleProducts = products.slice(0, 4);
   const editingCriterion = responseCriteria.find(
     (criterion) => criterion.id === editingCriterionId
   );
@@ -698,7 +709,7 @@ export function ManagementPage() {
           <div>
             <h2 className="section-title">관리</h2>
           </div>
-          <Button icon={RefreshCcw} type="button" onClick={() => void loadManagementData()}>
+          <Button className="sr-only" icon={RefreshCcw} type="button" onClick={() => void loadManagementData()}>
             {isLoading ? "조회 중" : "새로고침"}
           </Button>
         </div>
@@ -751,9 +762,105 @@ export function ManagementPage() {
             </p>
           </div>
         </div>
+
+        <div className="mt-4 flex gap-[6px]">
+          {adminTabs.map((tab) => {
+            const isActive = activeAdminTab === tab.key;
+            return (
+              <button
+                key={tab.key}
+                type="button"
+                className={[
+                  "rounded-[9px] px-4 py-2 text-[12.5px] font-semibold transition",
+                  isActive ? "bg-bread text-white" : "bg-cream text-cocoa hover:bg-[#EFE6DA]"
+                ].join(" ")}
+                onClick={() => setActiveAdminTab(tab.key)}
+              >
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="mt-[14px]">
+          {activeAdminTab === "product" ? (
+            <div className="rounded-[14px] border border-latte bg-white px-[22px] pb-[6px] pt-2">
+              <div className="grid grid-cols-[1.4fr_1fr_1fr_1.6fr_0.8fr] gap-2 border-b border-[#EFE8DC] px-1 py-[11px] text-[11px] font-semibold text-muted">
+                <div>제품명</div><div>카테고리</div><div>시즌</div><div>기간</div><div>상태</div>
+              </div>
+              {visibleProducts.map((product) => (
+                <div
+                  key={product.id}
+                  className="grid grid-cols-[1.4fr_1fr_1fr_1.6fr_0.8fr] items-center gap-2 border-b border-[#F5F0E7] px-1 py-[11px] text-[13px] text-ink last:border-b-0"
+                >
+                  <div className="font-semibold">{product.name}</div>
+                  <div>{product.category ?? "-"}</div>
+                  <div>{product.isSeasonal ? "시즌" : "상시"}</div>
+                  <div className="text-[12px] text-muted">
+                    {product.seasonStart || product.seasonEnd
+                      ? `${product.seasonStart ?? "-"} ~ ${product.seasonEnd ?? "-"}`
+                      : "-"}
+                  </div>
+                  <div>
+                    <span className={[
+                      "rounded-full px-[10px] py-[3px] text-[11px] font-bold",
+                      product.isActive ? "bg-green/10 text-green" : "bg-stone-100 text-muted"
+                    ].join(" ")}>
+                      {product.isActive ? "활성" : "비활성"}
+                    </span>
+                  </div>
+                </div>
+              ))}
+              {!isLoading && products.length === 0 ? (
+                <div className="px-3 py-8 text-center text-sm font-medium text-muted">등록 제품 없음</div>
+              ) : null}
+            </div>
+          ) : null}
+
+          {activeAdminTab === "staff" ? (
+            <div className="rounded-[14px] border border-latte bg-white px-[22px] pb-[6px] pt-2">
+              <div className="grid grid-cols-[1fr_1.4fr_1fr_0.8fr] gap-2 border-b border-[#EFE8DC] px-1 py-[11px] text-[11px] font-semibold text-muted">
+                <div>아이디</div><div>표시 이름</div><div>역할</div><div>상태</div>
+              </div>
+              {staff.map((person) => (
+                <div
+                  key={person.id}
+                  className="grid grid-cols-[1fr_1.4fr_1fr_0.8fr] items-center gap-2 border-b border-[#F5F0E7] px-1 py-[11px] text-[13px] text-ink last:border-b-0"
+                >
+                  <div className="text-muted">{person.username}</div>
+                  <div className="font-semibold">{person.displayName ?? person.username}</div>
+                  <div>{roleLabel(person.role)}</div>
+                  <div>
+                    <span className={[
+                      "rounded-full px-[10px] py-[3px] text-[11px] font-bold",
+                      person.isActive ? "bg-green/10 text-green" : "bg-stone-100 text-muted"
+                    ].join(" ")}>
+                      {person.isActive ? "활성" : "비활성"}
+                    </span>
+                  </div>
+                </div>
+              ))}
+              {!isLoading && staff.length === 0 ? (
+                <div className="px-3 py-8 text-center text-sm font-medium text-muted">등록 직원 없음</div>
+              ) : null}
+            </div>
+          ) : null}
+
+          {activeAdminTab === "criteria" ? (
+            <div className="rounded-[14px] border border-latte bg-white px-5 py-[18px] text-[12.5px] text-muted">
+              대분류(제품·서비스·응대·구매·운영·손님경험·기타) 아래 중분류·소분류를 트리 형태로 추가/수정/정렬/비활성화하는 화면입니다.
+            </div>
+          ) : null}
+
+          {activeAdminTab === "notice" ? (
+            <div className="rounded-[14px] border border-latte bg-white px-5 py-[18px] text-[12.5px] text-muted">
+              홈 화면에 노출되는 매출 목표 공지, 직원 공지를 추가·수정·삭제하는 화면입니다.
+            </div>
+          ) : null}
+        </div>
       </section>
 
-      <section className="panel order-4">
+      <section className="sr-only order-4">
         <div className="panel-heading">
           <div>
             <p className="text-sm text-muted">홈 화면</p>
@@ -876,7 +983,7 @@ export function ManagementPage() {
         </div>
       </section>
 
-      <section className="panel order-5">
+      <section className="sr-only order-5">
         <div className="panel-heading">
           <div>
             <p className="text-sm text-muted">반응 분류</p>
@@ -1163,7 +1270,7 @@ export function ManagementPage() {
         ) : null}
       </section>
 
-      <section className="panel order-2">
+      <section className="sr-only order-2">
         <div className="panel-heading">
           <div>
             <p className="text-sm text-muted">제품 마스터</p>
@@ -1343,7 +1450,7 @@ export function ManagementPage() {
         ) : null}
       </section>
 
-      <section className="panel order-3">
+      <section className="sr-only order-3">
         <div className="panel-heading">
           <div>
             <p className="text-sm text-muted">계정</p>

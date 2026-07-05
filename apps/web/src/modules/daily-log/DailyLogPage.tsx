@@ -658,7 +658,7 @@ export function DailyLogPage() {
   }
 
   return (
-    <div className="mx-auto grid max-w-none gap-4">
+    <div className="mx-auto grid max-w-none gap-[14px]">
       <section ref={entryPanelRef} className="min-w-0">
         <div className="mb-4 flex items-center justify-between gap-3">
           <div>
@@ -744,7 +744,7 @@ export function DailyLogPage() {
         ) : null}
       </section>
 
-      <section className={viewMode === "entry" ? "grid gap-4" : "panel"}>
+      <section className={viewMode === "entry" ? "grid gap-[14px]" : "panel"}>
         {viewMode === "entry" ? (
           <>
             <div
@@ -1538,11 +1538,11 @@ function ProductsSection({
 
   return (
     <div>
-      <div className="grid grid-cols-[1.1fr_0.8fr_1.15fr_1.15fr_0.8fr_0.8fr] gap-[8px] border-b border-[#EFE8DC] px-[4px] pb-[9px] text-[11px] font-semibold text-muted">
+      <div className="grid grid-cols-[1.1fr_0.8fr_0.98fr_0.98fr_0.8fr_0.8fr] gap-[8px] border-b border-[#EFE8DC] px-[4px] pb-[9px] text-[11px] font-semibold text-muted">
         <div>제품명</div><div>생산량</div><div>손실량</div><div>시식량</div><div>재고(남음)</div><div>판매량</div>
       </div>
       {visualRows.map((row) => (
-        <div key={row.name} className="grid grid-cols-[1.1fr_0.8fr_1.15fr_1.15fr_0.8fr_0.8fr] items-center gap-[8px] border-b border-[#F5F0E7] px-[4px] py-[8px]">
+        <div key={row.name} className="grid grid-cols-[1.1fr_0.8fr_0.98fr_0.98fr_0.8fr_0.8fr] items-center gap-[8px] border-b border-[#F5F0E7] px-[4px] py-[8px]">
           <div className="text-[13px] font-semibold text-ink">{row.name}</div>
           <input className="h-[30px] min-w-0 w-full rounded-[7px] border border-latte px-[8px] text-[12.5px] outline-none" defaultValue={row.produced} />
           <div className="flex items-center gap-[3px]">

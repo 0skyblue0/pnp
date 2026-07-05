@@ -92,7 +92,7 @@ body {
   }
 
   .dc-card-pad {
-    @apply rounded-panel border border-latte bg-white px-5 py-[18px] shadow-none;
+    @apply rounded-panel border border-latte bg-white px-5 py-4 shadow-none;
   }
 
   .dc-eyebrow {

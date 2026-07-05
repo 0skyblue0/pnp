@@ -24,9 +24,10 @@ export function AppLayout() {
   const dateText = todayLabel();
 
   return (
-    <div className="min-h-screen bg-paper text-ink">
-      <header className="sticky top-0 z-30 border-b border-latte bg-white/95 px-4 py-3 backdrop-blur sm:px-6 lg:py-0">
-        <div className="mx-auto flex w-full max-w-[1180px] flex-col gap-3 lg:h-[68px] lg:flex-row lg:items-center lg:gap-7">
+    <div className="min-h-screen bg-paper px-4 py-5 text-ink sm:px-6 lg:px-0 lg:py-7">
+      <div className="mx-auto w-full max-w-[1180px] overflow-hidden rounded-[20px] bg-[#F8F5EF] shadow-[0_24px_70px_rgba(63,50,39,0.16)]">
+      <header className="border-b border-latte bg-white px-7 py-4 lg:py-0">
+        <div className="mx-auto flex w-full flex-col gap-3 lg:h-[68px] lg:flex-row lg:items-center lg:gap-7">
           <NavLink to="/home" className="shrink-0" aria-label="Paul & Paulina 홈" title="홈으로 이동">
             <span className="block font-serif text-[19px] font-bold tracking-[0.01em] text-ink">
               Paul&amp;Paulina
@@ -85,9 +86,10 @@ export function AppLayout() {
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-[1180px] px-4 py-6 sm:px-6 lg:px-0 lg:py-7">
+      <main className="w-full px-9 py-7">
         <Outlet />
       </main>
+      </div>
     </div>
   );
 }

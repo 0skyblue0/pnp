@@ -667,10 +667,7 @@ export function HomePage() {
   return (
     <div className="mx-auto grid max-w-none gap-4">
       <section className="min-w-0">
-        <div className="mb-5 flex items-baseline justify-between gap-3">
-          <div>
-            <h2 className="text-[19px] font-bold tracking-[-0.015em] text-ink">안녕하세요, 김도현님</h2>
-          </div>
+        <div className="mb-5 flex items-baseline justify-end gap-3">
           <span className="text-[12.5px] text-muted">{date}</span>
         </div>
         <div className="grid gap-3 md:grid-cols-3">

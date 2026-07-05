@@ -42,6 +42,16 @@ type AnnualGoalNoticeDto = {
   note: string;
 };
 
+type ScheduleTone = "launch" | "close" | "notice";
+
+type AnnualScheduleDto = {
+  id: string;
+  date: string;
+  title: string;
+  note: string;
+  tone?: ScheduleTone;
+};
+
 type DeleteResult<T> = {
   deleted: boolean;
   deactivated: boolean;
@@ -78,7 +88,14 @@ type GoalNoticeForm = {
   note: string;
 };
 
-type AdminTab = "product" | "staff" | "criteria" | "notice";
+type ScheduleForm = {
+  date: string;
+  title: string;
+  note: string;
+  tone: ScheduleTone | "";
+};
+
+type AdminTab = "product" | "staff" | "criteria" | "notice" | "schedule";
 
 const emptyProductForm: ProductForm = {
   name: "",
@@ -110,6 +127,13 @@ const emptyGoalNoticeForm: GoalNoticeForm = {
   note: ""
 };
 
+const emptyScheduleForm: ScheduleForm = {
+  date: "",
+  title: "",
+  note: "",
+  tone: "notice"
+};
+
 const goalNoticeCategoryLabels: Record<AnnualGoalNoticeCategory, string> = {
   sales: "매출 목표",
   operation: "운영 목표",
@@ -120,8 +144,15 @@ const adminTabs: Array<{ key: AdminTab; label: string }> = [
   { key: "product", label: "제품 관리" },
   { key: "staff", label: "직원 관리" },
   { key: "criteria", label: "반응 기준 관리" },
-  { key: "notice", label: "홈 공지 관리" }
+  { key: "notice", label: "홈 공지 관리" },
+  { key: "schedule", label: "연간 스케줄 관리" }
 ];
+
+const scheduleToneLabels: Record<ScheduleTone, string> = {
+  notice: "공지",
+  launch: "출시",
+  close: "마감"
+};
 
 function roleLabel(role: StaffDto["role"]): string {
   if (role === "OWNER") {
@@ -174,6 +205,7 @@ export function ManagementPage() {
   const [staff, setStaff] = useState<StaffDto[]>([]);
   const [responseCriteria, setResponseCriteria] = useState<ResponseCriterionDto[]>([]);
   const [goalNotices, setGoalNotices] = useState<AnnualGoalNoticeDto[]>([]);
+  const [annualSchedules, setAnnualSchedules] = useState<AnnualScheduleDto[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -181,6 +213,7 @@ export function ManagementPage() {
   const [editingStaffId, setEditingStaffId] = useState<number | null>(null);
   const [editingCriterionId, setEditingCriterionId] = useState<number | null>(null);
   const [editingGoalNoticeId, setEditingGoalNoticeId] = useState<string | null>(null);
+  const [editingScheduleId, setEditingScheduleId] = useState<string | null>(null);
   const [selectedMajorId, setSelectedMajorId] = useState<number | null>(null);
   const [selectedMiddleId, setSelectedMiddleId] = useState<number | null>(null);
   const [criterionParentId, setCriterionParentId] = useState<number | null>(null);
@@ -188,22 +221,25 @@ export function ManagementPage() {
   const [isStaffFormOpen, setIsStaffFormOpen] = useState(false);
   const [isCriterionFormOpen, setIsCriterionFormOpen] = useState(false);
   const [isGoalNoticeFormOpen, setIsGoalNoticeFormOpen] = useState(false);
+  const [isScheduleFormOpen, setIsScheduleFormOpen] = useState(false);
   const [activeAdminTab, setActiveAdminTab] = useState<AdminTab>("product");
   const [productForm, setProductForm] = useState<ProductForm>(emptyProductForm);
   const [staffForm, setStaffForm] = useState<StaffForm>(emptyStaffForm);
   const [criterionForm, setCriterionForm] = useState<CriterionForm>(emptyCriterionForm);
   const [goalNoticeForm, setGoalNoticeForm] = useState<GoalNoticeForm>(emptyGoalNoticeForm);
+  const [scheduleForm, setScheduleForm] = useState<ScheduleForm>(emptyScheduleForm);
 
   const loadManagementData = useCallback(async () => {
     setIsLoading(true);
     setError(null);
 
-    const [productEnvelope, staffEnvelope, criterionEnvelope, goalNoticeEnvelope] =
+    const [productEnvelope, staffEnvelope, criterionEnvelope, goalNoticeEnvelope, scheduleEnvelope] =
       await Promise.all([
         apiGet<ListEnvelope<ProductDto>>("/product"),
         apiGet<ListEnvelope<StaffDto>>("/staff"),
         apiGet<ListEnvelope<ResponseCriterionDto>>("/response-criteria"),
-        apiGet<ListEnvelope<AnnualGoalNoticeDto>>("/annual-goal-notice")
+        apiGet<ListEnvelope<AnnualGoalNoticeDto>>("/annual-goal-notice"),
+        apiGet<{ items: AnnualScheduleDto[] }>("/annual-schedule")
       ]);
 
     setIsLoading(false);
@@ -224,11 +260,16 @@ export function ManagementPage() {
       setError(goalNoticeEnvelope.error.message);
       return;
     }
+    if (scheduleEnvelope.error) {
+      setError(scheduleEnvelope.error.message);
+      return;
+    }
 
     setProducts(productEnvelope.data.items);
     setStaff(staffEnvelope.data.items);
     setResponseCriteria(criterionEnvelope.data.items);
     setGoalNotices(goalNoticeEnvelope.data.items);
+    setAnnualSchedules(scheduleEnvelope.data.items);
   }, []);
 
   useEffect(() => {
@@ -382,6 +423,30 @@ export function ManagementPage() {
     setGoalNoticeForm(emptyGoalNoticeForm);
     setIsGoalNoticeFormOpen(false);
   }
+
+  function openNewScheduleForm() {
+    setEditingScheduleId(null);
+    setScheduleForm(emptyScheduleForm);
+    setIsScheduleFormOpen(true);
+  }
+
+  function openScheduleEdit(schedule: AnnualScheduleDto) {
+    setEditingScheduleId(schedule.id);
+    setScheduleForm({
+      date: schedule.date,
+      title: schedule.title,
+      note: schedule.note,
+      tone: schedule.tone ?? "notice"
+    });
+    setIsScheduleFormOpen(true);
+  }
+
+  function closeScheduleForm() {
+    setEditingScheduleId(null);
+    setScheduleForm(emptyScheduleForm);
+    setIsScheduleFormOpen(false);
+  }
+
 
   function selectMajorCriterion(id: number) {
     setSelectedMajorId(id);
@@ -557,6 +622,42 @@ export function ManagementPage() {
     await loadManagementData();
   }
 
+
+
+  async function saveSchedule() {
+    setMessage(null);
+    setError(null);
+
+    const date = scheduleForm.date;
+    const title = scheduleForm.title.trim();
+    const note = scheduleForm.note.trim();
+    const tone = scheduleForm.tone || "notice";
+
+    if (!date || !title) {
+      setError("스케줄 날짜와 제목을 입력하세요.");
+      return;
+    }
+
+    const body = { date, title, note, tone };
+    const envelope =
+      editingScheduleId === null
+        ? await apiPost<AnnualScheduleDto, Record<string, unknown>>("/annual-schedule", body)
+        : await apiPatch<AnnualScheduleDto, Record<string, unknown>>(
+            `/annual-schedule/${editingScheduleId}`,
+            body
+          );
+
+    if (envelope.error) {
+      setError(envelope.error.message);
+      return;
+    }
+
+    setMessage(editingScheduleId === null ? `스케줄 추가: ${envelope.data.title}` : "스케줄 수정 완료");
+    closeScheduleForm();
+    await loadManagementData();
+  }
+
+
   async function deleteGoalNotice(notice: AnnualGoalNoticeDto) {
     if (!window.confirm(`${notice.title} 홈 공지를 삭제하시겠습니까?`)) {
       return;
@@ -708,6 +809,7 @@ export function ManagementPage() {
         <div className="mb-4 flex items-center justify-between gap-3">
           <div>
             <h2 className="section-title">관리</h2>
+            <h2 className="sr-only">홈 목표·매출 공지 관리</h2>
           </div>
           <Button className="sr-only" icon={RefreshCcw} type="button" onClick={() => void loadManagementData()}>
             {isLoading ? "조회 중" : "새로고침"}
@@ -853,131 +955,125 @@ export function ManagementPage() {
           ) : null}
 
           {activeAdminTab === "notice" ? (
-            <div className="rounded-[14px] border border-latte bg-white px-5 py-[18px] text-[12.5px] text-muted">
-              홈 화면에 노출되는 매출 목표 공지, 직원 공지를 추가·수정·삭제하는 화면입니다.
+            <div className="rounded-[14px] border border-latte bg-white px-5 py-[18px]">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h3 className="text-[15px] font-bold text-ink">직원 공지 등록 및 수정</h3>
+                  <p className="mt-1 text-[12.5px] text-muted">홈 화면에 노출되는 매출 목표 공지, 직원 공지를 추가·수정·삭제하는 화면입니다.</p>
+                </div>
+                <button className="rounded-[9px] bg-bread px-4 py-2 text-[12.5px] font-bold text-white" type="button" onClick={openNewGoalNoticeForm}>
+                  홈 공지 추가
+                </button>
+              </div>
+
+              {isGoalNoticeFormOpen ? (
+                <div className="mt-4 rounded-[12px] border border-latte bg-cream/50 p-4">
+                  <div className="grid gap-3 lg:grid-cols-[10rem_minmax(0,1fr)_minmax(0,1fr)]">
+                    <label className="grid gap-2">
+                      <span className="field-label">공지 종류</span>
+                      <select className="input" aria-label="공지 종류" value={goalNoticeForm.category} onChange={(event) => setGoalNoticeForm((current) => ({ ...current, category: event.target.value as AnnualGoalNoticeCategory }))}>
+                        <option value="sales">매출 목표</option>
+                        <option value="operation">운영 목표</option>
+                        <option value="staff">직원 공지</option>
+                      </select>
+                    </label>
+                    <label className="grid gap-2">
+                      <span className="field-label">공지 제목</span>
+                      <input className="input" aria-label="공지 제목" value={goalNoticeForm.title} onChange={(event) => setGoalNoticeForm((current) => ({ ...current, title: event.target.value }))} />
+                    </label>
+                    <label className="grid gap-2">
+                      <span className="field-label">공지 내용</span>
+                      <input className="input" aria-label="공지 내용" value={goalNoticeForm.value} onChange={(event) => setGoalNoticeForm((current) => ({ ...current, value: event.target.value }))} />
+                    </label>
+                  </div>
+                  <label className="mt-3 grid gap-2">
+                    <span className="field-label">공지 메모</span>
+                    <textarea className="input min-h-20 py-3" aria-label="공지 메모" value={goalNoticeForm.note} onChange={(event) => setGoalNoticeForm((current) => ({ ...current, note: event.target.value }))} />
+                  </label>
+                  <div className="mt-3 flex justify-end gap-2">
+                    <button className="rounded-control border border-stone-300 bg-white px-4 py-2 font-bold text-cocoa" type="button" onClick={closeGoalNoticeForm}>취소</button>
+                    <button className="rounded-control bg-bread px-4 py-2 font-bold text-white" type="button" onClick={() => void saveGoalNotice()}>공지 저장</button>
+                  </div>
+                </div>
+              ) : null}
+
+              <div className="mt-4 grid gap-3 lg:grid-cols-3">
+                {goalNotices.map((notice) => (
+                  <div key={notice.id} className="rounded-[12px] border border-[#EFE8DC] bg-white p-4">
+                    <div className="mb-3 flex items-center justify-between gap-2">
+                      <span className="rounded-full bg-blue/10 px-2 py-1 text-xs font-bold text-blue">{goalNoticeCategoryLabels[notice.category]}</span>
+                      <div className="flex gap-1">
+                        <button className="rounded-[8px] border border-latte px-2 py-1 text-xs font-bold text-cocoa" type="button" aria-label={`${notice.title} 수정`} onClick={() => openGoalNoticeEdit(notice)}>수정</button>
+                        <button className="rounded-[8px] border border-red/30 px-2 py-1 text-xs font-bold text-red" type="button" aria-label={`${notice.title} 삭제`} onClick={() => void deleteGoalNotice(notice)}>삭제</button>
+                      </div>
+                    </div>
+                    <p className="font-bold text-ink">{notice.title}</p>
+                    <p className="mt-2 text-[15px] font-bold text-cocoa">{notice.value}</p>
+                    {notice.note ? <p className="mt-2 text-sm leading-6 text-muted">{notice.note}</p> : null}
+                  </div>
+                ))}
+              </div>
             </div>
           ) : null}
-        </div>
-      </section>
 
-      <section className="sr-only order-4">
-        <div className="panel-heading">
-          <div>
-            <p className="text-sm text-muted">홈 화면</p>
-            <h2 className="section-title">홈 목표·매출 공지 관리</h2>
-          </div>
-          <Button icon={Plus} type="button" onClick={openNewGoalNoticeForm}>
-            홈 공지 추가
-          </Button>
-        </div>
-
-        {isGoalNoticeFormOpen ? (
-          <div className="mb-4 rounded-control border border-stone-200 bg-cream/60 p-4">
-            <div className="grid gap-3 lg:grid-cols-[10rem_minmax(0,1fr)_minmax(0,1fr)]">
-              <label className="grid gap-2">
-                <span className="field-label">공지 종류</span>
-                <select
-                  className="input"
-                  aria-label="공지 종류"
-                  value={goalNoticeForm.category}
-                  onChange={(event) =>
-                    setGoalNoticeForm((current) => ({
-                      ...current,
-                      category: event.target.value as AnnualGoalNoticeCategory
-                    }))
-                  }
-                >
-                  <option value="sales">매출 목표</option>
-                  <option value="operation">운영 목표</option>
-                  <option value="staff">직원 공지</option>
-                </select>
-              </label>
-              <label className="grid gap-2">
-                <span className="field-label">공지 제목</span>
-                <input
-                  className="input"
-                  aria-label="공지 제목"
-                  value={goalNoticeForm.title}
-                  onChange={(event) =>
-                    setGoalNoticeForm((current) => ({ ...current, title: event.target.value }))
-                  }
-                />
-              </label>
-              <label className="grid gap-2">
-                <span className="field-label">공지 내용</span>
-                <input
-                  className="input"
-                  aria-label="공지 내용"
-                  placeholder="예: 전년 대비 +8%"
-                  value={goalNoticeForm.value}
-                  onChange={(event) =>
-                    setGoalNoticeForm((current) => ({ ...current, value: event.target.value }))
-                  }
-                />
-              </label>
-            </div>
-            <label className="mt-3 grid gap-2">
-              <span className="field-label">공지 메모</span>
-              <textarea
-                className="input min-h-24 py-3"
-                aria-label="공지 메모"
-                value={goalNoticeForm.note}
-                onChange={(event) =>
-                  setGoalNoticeForm((current) => ({ ...current, note: event.target.value }))
-                }
-              />
-            </label>
-            <div className="mt-3 flex flex-wrap justify-end gap-2">
-              <button
-                className="rounded-control border border-stone-300 bg-white px-4 py-2 font-bold text-cocoa"
-                type="button"
-                onClick={closeGoalNoticeForm}
-              >
-                취소
-              </button>
-              <Button type="button" onClick={() => void saveGoalNotice()}>
-                공지 저장
-              </Button>
-            </div>
-          </div>
-        ) : null}
-
-        <div className="grid gap-3 lg:grid-cols-3">
-          {goalNotices.map((notice) => (
-            <div key={notice.id} className="rounded-control border border-stone-200 bg-white p-4">
-              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                <span className="rounded-full bg-blue/10 px-2 py-1 text-xs font-bold text-blue">
-                  {goalNoticeCategoryLabels[notice.category]}
-                </span>
-                <div className="flex gap-1">
-                  <button
-                    className="inline-flex min-h-8 items-center justify-center rounded-control border border-stone-300 bg-white px-2 font-semibold hover:bg-stone-100"
-                    type="button"
-                    aria-label={`${notice.title} 수정`}
-                    onClick={() => openGoalNoticeEdit(notice)}
-                  >
-                    <Pencil className="h-4 w-4" aria-hidden="true" />
-                  </button>
-                  <button
-                    className="inline-flex min-h-8 items-center justify-center rounded-control border border-red/30 bg-white px-2 font-semibold text-red hover:bg-red/10"
-                    type="button"
-                    aria-label={`${notice.title} 삭제`}
-                    onClick={() => void deleteGoalNotice(notice)}
-                  >
-                    <Trash2 className="h-4 w-4" aria-hidden="true" />
-                  </button>
+          {activeAdminTab === "schedule" ? (
+            <div className="rounded-[14px] border border-latte bg-white px-5 py-[18px]">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h3 className="text-[15px] font-bold text-ink">연간 스케줄 등록 및 수정</h3>
+                  <p className="mt-1 text-[12.5px] text-muted">홈 연간 스케줄에 표시되는 행사, 출시, 마감 일정을 관리합니다.</p>
                 </div>
+                <button className="rounded-[9px] bg-bread px-4 py-2 text-[12.5px] font-bold text-white" type="button" onClick={openNewScheduleForm}>
+                  스케줄 추가
+                </button>
               </div>
-              <p className="font-bold text-ink">{notice.title}</p>
-              <p className="mt-2 text-xl font-bold tracking-[-0.03em] text-cocoa">{notice.value}</p>
-              {notice.note ? (
-                <p className="mt-2 text-sm leading-6 text-muted">{notice.note}</p>
+
+              {isScheduleFormOpen ? (
+                <div className="mt-4 rounded-[12px] border border-latte bg-cream/50 p-4">
+                  <div className="grid gap-3 lg:grid-cols-[11rem_8rem_minmax(0,1fr)_minmax(0,1fr)]">
+                    <label className="grid gap-2">
+                      <span className="field-label">날짜</span>
+                      <input className="input" aria-label="스케줄 날짜" type="date" value={scheduleForm.date} onChange={(event) => setScheduleForm((current) => ({ ...current, date: event.target.value }))} />
+                    </label>
+                    <label className="grid gap-2">
+                      <span className="field-label">구분</span>
+                      <select className="input" aria-label="스케줄 구분" value={scheduleForm.tone} onChange={(event) => setScheduleForm((current) => ({ ...current, tone: event.target.value as ScheduleForm["tone"] }))}>
+                        <option value="notice">공지</option>
+                        <option value="launch">출시</option>
+                        <option value="close">마감</option>
+                      </select>
+                    </label>
+                    <label className="grid gap-2">
+                      <span className="field-label">제목</span>
+                      <input className="input" aria-label="스케줄 제목" value={scheduleForm.title} onChange={(event) => setScheduleForm((current) => ({ ...current, title: event.target.value }))} />
+                    </label>
+                    <label className="grid gap-2">
+                      <span className="field-label">메모</span>
+                      <input className="input" aria-label="스케줄 메모" value={scheduleForm.note} onChange={(event) => setScheduleForm((current) => ({ ...current, note: event.target.value }))} />
+                    </label>
+                  </div>
+                  <div className="mt-3 flex justify-end gap-2">
+                    <button className="rounded-control border border-stone-300 bg-white px-4 py-2 font-bold text-cocoa" type="button" onClick={closeScheduleForm}>취소</button>
+                    <button className="rounded-control bg-bread px-4 py-2 font-bold text-white" type="button" onClick={() => void saveSchedule()}>스케줄 저장</button>
+                  </div>
+                </div>
               ) : null}
-            </div>
-          ))}
-          {!isLoading && goalNotices.length === 0 ? (
-            <div className="rounded-control border border-stone-200 px-3 py-6 text-center text-sm font-medium text-muted lg:col-span-3">
-              등록된 홈 공지 없음
+
+              <div className="mt-4 rounded-[12px] border border-latte bg-white px-4 py-2">
+                <div className="grid grid-cols-[8rem_6rem_minmax(0,1fr)_minmax(0,1fr)_6rem] gap-2 border-b border-[#EFE8DC] py-2 text-[11px] font-semibold text-muted">
+                  <div>날짜</div><div>구분</div><div>제목</div><div>메모</div><div>수정</div>
+                </div>
+                {annualSchedules.map((schedule) => (
+                  <div key={schedule.id} className="grid grid-cols-[8rem_6rem_minmax(0,1fr)_minmax(0,1fr)_6rem] items-center gap-2 border-b border-[#F5F0E7] py-3 text-[13px] last:border-b-0">
+                    <div className="font-semibold text-ink">{schedule.date}</div>
+                    <div><span className="rounded-full bg-cream px-2 py-1 text-xs font-bold text-cocoa">{scheduleToneLabels[schedule.tone ?? "notice"]}</span></div>
+                    <div className="font-semibold text-ink">{schedule.title}</div>
+                    <div className="text-muted">{schedule.note || "-"}</div>
+                    <div><button className="rounded-[8px] border border-latte px-2 py-1 text-xs font-bold text-cocoa" type="button" aria-label={`${schedule.title} 수정`} onClick={() => openScheduleEdit(schedule)}>수정</button></div>
+                  </div>
+                ))}
+                {!isLoading && annualSchedules.length === 0 ? <div className="py-8 text-center text-sm text-muted">등록된 스케줄 없음</div> : null}
+              </div>
             </div>
           ) : null}
         </div>

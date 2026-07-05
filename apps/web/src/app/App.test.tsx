@@ -118,6 +118,7 @@ describe("App", () => {
     expect(screen.getByRole("heading", { name: "8월" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "스케줄 알림" })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "오늘의 가용 재고" })).not.toBeInTheDocument();
+    expect(screen.queryByText("안녕하세요, 김도현님")).not.toBeInTheDocument();
   });
 
   it("adds staff schedules through the home input and places them under the matching calendar day", async () => {
@@ -339,6 +340,55 @@ describe("App", () => {
           { headers: { "Content-Type": "application/json" } }
         );
       }
+      if (url.endsWith("/annual-schedule") && (!init?.method || init.method === "GET")) {
+        return new Response(
+          JSON.stringify({
+            data: {
+              items: [
+                {
+                  id: "101",
+                  date: "2026-06-30",
+                  title: "여름 신메뉴 출시",
+                  note: "진열 준비",
+                  tone: "launch"
+                }
+              ]
+            },
+            error: null
+          }),
+          { headers: { "Content-Type": "application/json" } }
+        );
+      }
+      if (url.endsWith("/annual-schedule") && init?.method === "POST") {
+        return new Response(
+          JSON.stringify({
+            data: {
+              id: "202",
+              date: "2026-07-10",
+              title: "직원 교육",
+              note: "오전 공유",
+              tone: "notice"
+            },
+            error: null
+          }),
+          { headers: { "Content-Type": "application/json" } }
+        );
+      }
+      if (url.endsWith("/annual-schedule/101") && init?.method === "PATCH") {
+        return new Response(
+          JSON.stringify({
+            data: {
+              id: "101",
+              date: "2026-06-30",
+              title: "수정된 연간 일정",
+              note: "수정 메모",
+              tone: "close"
+            },
+            error: null
+          }),
+          { headers: { "Content-Type": "application/json" } }
+        );
+      }
       if (url.endsWith("/annual-goal-notice") && (!init?.method || init.method === "GET")) {
         return new Response(
           JSON.stringify({
@@ -425,6 +475,7 @@ describe("App", () => {
     expect(screen.getByText(/대분류\(제품·서비스·응대·구매·운영·손님경험·기타\)/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "홈 공지 관리" }));
     expect(screen.getByText(/홈 화면에 노출되는 매출 목표 공지/)).toBeInTheDocument();
+    expect(screen.getByText("직원 공지 등록 및 수정")).toBeInTheDocument();
     expect(screen.getByText("전년 대비 +8%")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "홈 공지 추가" }));
     fireEvent.change(screen.getByLabelText("공지 종류"), { target: { value: "staff" } });
@@ -448,6 +499,24 @@ describe("App", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "올해 매출 목표 삭제" }));
     expect(await screen.findByText("홈 공지 삭제 완료")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "연간 스케줄 관리" }));
+    expect(screen.getByText("연간 스케줄 등록 및 수정")).toBeInTheDocument();
+    expect(screen.getByText("여름 신메뉴 출시")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "스케줄 추가" }));
+    fireEvent.change(screen.getByLabelText("스케줄 날짜"), { target: { value: "2026-07-10" } });
+    fireEvent.change(screen.getByLabelText("스케줄 구분"), { target: { value: "notice" } });
+    fireEvent.change(screen.getByLabelText("스케줄 제목"), { target: { value: "직원 교육" } });
+    fireEvent.change(screen.getByLabelText("스케줄 메모"), { target: { value: "오전 공유" } });
+    fireEvent.click(screen.getByRole("button", { name: "스케줄 저장" }));
+    expect(await screen.findByText("스케줄 추가: 직원 교육")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "여름 신메뉴 출시 수정" }));
+    fireEvent.change(screen.getByLabelText("스케줄 제목"), { target: { value: "수정된 연간 일정" } });
+    fireEvent.change(screen.getByLabelText("스케줄 메모"), { target: { value: "수정 메모" } });
+    fireEvent.change(screen.getByLabelText("스케줄 구분"), { target: { value: "close" } });
+    fireEvent.click(screen.getByRole("button", { name: "스케줄 저장" }));
+    expect(await screen.findByText("스케줄 수정 완료")).toBeInTheDocument();
   });
 
   it("keeps the customer response tab active on response entry route", () => {
@@ -726,6 +795,8 @@ describe("App", () => {
     expect(screen.getByRole("heading", { name: "매출 요약" })).toBeInTheDocument();
     expect(screen.getByLabelText("작성자")).toBeInTheDocument();
     expect(screen.getByLabelText("외부온도")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "폭염" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "한파" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "일일 운영 저장" }));
     expect(screen.getByText("일일 운영 작성 완료 전 빠진 항목을 확인해 주세요.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "기본 정보: 작성자" })).toBeInTheDocument();
@@ -922,12 +993,17 @@ describe("App", () => {
     expect(screen.getByLabelText("위생 점검자")).toBeInTheDocument();
     expect(screen.getByLabelText("최종 점검자")).toBeInTheDocument();
     expect(screen.getByLabelText("첫 출근자 이름")).toBeInTheDocument();
-    expect(screen.getByLabelText("첫 출근자 출근시간")).toBeInTheDocument();
+    expect(screen.getByLabelText("첫 출근자 출근시간")).toHaveAttribute("step", "1800");
     expect(screen.getByLabelText("최종퇴근자 이름")).toBeInTheDocument();
-    expect(screen.getByLabelText("최종퇴근자 퇴근시간")).toBeInTheDocument();
+    expect(screen.getByLabelText("최종퇴근자 퇴근시간")).toHaveAttribute("step", "1800");
     expect(screen.getByRole("row", { name: /금일/ })).toBeInTheDocument();
     expect(screen.getByRole("row", { name: /내일/ })).toBeInTheDocument();
     expect(screen.getByText("휴무")).toBeInTheDocument();
+    expect(screen.getByText("생일")).toBeInTheDocument();
+    expect(screen.getByText("신입")).toBeInTheDocument();
+    expect(screen.queryByText("생일 신입")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("금일 생일")).toBeInTheDocument();
+    expect(screen.getByLabelText("금일 신입")).toBeInTheDocument();
     expect(screen.getByText("기타사항")).toBeInTheDocument();
   });
 

@@ -1355,7 +1355,7 @@ function BasicSection({
   draft: DailyOperationDraft;
   updateDraft: <K extends keyof DailyOperationDraft>(key: K, value: DailyOperationDraft[K]) => void;
 }) {
-  const weatherOptions = ["맑음", "흐림", "비", "눈"];
+  const weatherOptions = ["맑음", "흐림", "비", "눈", "폭염", "한파"];
   const visualWeather = draft.weather || "맑음";
 
   return (
@@ -1706,12 +1706,13 @@ function NotesSection({
     { label: "시설/장비 특이사항", key: "facilityIssue" },
     { label: "청결/위생 관련업무", key: "cleaningWork" }
   ];
-  const visibleStaffCategories: Array<{ primaryKey: StaffCategory; secondaryKey?: StaffCategory; label: string }> = [
+  const visibleStaffCategories: Array<{ primaryKey: StaffCategory; label: string }> = [
     { primaryKey: "dayOff", label: "휴무" },
     { primaryKey: "vacation", label: "휴가" },
     { primaryKey: "lateEarly", label: "지각/조퇴" },
     { primaryKey: "support", label: "지원" },
-    { primaryKey: "birthday", secondaryKey: "newStaff", label: "생일 신입" },
+    { primaryKey: "birthday", label: "생일" },
+    { primaryKey: "newStaff", label: "신입" },
     { primaryKey: "etc", label: "기타사항" }
   ];
 
@@ -1754,12 +1755,7 @@ function NotesSection({
                   <tr key={period} className="border-b border-[#F5F0E7] last:border-b-0">
                     <th className="py-2 pr-2 text-cocoa">{label}</th>
                     {visibleStaffCategories.map((category) => {
-                      const secondaryKey = category.secondaryKey;
-                      const keys = [category.primaryKey, secondaryKey].filter(Boolean) as StaffCategory[];
-                      const value = keys
-                        .map((key) => staffSpecialRows[period][key])
-                        .filter(Boolean)
-                        .join(" / ");
+                      const value = staffSpecialRows[period][category.primaryKey];
                       return (
                         <td key={category.label} className="px-1 py-2">
                           <input
@@ -1767,12 +1763,7 @@ function NotesSection({
                             className="h-9 w-full rounded-[8px] border border-latte bg-white px-2 text-[12px] outline-none focus:border-bread"
                             placeholder="이름/내용"
                             value={value}
-                            onChange={(event) => {
-                              updateStaffSpecialRow(period, category.primaryKey, event.target.value);
-                              if (secondaryKey) {
-                                updateStaffSpecialRow(period, secondaryKey, "");
-                              }
-                            }}
+                            onChange={(event) => updateStaffSpecialRow(period, category.primaryKey, event.target.value)}
                           />
                         </td>
                       );
@@ -1834,6 +1825,7 @@ function WorkerTimeInput({
           aria-label={timeLabel}
           className="min-w-0 rounded-control bg-transparent px-2 outline-none focus:bg-cream/70"
           type="time"
+          step="1800"
           value={timeValue}
           onChange={(event) => onTimeChange(event.target.value)}
         />

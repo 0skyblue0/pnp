@@ -112,7 +112,7 @@ export function ResponseInquiryPage() {
         </div>
 
         {activeMode === "lookup" ? (
-          <div aria-label="조회 유형" className="mt-4 flex flex-wrap gap-2" role="tablist">
+          <div aria-label="조회 유형" className="sr-only" role="tablist">
             {tabOptions.map((option) => {
             const Icon = option.icon;
             const isActive = activeTab === option.value;

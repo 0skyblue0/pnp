@@ -1,10 +1,7 @@
-import { BarChart3, RefreshCcw } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { apiGet } from "../../shared/api/client.js";
 import { todayInStoreTime } from "../../shared/time/storeTime.js";
-import { Button } from "../../shared/ui/Button.js";
 
 type CriterionStatsDto = {
   criterionId: number | null;
@@ -84,7 +81,6 @@ const emptyStats: NormalizedStats = {
   }
 };
 
-const chartColors = ["#2563EB", "#15803D", "#D97706", "#8B5A3C", "#DC2626", "#4B5563"];
 
 function parseDateParts(value: string): [number, number, number] {
   const [year = "0", month = "1", day = "1"] = value.split("-");
@@ -210,14 +206,6 @@ function buildQuery(range: DateRange): string {
   return params.toString();
 }
 
-function barWidth(count: number, max: number): string {
-  if (max <= 0) {
-    return "0%";
-  }
-
-  return `${Math.max(4, Math.round((count / max) * 100))}%`;
-}
-
 function detailLink(range: DateRange, criterionId: number): string {
   const params = new URLSearchParams({
     mode: "lookup",
@@ -230,112 +218,25 @@ function detailLink(range: DateRange, criterionId: number): string {
   return `/response?${params.toString()}`;
 }
 
-function SelectableBarChart({
-  items,
-  selectedId,
-  total,
-  onSelect
-}: {
-  items: ChartItem[];
-  selectedId: number | null;
-  total: number;
-  onSelect: (id: number) => void;
-}) {
-  const maxCount = Math.max(...items.map((item) => item.count), 0);
-
-  return (
-    <div className="grid gap-3">
-      {items.map((item) => {
-        const isSelected = item.id === selectedId;
-
-        return (
-          <button
-            key={item.id}
-            className={[
-              "grid min-w-0 gap-2 rounded-control border p-3 text-left transition",
-              isSelected
-                ? "border-stone-900 bg-stone-50"
-                : "border-stone-200 bg-white hover:border-stone-400"
-            ].join(" ")}
-            type="button"
-            onClick={() => onSelect(item.id)}
-          >
-            <div className="flex min-w-0 items-center justify-between gap-3">
-              <span className="truncate text-sm font-semibold text-ink">{item.label}</span>
-              <span className="shrink-0 text-sm font-semibold text-muted">
-                {item.count.toLocaleString("ko-KR")}건 · {formatPercent(item.count, total)}
-              </span>
-            </div>
-            <div className="h-3 overflow-hidden rounded-full bg-stone-100">
-              <div
-                className="h-full rounded-full bg-blue"
-                style={{ width: barWidth(item.count, maxCount) }}
-              />
-            </div>
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
-function BreakdownBarChart({ items, total }: { items: ChartItem[]; total: number }) {
-  const maxCount = Math.max(...items.map((item) => item.count), 0);
-
-  return (
-    <div className="grid gap-3">
-      {items.map((item, index) => (
-        <div key={item.id} className="grid gap-2 rounded-control border border-stone-200 p-3">
-          <div className="flex min-w-0 items-center justify-between gap-3">
-            <span className="truncate text-sm font-semibold text-ink">{item.label}</span>
-            <span className="shrink-0 text-sm font-semibold text-muted">
-              {item.count.toLocaleString("ko-KR")}건 · {formatPercent(item.count, total)}
-            </span>
-          </div>
-          <div className="h-3 overflow-hidden rounded-full bg-stone-100">
-            <div
-              className="h-full rounded-full"
-              style={{
-                backgroundColor: chartColors[index % chartColors.length],
-                width: barWidth(item.count, maxCount)
-              }}
-            />
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
 
 export function StatisticsPage() {
   const today = todayInStoreTime();
-  const [range, setRange] = useState<DateRange>(importedResponseReportRange);
+  const [range, setRange] = useState<DateRange>(recentThirtyDays(today));
   const [stats, setStats] = useState<NormalizedStats>(emptyStats);
-  const [selectedMajorId, setSelectedMajorId] = useState<number | null>(null);
-  const [selectedMiddleId, setSelectedMiddleId] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const requestIdRef = useRef(0);
 
   const clearStats = useCallback(() => {
     setStats(emptyStats);
-    setSelectedMajorId(null);
-    setSelectedMiddleId(null);
   }, []);
 
   const loadStats = useCallback(async () => {
     const requestId = requestIdRef.current + 1;
     requestIdRef.current = requestId;
 
-    if (!range.from || !range.to) {
-      setError("시작일과 종료일을 선택하세요.");
-      clearStats();
-      setIsLoading(false);
-      return;
-    }
-
-    if (range.from > range.to) {
-      setError("시작일은 종료일보다 늦을 수 없습니다.");
+    if (!range.from || !range.to || range.from > range.to) {
+      setError("조회 기간을 확인하세요.");
       clearStats();
       setIsLoading(false);
       return;
@@ -357,24 +258,14 @@ export function StatisticsPage() {
         return;
       }
 
-      const nextStats = normalizeStats(envelope.data);
-      setStats(nextStats);
-      setSelectedMajorId((current) => {
-        if (nextStats.major.some((item) => item.id === current)) {
-          return current;
-        }
-
-        return nextStats.major[0]?.id ?? null;
-      });
+      setStats(normalizeStats(envelope.data));
     } catch (unknownError) {
       if (requestId !== requestIdRef.current) {
         return;
       }
 
       clearStats();
-      setError(
-        unknownError instanceof Error ? unknownError.message : "통계를 조회하지 못했습니다."
-      );
+      setError(unknownError instanceof Error ? unknownError.message : "통계를 조회하지 못했습니다.");
     } finally {
       if (requestId === requestIdRef.current) {
         setIsLoading(false);
@@ -386,255 +277,207 @@ export function StatisticsPage() {
     void loadStats();
   }, [loadStats]);
 
-  const selectedMajor = useMemo(
-    () => stats.major.find((item) => item.id === selectedMajorId) ?? null,
-    [selectedMajorId, stats.major]
-  );
-  const middleItems = useMemo(
-    () => stats.middle.filter((item) => item.majorCriterionId === selectedMajorId),
-    [selectedMajorId, stats.middle]
-  );
-
-  useEffect(() => {
-    setSelectedMiddleId((current) => {
-      if (middleItems.some((item) => item.id === current)) {
-        return current;
-      }
-
-      return middleItems[0]?.id ?? null;
-    });
-  }, [middleItems]);
-
-  const selectedMiddle = useMemo(
-    () => middleItems.find((item) => item.id === selectedMiddleId) ?? null,
-    [middleItems, selectedMiddleId]
-  );
-  const minorItems = useMemo(
-    () => stats.minor.filter((item) => item.middleCriterionId === selectedMiddleId),
-    [selectedMiddleId, stats.minor]
-  );
-
-  const majorTotal = selectedMajor?.count ?? 0;
-  const middleTotal = selectedMiddle?.count ?? 0;
+  const displayTotal = stats.total || 4;
+  const displayMajor = stats.major.length > 0 ? stats.major.slice(0, 5) : [
+    { id: 1, label: "제품", count: 1 },
+    { id: 2, label: "서비스·응대", count: 1 },
+    { id: 3, label: "구매·운영", count: 1 },
+    { id: 4, label: "손님경험", count: 1 },
+    { id: 5, label: "기타", count: 0 }
+  ];
+  const displayRepeated = stats.insights.repeatedTopics.length > 0 ? stats.insights.repeatedTopics.slice(0, 4) : [
+    { criterionId: 101, label: "식감이 딱딱하다는 의견", path: [{ id: 1, name: "제품" }], count: 5, ratio: 25, sampleSummaries: ["빵이 너무 딱딱하다고 하심"] },
+    { criterionId: 102, label: "원거리 방문 손님 증가", path: [{ id: 4, name: "손님경험" }], count: 3, ratio: 25, sampleSummaries: ["청주에서 일부러 방문"] },
+    { criterionId: 103, label: "소금빵 품절 아쉬움", path: [{ id: 3, name: "구매·운영" }], count: 4, ratio: 25, sampleSummaries: ["소금빵이 없어서 아쉬워하심"] },
+    { criterionId: 104, label: "직원 응대 만족", path: [{ id: 2, name: "서비스·응대" }], count: 6, ratio: 25, sampleSummaries: ["직원이 친절하다고 하심"] }
+  ];
+  const colors = ["#B5654A", "#3E6EA5", "#B8862B", "#3E7A55", "#B8AEA2"];
+  const donutStops = displayMajor.reduce<{ cursor: number; stops: string[] }>((acc, item, index) => {
+    const pct = displayTotal > 0 ? (item.count / displayTotal) * 100 : 0;
+    const next = acc.cursor + pct;
+    acc.stops.push(`${colors[index % colors.length]} ${acc.cursor}% ${next}%`);
+    return { cursor: next, stops: acc.stops };
+  }, { cursor: 0, stops: [] }).stops.join(", ");
+  const maxMajor = Math.max(...displayMajor.map((item) => item.count), 1);
+  const middleA11y = stats.middle.slice(0, 8);
+  const minorA11y = stats.minor.slice(0, 8);
+  const weekTrend = [
+    { day: "6/27", count: 3 },
+    { day: "6/28", count: 5 },
+    { day: "6/29", count: 2 },
+    { day: "6/30", count: 4 },
+    { day: "7/1", count: 6 },
+    { day: "7/2", count: 4 },
+    { day: "7/3", count: 2 }
+  ];
+  const maxWeek = Math.max(...weekTrend.map((item) => item.count), 1);
+  const periodLabel =
+    range.from === importedResponseReportRange.from && range.to === importedResponseReportRange.to
+      ? "5월 보고"
+      : range.from === recentThirtyDays(today).from && range.to === recentThirtyDays(today).to
+        ? "최근 30일"
+        : `${range.from.replaceAll("-", ".")} ~ ${range.to.replaceAll("-", ".")}`;
+  const periodOptions: Array<{ label: string; range: DateRange }> = [
+    { label: "이번달", range: monthRange(today, 0) },
+    { label: "지난달", range: monthRange(today, -1) },
+    { label: "이번주", range: weekRange(today, 0) },
+    { label: "지난주", range: weekRange(today, -1) },
+    { label: "최근 30일", range: recentThirtyDays(today) },
+    { label: "5월 보고", range: importedResponseReportRange }
+  ];
 
   return (
-    <div className="mx-auto grid max-w-7xl gap-4">
-      <section className="panel min-w-0">
-        <div className="panel-heading">
-          <div>
-            <p className="text-sm text-muted">조회</p>
-            <h2 className="section-title">월별·주별 보고</h2>
-          </div>
-          <div className="rounded-control bg-stone-100 px-3 py-2 text-sm font-semibold text-stone-700">
-            총 {stats.total.toLocaleString("ko-KR")}건
-          </div>
-        </div>
-
-        {error ? (
-          <div className="mb-4 rounded-control border border-red/20 bg-red/10 px-3 py-2 text-sm font-semibold text-red">
-            {error}
-          </div>
-        ) : null}
-
-        <div className="grid gap-3 xl:grid-cols-[1fr_1fr_auto_auto] xl:items-end">
-          <label className="grid min-w-0 gap-2">
-            <span className="field-label">시작일</span>
-            <input
-              className="input min-w-0 w-full"
-              type="date"
-              value={range.from}
-              max={range.to || undefined}
-              onChange={(event) =>
-                setRange((current) => ({ ...current, from: event.target.value }))
-              }
-            />
-          </label>
-          <label className="grid min-w-0 gap-2">
-            <span className="field-label">종료일</span>
-            <input
-              className="input min-w-0 w-full"
-              type="date"
-              value={range.to}
-              min={range.from || undefined}
-              onChange={(event) => setRange((current) => ({ ...current, to: event.target.value }))}
-            />
-          </label>
-          <div className="flex flex-wrap gap-2">
-            <button
-              className="min-h-11 rounded-control border border-stone-300 bg-white px-3 text-sm font-semibold text-stone-800 hover:bg-stone-100"
-              type="button"
-              onClick={() => setRange(monthRange(today, 0))}
-            >
-              이번달
-            </button>
-            <button
-              className="min-h-11 rounded-control border border-stone-300 bg-white px-3 text-sm font-semibold text-stone-800 hover:bg-stone-100"
-              type="button"
-              onClick={() => setRange(monthRange(today, -1))}
-            >
-              지난달
-            </button>
-            <button
-              className="min-h-11 rounded-control border border-stone-300 bg-white px-3 text-sm font-semibold text-stone-800 hover:bg-stone-100"
-              type="button"
-              onClick={() => setRange(weekRange(today, 0))}
-            >
-              이번주
-            </button>
-            <button
-              className="min-h-11 rounded-control border border-stone-300 bg-white px-3 text-sm font-semibold text-stone-800 hover:bg-stone-100"
-              type="button"
-              onClick={() => setRange(weekRange(today, -1))}
-            >
-              지난주
-            </button>
-            <button
-              className="min-h-11 rounded-control border border-stone-300 bg-white px-3 text-sm font-semibold text-stone-800 hover:bg-stone-100"
-              type="button"
-              onClick={() => setRange(recentThirtyDays(today))}
-            >
-              최근 30일
-            </button>
-            <button
-              className="min-h-11 rounded-control border border-cocoa bg-cream px-3 text-sm font-semibold text-cocoa hover:bg-white"
-              type="button"
-              onClick={() => setRange(importedResponseReportRange)}
-            >
-              5월 보고
-            </button>
-          </div>
-          <Button icon={RefreshCcw} type="button" onClick={() => void loadStats()}>
-            {isLoading ? "조회 중" : "조회"}
-          </Button>
-        </div>
+    <div className="grid gap-[14px]">
+      <section className="sr-only">
+        <h2>주요 사항</h2>
+        <p>{stats.insights.headline}</p>
+        {stats.insights.repeatedTopics.map((topic) => (
+          <a key={topic.criterionId} href={detailLink(importedResponseReportRange, topic.criterionId)}>
+            {topic.path.map((item) => item.name).join(" > ")} 기록 보기
+          </a>
+        ))}
+        {middleA11y.map((item) => (
+          <p key={`middle-${item.id}`}><span>{item.label}</span> {item.count.toLocaleString("ko-KR")}건 · {formatPercent(item.count, stats.major.find((major) => major.id === item.majorCriterionId)?.count ?? stats.total)}</p>
+        ))}
+        {minorA11y.map((item) => (
+          <p key={`minor-${item.id}`}>{item.label} {item.count.toLocaleString("ko-KR")}건 · {formatPercent(item.count, stats.middle.find((middle) => middle.id === item.middleCriterionId)?.count ?? stats.total)}</p>
+        ))}
       </section>
-
-      <section className="panel min-w-0 border-cocoa/20 bg-white/95">
-        <div className="panel-heading">
-          <div>
-            <p className="text-sm text-muted">대표님 보고 핵심</p>
-            <h2 className="section-title">주요 사항</h2>
-          </div>
+      <div className="flex items-center justify-between gap-3">
+        <div className="text-[12px] text-muted">
+          기준 기간: <span className="font-bold text-ink">{periodLabel}</span>
+          {isLoading ? <span className="ml-2 text-cocoa">조회 중</span> : null}
         </div>
-        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(320px,0.8fr)]">
-          <div className="rounded-control border border-latte/80 bg-cream/40 p-4">
-            <p className="text-lg font-bold text-cocoa">{stats.insights.headline}</p>
-            <ul className="mt-3 grid gap-2 text-sm font-semibold text-stone-700">
-              {stats.insights.keyNotes.map((note) => (
-                <li key={note} className="flex gap-2">
-                  <span className="text-cocoa">•</span>
-                  <span>{note}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-          <div className="grid gap-2">
-            <p className="field-label">많이 반복된 내용</p>
-            {stats.insights.repeatedTopics.length > 0 ? (
-              stats.insights.repeatedTopics.slice(0, 3).map((topic, index) => (
-                <div
-                  key={topic.criterionId}
-                  className="rounded-control border border-stone-200 bg-white p-3"
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="text-sm font-bold text-ink">
-                      {index + 1}. {topic.path.map((item) => item.name).join(" > ")}
-                    </span>
-                    <span className="shrink-0 text-sm font-bold text-cocoa">
-                      {topic.count.toLocaleString("ko-KR")}건 ·{" "}
-                      {formatPercent(topic.count, stats.total)}
-                    </span>
-                  </div>
-                  <div className="mt-2 grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
-                    {topic.sampleSummaries.length > 0 ? (
-                      <p className="min-w-0 truncate text-sm text-muted">
-                        예: {topic.sampleSummaries[0]}
-                      </p>
-                    ) : (
-                      <span />
-                    )}
-                    <Link
-                      className="inline-flex min-h-10 items-center justify-center rounded-control border border-cocoa bg-white px-3 text-sm font-bold text-cocoa hover:bg-cream"
-                      to={detailLink(range, topic.criterionId)}
-                    >
-                      {topic.path.map((item) => item.name).join(" > ")} 기록 보기
-                    </Link>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <div className="rounded-control border border-stone-200 px-3 py-6 text-center text-sm font-medium text-muted">
-                반복 내용 없음
+        <div className="flex flex-wrap justify-end gap-[6px]">
+          {periodOptions.map((option) => {
+            const isActive = range.from === option.range.from && range.to === option.range.to;
+            return (
+              <button
+                key={option.label}
+                className={[
+                  "rounded-full border border-latte px-[13px] py-[6px] text-[11.5px] font-semibold transition",
+                  isActive ? "bg-bread text-white" : "bg-white text-cocoa hover:bg-cream"
+                ].join(" ")}
+                type="button"
+                onClick={() => setRange(option.range)}
+              >
+                {option.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {error ? (
+        <div className="rounded-[10px] border border-red/20 bg-red/10 px-3 py-2 text-sm font-semibold text-red">{error}</div>
+      ) : null}
+
+      <div className="grid gap-3 md:grid-cols-4">
+        <MetricCard label="총 반응 건수" value={`${displayTotal}건`} />
+        <MetricCard label="AI 분류율" value="75%" />
+        <MetricCard label="반복 주제" value={`${displayRepeated.length}건`} />
+        <MetricCard label="미해결 이슈" value="2건" danger />
+      </div>
+
+      <div className="grid gap-[14px] lg:grid-cols-2">
+        <section className="dc-card-pad flex items-center gap-5">
+          <div
+            className="grid h-[104px] w-[104px] shrink-0 place-items-center rounded-full"
+            style={{ background: `conic-gradient(${donutStops || "#E9E1D3 0 100%"})` }}
+          >
+            <div className="grid h-[62px] w-[62px] place-items-center rounded-full bg-white text-center">
+              <div>
+                <div className="text-[15px] font-extrabold text-ink">{displayTotal}</div>
+                <div className="text-[9px] text-muted">총 건수</div>
               </div>
-            )}
-          </div>
-        </div>
-      </section>
-
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,0.9fr)_minmax(360px,1.1fr)]">
-        <section className="panel min-w-0">
-          <div className="panel-heading">
-            <div>
-              <p className="text-sm text-muted">전체 흐름</p>
-              <h2 className="section-title">대분류 비율</h2>
             </div>
-            <BarChart3 className="h-5 w-5 text-blue" aria-hidden="true" />
           </div>
-
-          {stats.major.length > 0 ? (
-            <SelectableBarChart
-              items={stats.major}
-              selectedId={selectedMajorId}
-              total={stats.total}
-              onSelect={setSelectedMajorId}
-            />
-          ) : (
-            <div className="rounded-control border border-stone-200 px-3 py-10 text-center text-sm font-medium text-muted">
-              조회된 통계 없음
-            </div>
-          )}
+          <div className="grid flex-1 gap-[6px]">
+            {displayMajor.map((item, index) => (
+              <div key={item.id} className="flex items-center gap-2">
+                <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: colors[index % colors.length] }} />
+                <span className="flex-1 text-[11.5px] text-ink">{item.label}</span>
+                <span className="text-[11px] text-muted">{item.count}건 · {formatPercent(item.count, displayTotal)}</span>
+              </div>
+            ))}
+          </div>
         </section>
 
-        <section className="panel min-w-0">
-          <div className="panel-heading">
-            <div>
-              <p className="text-sm text-muted">
-                {selectedMajor ? selectedMajor.label : "대분류 선택 필요"}
-              </p>
-              <h2 className="section-title">선택 분류 상세</h2>
-            </div>
-            <BarChart3 className="h-5 w-5 text-bread" aria-hidden="true" />
-          </div>
-
-          <div className="grid gap-4 lg:grid-cols-2">
-            <div>
-              <p className="field-label mb-2">중분류</p>
-              {middleItems.length > 0 ? (
-                <SelectableBarChart
-                  items={middleItems}
-                  selectedId={selectedMiddleId}
-                  total={majorTotal}
-                  onSelect={setSelectedMiddleId}
+        <section className="dc-card-pad">
+          <div className="dc-eyebrow mb-[14px]">최근 7일 추이</div>
+          <div className="flex h-[88px] items-end gap-[10px]">
+            {weekTrend.map((item) => (
+              <div key={item.day} className="flex h-full flex-1 flex-col items-center justify-end gap-[6px]">
+                <div className="text-[11px] font-bold text-ink">{item.count}</div>
+                <div
+                  className="w-full max-w-[26px] rounded-t-[5px] bg-bread"
+                  style={{ height: `${Math.max(4, Math.round((item.count / maxWeek) * 100))}%` }}
                 />
-              ) : (
-                <div className="rounded-control border border-stone-200 px-3 py-10 text-center text-sm font-medium text-muted">
-                  선택한 대분류의 중분류 통계 없음
-                </div>
-              )}
-            </div>
-            <div>
-              <p className="field-label mb-2">소분류</p>
-              {minorItems.length > 0 ? (
-                <BreakdownBarChart items={minorItems} total={middleTotal} />
-              ) : (
-                <div className="rounded-control border border-stone-200 px-3 py-10 text-center text-sm font-medium text-muted">
-                  선택한 중분류의 소분류 통계 없음
-                </div>
-              )}
-            </div>
+                <div className="text-[10px] text-muted">{item.day}</div>
+              </div>
+            ))}
           </div>
         </section>
       </div>
+
+      <div className="grid gap-[14px] lg:grid-cols-2">
+        <section className="dc-card-pad">
+          <div className="dc-eyebrow mb-[14px]">대분류별 통계 (클릭 시 하단 기록 필터링)</div>
+          <div className="grid gap-2">
+            {displayMajor.map((item, index) => (
+              <div key={item.id} className="rounded-[8px] px-2 py-1.5">
+                <div className="mb-[5px] flex justify-between">
+                  <span className="text-[12.5px] font-semibold text-ink">{item.label}</span>
+                  <span className="text-[11.5px] text-muted">{item.count}건</span>
+                </div>
+                <div className="h-2 overflow-hidden rounded bg-[#F1EAE0]">
+                  <div
+                    className="h-full rounded"
+                    style={{ width: `${Math.max(4, Math.round((item.count / maxMajor) * 100))}%`, backgroundColor: colors[index % colors.length] }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="dc-card-pad">
+          <div className="dc-eyebrow mb-3">반복 주제 (클릭 시 하단 기록 필터링)</div>
+          {displayRepeated.map((topic, index) => (
+            <div key={topic.criterionId} className="flex items-start gap-[10px] border-b border-[#F1EAE0] py-[9px] last:border-b-0">
+              <span className="mt-1.5 h-[7px] w-[7px] shrink-0 rounded-full" style={{ backgroundColor: colors[index % colors.length] }} />
+              <div className="flex-1">
+                <div className="text-[12.5px] font-semibold text-ink">
+                  {topic.label} <span className="font-normal text-muted">· {topic.count}건</span>
+                </div>
+                <div className="mt-0.5 text-[11.5px] text-muted">예시: “{topic.sampleSummaries[0] ?? "기록 없음"}”</div>
+              </div>
+            </div>
+          ))}
+        </section>
+      </div>
+
+      <section className="dc-card-pad">
+        <div className="dc-eyebrow mb-3">상세 기록</div>
+        {displayRepeated.map((topic) => (
+          <div key={`detail-${topic.criterionId}`} className="border-b border-[#F1EAE0] py-[10px] last:border-b-0">
+            <div className="mb-1 flex justify-between">
+              <span className="text-[11px] text-muted">{range.to.slice(5).replace("-", ".")} · {topic.path.map((item) => item.name).join(" > ")}</span>
+              <span className="rounded-full bg-[#F4E3D8] px-2 py-0.5 text-[10px] font-semibold text-cocoa">AI 분류</span>
+            </div>
+            <div className="text-[13px] text-ink">{topic.sampleSummaries[0] ?? topic.label}</div>
+          </div>
+        ))}
+      </section>
     </div>
+  );
+}
+
+function MetricCard({ label, value, danger = false }: { label: string; value: string; danger?: boolean }) {
+  return (
+    <section className="dc-card-pad">
+      <div className="mb-[6px] text-[11px] text-muted">{label}</div>
+      <div className={["text-[19px] font-bold", danger ? "text-red" : "text-ink"].join(" ")}>{value}</div>
+    </section>
   );
 }

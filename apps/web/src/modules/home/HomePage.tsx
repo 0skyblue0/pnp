@@ -2,9 +2,6 @@ import {
   Bell,
   CalendarDays,
   CheckCircle2,
-  ClipboardList,
-  MessageSquareText,
-  PackageCheck,
   Target,
   TrendingUp
 } from "lucide-react";
@@ -665,32 +662,7 @@ export function HomePage() {
     );
   }
 
-  const todayTasks = [
-    {
-      title: "일일 운영",
-      value: dailyOperationSaved ? "작성 완료" : "작성 전",
-      note: dailyOperationSaved ? "오늘 마감 기록이 저장되었습니다." : "매출·제품·점검 내용을 저장해 주세요.",
-      to: "/daily-log/today",
-      icon: ClipboardList,
-      isUrgent: !dailyOperationSaved
-    },
-    {
-      title: "오늘 예약",
-      value: `${pendingReservationCount}건 대기`,
-      note: `전체 ${todayReservationCount}건 / 픽업완료 ${todayReservationCount - pendingReservationCount}건`,
-      to: "/reservation?view=list",
-      icon: PackageCheck,
-      isUrgent: pendingReservationCount > 0
-    },
-    {
-      title: "손님 반응",
-      value: `${todayResponseCount}건 기록`,
-      note: todayResponseCount > 0 ? "오늘 들은 손님 반응이 저장되었습니다." : "칭찬·불만·문의 한 줄이라도 남겨두면 좋아요.",
-      to: "/response",
-      icon: MessageSquareText,
-      isUrgent: todayResponseCount === 0
-    }
-  ];
+  const completedReservationCount = todayReservationCount - pendingReservationCount;
 
   return (
     <div className="mx-auto grid max-w-none gap-4">
@@ -702,23 +674,44 @@ export function HomePage() {
           <span className="text-[12.5px] text-muted">{date}</span>
         </div>
         <div className="grid gap-3 md:grid-cols-3">
-          {todayTasks.map((task) => {
-            const Icon = task.icon;
-            return (
-              <Link
-                key={task.title}
-                to={task.to}
-                className="min-h-[92px] rounded-panel border border-latte bg-white px-[18px] py-4 shadow-none transition hover:border-bread"
-              >
-                <span className="flex items-center justify-between gap-2">
-                  <span className="text-[11.5px] font-medium text-muted">{task.title}</span>
-                  <Icon className="hidden h-5 w-5 text-bread" aria-hidden="true" />
-                </span>
-                <span className="mt-2 block text-[19px] font-bold text-ink">{task.value}</span>
-                <span className="mt-1 block text-[10.5px] leading-5 text-muted">{task.note}</span>
-              </Link>
-            );
-          })}
+          <Link
+            to="/daily-log/today"
+            className="min-h-[92px] rounded-panel border border-latte bg-white px-[18px] py-4 shadow-none transition hover:border-bread"
+          >
+            <span className="block text-[11.5px] font-medium text-muted">일일 운영 작성</span>
+            <span className="mt-3 inline-flex rounded-full bg-[#F7E6C8] px-3 py-1 text-[12px] font-bold text-[#B86A23]">
+              {dailyOperationSaved ? "작성 완료" : "작성 전"}
+            </span>
+          </Link>
+
+          <Link
+            to="/reservation?view=list"
+            className="min-h-[92px] rounded-panel border border-latte bg-white px-[18px] py-4 shadow-none transition hover:border-bread"
+          >
+            <span className="block text-[11.5px] font-medium text-muted">오늘 예약 현황</span>
+            <span className="mt-2 flex items-end gap-5">
+              <span className="grid gap-0.5">
+                <span className="text-[19px] font-extrabold leading-none text-ink">{todayReservationCount}</span>
+                <span className="text-[10.5px] font-medium text-muted">전체</span>
+              </span>
+              <span className="grid gap-0.5">
+                <span className="text-[19px] font-extrabold leading-none text-[#C7851E]">{pendingReservationCount}</span>
+                <span className="text-[10.5px] font-medium text-muted">대기</span>
+              </span>
+              <span className="grid gap-0.5">
+                <span className="text-[19px] font-extrabold leading-none text-green">{completedReservationCount}</span>
+                <span className="text-[10.5px] font-medium text-muted">픽업완료</span>
+              </span>
+            </span>
+          </Link>
+
+          <Link
+            to="/response"
+            className="min-h-[92px] rounded-panel border border-latte bg-white px-[18px] py-4 shadow-none transition hover:border-bread"
+          >
+            <span className="block text-[11.5px] font-medium text-muted">손님 반응 기록</span>
+            <span className="mt-2 block text-[21px] font-extrabold leading-tight text-ink">{todayResponseCount}건</span>
+          </Link>
         </div>
       </section>
 

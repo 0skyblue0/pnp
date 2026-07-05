@@ -993,9 +993,27 @@ describe("App", () => {
     expect(screen.getByLabelText("위생 점검자")).toBeInTheDocument();
     expect(screen.getByLabelText("최종 점검자")).toBeInTheDocument();
     expect(screen.getByLabelText("첫 출근자 이름")).toBeInTheDocument();
-    expect(screen.getByLabelText("첫 출근자 출근시간")).toHaveAttribute("step", "1800");
+    expect(screen.getByLabelText("첫 출근자 출근시간")).toHaveRole("combobox");
+    expect(
+      within(screen.getByLabelText("첫 출근자 출근시간")).getByRole("option", { name: "07:00" })
+    ).toBeInTheDocument();
+    expect(
+      within(screen.getByLabelText("첫 출근자 출근시간")).getByRole("option", { name: "07:30" })
+    ).toBeInTheDocument();
+    expect(
+      within(screen.getByLabelText("첫 출근자 출근시간")).queryByRole("option", { name: "07:01" })
+    ).not.toBeInTheDocument();
     expect(screen.getByLabelText("최종퇴근자 이름")).toBeInTheDocument();
-    expect(screen.getByLabelText("최종퇴근자 퇴근시간")).toHaveAttribute("step", "1800");
+    expect(screen.getByLabelText("최종퇴근자 퇴근시간")).toHaveRole("combobox");
+    expect(
+      within(screen.getByLabelText("최종퇴근자 퇴근시간")).getByRole("option", { name: "20:00" })
+    ).toBeInTheDocument();
+    expect(
+      within(screen.getByLabelText("최종퇴근자 퇴근시간")).getByRole("option", { name: "20:30" })
+    ).toBeInTheDocument();
+    expect(
+      within(screen.getByLabelText("최종퇴근자 퇴근시간")).queryByRole("option", { name: "20:01" })
+    ).not.toBeInTheDocument();
     expect(screen.getByRole("row", { name: /금일/ })).toBeInTheDocument();
     expect(screen.getByRole("row", { name: /내일/ })).toBeInTheDocument();
     expect(screen.getByText("휴무")).toBeInTheDocument();

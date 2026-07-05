@@ -1810,6 +1810,12 @@ function WorkerTimeInput({
   onNameChange: (value: string) => void;
   onTimeChange: (value: string) => void;
 }) {
+  const timeOptions = Array.from({ length: 48 }, (_, index) => {
+    const hour = Math.floor(index / 2);
+    const minute = index % 2 === 0 ? "00" : "30";
+    return `${String(hour).padStart(2, "0")}:${minute}`;
+  });
+
   return (
     <label className="grid min-w-0 gap-2">
       <span className="field-label">{label}</span>
@@ -1821,14 +1827,18 @@ function WorkerTimeInput({
           value={nameValue}
           onChange={(event) => onNameChange(event.target.value)}
         />
-        <input
+        <select
           aria-label={timeLabel}
           className="min-w-0 rounded-control bg-transparent px-2 outline-none focus:bg-cream/70"
-          type="time"
-          step="1800"
           value={timeValue}
           onChange={(event) => onTimeChange(event.target.value)}
-        />
+        >
+          {timeOptions.map((time) => (
+            <option key={time} value={time}>
+              {time}
+            </option>
+          ))}
+        </select>
       </div>
     </label>
   );

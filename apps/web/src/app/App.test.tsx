@@ -476,17 +476,28 @@ describe("App", () => {
     fireEvent.click(screen.getByRole("link", { name: "예약" }));
     fireEvent.click(await screen.findByRole("button", { name: "+ 새 예약 등록" }));
 
-    expect(screen.getByRole("button", { name: "오늘" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "내일" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "모레" })).toBeInTheDocument();
-    expect(screen.getByLabelText("픽업 날짜")).toHaveAttribute("type", "date");
+    const modal = await screen.findByRole("region", { name: "새 예약 등록" });
+    expect(within(modal).getByText("손님 이름 *")).toBeInTheDocument();
+    expect(within(modal).getByText("연락처 *")).toBeInTheDocument();
+    expect(within(modal).getByText("픽업 날짜")).toBeInTheDocument();
+    expect(within(modal).getByText("픽업 시간")).toBeInTheDocument();
+    expect(within(modal).getByText("제품 및 수량 *")).toBeInTheDocument();
+    expect(within(modal).getByText("컷팅 옵션")).toBeInTheDocument();
+    expect(within(modal).getByText("결제완료")).toBeInTheDocument();
+    expect(within(modal).getByText("비닐봉투")).toBeInTheDocument();
+    expect(within(modal).getByRole("button", { name: "취소" })).toBeInTheDocument();
+    expect(within(modal).getByRole("button", { name: "등록" })).toBeInTheDocument();
+    expect(within(modal).getByRole("button", { name: "오늘" })).toBeInTheDocument();
+    expect(within(modal).getByRole("button", { name: "내일" })).toBeInTheDocument();
+    expect(within(modal).getByRole("button", { name: "모레" })).toBeInTheDocument();
+    expect(within(modal).getByLabelText("픽업 날짜")).toHaveAttribute("type", "date");
 
-    const hourSelect = screen.getByLabelText("픽업 시");
+    const hourSelect = within(modal).getByLabelText("픽업 시");
     expect(within(hourSelect).queryByRole("option", { name: "08시" })).not.toBeInTheDocument();
     expect(within(hourSelect).getByRole("option", { name: "11시" })).toBeInTheDocument();
     expect(within(hourSelect).getByRole("option", { name: "19시" })).toBeInTheDocument();
     expect(within(hourSelect).queryByRole("option", { name: "20시" })).not.toBeInTheDocument();
-    expect(within(screen.getByLabelText("픽업 분")).getByRole("option", { name: "10분" })).toBeInTheDocument();
+    expect(within(within(modal).getByLabelText("픽업 분")).getByRole("option", { name: "10분" })).toBeInTheDocument();
   });
 
   it("renders statistics inside the integrated lookup screen", async () => {

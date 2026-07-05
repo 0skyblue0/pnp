@@ -1,12 +1,10 @@
-import { Check, PackagePlus, RefreshCcw, Trash2, X } from "lucide-react";
+import { RefreshCcw } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 
 import { apiGet, apiPatch, apiPost } from "../../shared/api/client.js";
 import type { ListEnvelope } from "../../shared/api/types.js";
-import { productLineup } from "../../shared/productLineup.js";
 import { todayInStoreTime } from "../../shared/time/storeTime.js";
-import { Button } from "../../shared/ui/Button.js";
 
 type ReservationDto = {
   id: string;
@@ -48,7 +46,7 @@ type ReservationItemForm = {
   cuttingOption: CuttingOption;
 };
 
-const quickTimes = ["11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00", "19:00"];
+const modalQuickTimes = ["11:00", "12:30", "14:00", "15:30", "17:00"];
 const pickupHours = Array.from({ length: 9 }, (_, index) => String(index + 11).padStart(2, "0"));
 const pickupMinutes = ["00", "10", "20", "30", "40", "50"];
 const halfCuttableProducts = new Set(["바게트", "깜빠뉴", "호밀빵", "화이트바게트", "식빵"]);
@@ -81,14 +79,6 @@ function formatDateOnly(value: Date): string {
     month: "2-digit",
     day: "2-digit"
   }).format(value);
-}
-
-function formatDateWithWeekday(value: string): string {
-  const weekday = new Intl.DateTimeFormat("ko-KR", {
-    timeZone: "Asia/Seoul",
-    weekday: "short"
-  }).format(new Date(`${value}T00:00:00+09:00`));
-  return `${value} (${weekday})`;
 }
 
 function defaultPickupAt(): string {
@@ -225,12 +215,6 @@ export function ReservationPage() {
   );
   const pendingCount = reservations.filter((reservation) => reservation.status !== "COMPLETED").length;
   const completedCount = reservations.filter((reservation) => reservation.status === "COMPLETED").length;
-  const productChoices = useMemo(() => {
-    const legacyProducts = form.items
-      .map((item) => item.productName)
-      .filter((productName) => productName && !productLineup.includes(productName));
-    return [...new Set([...legacyProducts, ...productLineup])];
-  }, [form.items]);
   const showReservationForm = searchParams.get("form") === "new" || editingId !== null;
 
   const loadReservations = useCallback(async () => {
@@ -284,39 +268,45 @@ export function ReservationPage() {
     }));
   }
 
-  function updateReservationItem(id: string, key: keyof Omit<ReservationItemForm, "id">, value: string) {
+  function combinedProductText(): string {
+    return form.items
+      .filter((item) => item.productName.trim())
+      .map((item) => `${item.productName} x${item.quantity || "1"}`)
+      .join(", ");
+  }
+
+  function updateCombinedProductText(value: string) {
+    const firstEntry = value.split(",")[0]?.trim() ?? "";
+    const match = firstEntry.match(/^(.*?)(?:\s*[xX×]\s*(\d+))?$/);
+    const productName = (match?.[1] ?? firstEntry).trim();
+    const quantity = match?.[2] ?? "1";
     setForm((current) => ({
       ...current,
-      items: current.items.map((item) => {
-        if (item.id !== id) {
-          return item;
+      items: [
+        {
+          ...(current.items[0] ?? emptyReservationItem()),
+          productName,
+          quantity,
+          cuttingOption: normalizedCuttingOption(productName, current.items[0]?.cuttingOption ?? "NONE")
         }
-        if (key === "productName") {
-          return {
-            ...item,
-            productName: value,
-            cuttingOption: normalizedCuttingOption(value, item.cuttingOption)
-          };
-        }
-        if (key === "cuttingOption") {
-          return {
-            ...item,
-            cuttingOption: normalizedCuttingOption(item.productName, value as CuttingOption)
-          };
-        }
-        return { ...item, [key]: value };
-      })
+      ]
     }));
   }
 
-  function addReservationItem() {
-    setForm((current) => ({ ...current, items: [...current.items, emptyReservationItem()] }));
+  function selectedCuttingOption(): CuttingOption {
+    return normalizedCuttingOption(form.items[0]?.productName ?? "", form.items[0]?.cuttingOption ?? "NONE");
   }
 
-  function removeReservationItem(id: string) {
+  function setPrimaryCuttingOption(cuttingOption: CuttingOption) {
     setForm((current) => ({
       ...current,
-      items: current.items.length === 1 ? current.items : current.items.filter((item) => item.id !== id)
+      items: [
+        {
+          ...(current.items[0] ?? emptyReservationItem()),
+          cuttingOption: normalizedCuttingOption(current.items[0]?.productName ?? "", cuttingOption)
+        },
+        ...current.items.slice(1)
+      ]
     }));
   }
 
@@ -446,61 +436,51 @@ export function ReservationPage() {
   }
 
   return (
-    <div
-      className={[
-        "mx-auto grid max-w-none gap-4",
-        showReservationForm ? "xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]" : "xl:grid-cols-1"
-      ].join(" ")}
-    >
+    <div className="relative mx-auto grid max-w-none gap-4">
       {showReservationForm ? (
-        <section className="panel min-w-0">
-        <div className="panel-heading">
-          <div>
-            <p className="text-sm text-muted">픽업 잊지 않기</p>
-            <h2 className="section-title">{editingId ? "예약 수정" : "예약 등록"}</h2>
-            <p className="mt-1 text-sm text-muted">날짜, 시간, 10분 단위를 버튼과 선택창으로 빠르게 고릅니다.</p>
-          </div>
-          <PackagePlus className="h-5 w-5 text-bread" aria-hidden="true" />
-        </div>
+        <div className="fixed inset-0 z-50 flex items-start justify-center bg-[rgba(43,38,34,0.4)] px-4 pt-[16px]">
+          <section
+            aria-label={editingId ? "예약 수정" : "새 예약 등록"}
+            className="max-h-[calc(100vh-48px)] w-full max-w-[480px] overflow-y-auto rounded-[16px] bg-white px-[28px] py-[20px] shadow-[0_20px_50px_rgba(0,0,0,0.25)]"
+          >
+            <div className="mb-3 text-[16px] font-bold text-ink">{editingId ? "예약 수정" : "새 예약 등록"}</div>
 
-        {message ? (
-          <div className="mb-4 rounded-control border border-green/20 bg-green/10 px-3 py-2 text-sm font-semibold text-green">
-            {message}
-          </div>
-        ) : null}
-        {error ? (
-          <div className="mb-4 rounded-control border border-red/20 bg-red/10 px-3 py-2 text-sm font-semibold text-red">
-            {error}
-          </div>
-        ) : null}
-        {formErrors.length > 0 ? (
-          <div className="mb-4 rounded-control border border-red/20 bg-red/10 px-3 py-2 text-sm font-semibold text-red">
-            <p>저장 전 확인해 주세요.</p>
-            <ul className="mt-1 list-disc pl-5">
-              {formErrors.map((formError) => (
-                <li key={formError}>{formError}</li>
-              ))}
-            </ul>
-          </div>
-        ) : null}
+            {message ? (
+              <div className="mb-3 rounded-[9px] bg-green/10 px-[13px] py-[8px] text-[12px] font-semibold text-green">
+                {message}
+              </div>
+            ) : null}
+            {error ? (
+              <div className="mb-3 rounded-[9px] bg-[#F7E3E1] px-[13px] py-[8px] text-[12px] font-semibold text-red">
+                {error}
+              </div>
+            ) : null}
+            {formErrors.length > 0 ? (
+              <div className="mb-3 rounded-[9px] bg-[#F7E3E1] px-[13px] py-[8px] text-[12px] font-semibold text-red">
+                <p>저장 전 확인해 주세요.</p>
+                <ul className="mt-1 list-disc pl-5">
+                  {formErrors.map((formError) => (
+                    <li key={formError}>{formError}</li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
 
-        <div className="grid gap-3">
-          <div className="grid gap-3 md:grid-cols-2">
-            <label className="grid min-w-0 gap-2">
-              <span className="field-label">손님 이름</span>
+            <label className="mb-2 block">
+              <span className="mb-[5px] block text-[11px] text-muted">손님 이름 *</span>
               <input
                 aria-label="손님 이름"
-                className="input min-w-0 w-full"
-                placeholder="홍길동"
+                className="w-full rounded-[8px] border border-latte px-[11px] py-[8px] text-[13px] outline-none focus:border-bread"
                 value={form.customerName}
                 onChange={(event) => setForm((current) => ({ ...current, customerName: event.target.value }))}
               />
             </label>
-            <label className="grid min-w-0 gap-2">
-              <span className="field-label">연락처</span>
+
+            <label className="mb-2 block">
+              <span className="mb-[5px] block text-[11px] text-muted">연락처 *</span>
               <input
                 aria-label="연락처"
-                className="input min-w-0 w-full"
+                className="w-full rounded-[8px] border border-latte px-[11px] py-[8px] text-[13px] outline-none focus:border-bread"
                 inputMode="numeric"
                 placeholder="010-0000-0000"
                 value={form.contactPhone}
@@ -509,48 +489,67 @@ export function ReservationPage() {
                 }
               />
             </label>
-          </div>
 
-          <div className="grid gap-2 rounded-control border border-latte bg-cream/40 p-3">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <span className="field-label">픽업 날짜·시간</span>
-              <span className="rounded-full bg-white px-3 py-1 text-sm font-bold text-cocoa">
-                {formatDateWithWeekday(datePart(form.pickupAt))} {timePart(form.pickupAt)}
-              </span>
+            <div className="mb-2">
+              <div className="mb-[5px] text-[11px] text-muted">픽업 날짜</div>
+              <div className="mb-2 flex gap-[6px]">
+                {[
+                  ["오늘", 0],
+                  ["내일", 1],
+                  ["모레", 2]
+                ].map(([label, daysFromToday]) => {
+                  const target = new Date();
+                  target.setDate(target.getDate() + Number(daysFromToday));
+                  const isSelected = datePart(form.pickupAt) === formatDateOnly(target);
+                  return (
+                    <button
+                      key={label}
+                      type="button"
+                      className={[
+                        "flex-1 rounded-[8px] py-[5px] text-center text-[12px] font-semibold transition",
+                        isSelected ? "bg-bread text-white" : "bg-cream text-cocoa hover:bg-[#EFE6DA]"
+                      ].join(" ")}
+                      onClick={() => setQuickDate(Number(daysFromToday))}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+              <input
+                aria-label="픽업 날짜"
+                className="sr-only"
+                type="date"
+                value={datePart(form.pickupAt)}
+                onClick={(event) => event.currentTarget.showPicker()}
+                onChange={(event) => setPickupDate(event.target.value)}
+              />
             </div>
-            <div className="grid grid-cols-3 gap-2 rounded-[1.35rem] bg-white/70 p-1.5 shadow-inner shadow-stone-200/60">
-              {[
-                ["오늘", 0],
-                ["내일", 1],
-                ["모레", 2]
-              ].map(([label, daysFromToday]) => (
-                <button
-                  key={label}
-                  type="button"
-                  className="min-h-12 rounded-[1rem] border border-latte/70 bg-gradient-to-b from-white to-cream px-3 text-sm font-semibold text-cocoa shadow-sm transition hover:-translate-y-0.5 hover:border-cocoa/40 hover:bg-white hover:shadow-md active:translate-y-0"
-                  onClick={() => setQuickDate(Number(daysFromToday))}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-            <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_8rem_8rem]">
-              <label className="grid gap-1">
-                <span className="text-xs font-semibold text-muted">날짜</span>
-                <input
-                  aria-label="픽업 날짜"
-                  className="input w-full"
-                  type="date"
-                  value={datePart(form.pickupAt)}
-                  onClick={(event) => event.currentTarget.showPicker()}
-                  onChange={(event) => setPickupDate(event.target.value)}
-                />
-              </label>
-              <label className="grid gap-1">
-                <span className="text-xs font-semibold text-muted">시</span>
+
+            <div className="mb-2">
+              <div className="mb-[5px] text-[11px] text-muted">픽업 시간</div>
+              <div className="mb-2 flex flex-wrap gap-[6px]">
+                {modalQuickTimes.map((time) => {
+                  const isSelected = timePart(form.pickupAt) === time;
+                  return (
+                    <button
+                      key={time}
+                      type="button"
+                      className={[
+                        "rounded-[8px] px-3 py-[5px] text-[12px] font-semibold transition",
+                        isSelected ? "bg-bread text-white" : "bg-cream text-cocoa hover:bg-[#EFE6DA]"
+                      ].join(" ")}
+                      onClick={() => setQuickTime(time)}
+                    >
+                      {time}
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="sr-only grid grid-cols-2 gap-[6px]">
                 <select
                   aria-label="픽업 시"
-                  className="input w-full"
+                  className="w-full rounded-[8px] border border-latte px-[11px] py-[8px] text-[13px] outline-none focus:border-bread"
                   value={timePart(form.pickupAt).slice(0, 2)}
                   onChange={(event) => setPickupHour(event.target.value)}
                 >
@@ -558,12 +557,9 @@ export function ReservationPage() {
                     <option key={hour} value={hour}>{hour}시</option>
                   ))}
                 </select>
-              </label>
-              <label className="grid gap-1">
-                <span className="text-xs font-semibold text-muted">분</span>
                 <select
                   aria-label="픽업 분"
-                  className="input w-full"
+                  className="w-full rounded-[8px] border border-latte px-[11px] py-[8px] text-[13px] outline-none focus:border-bread"
                   value={timePart(form.pickupAt).slice(3, 5)}
                   onChange={(event) => setPickupMinute(event.target.value)}
                 >
@@ -571,189 +567,100 @@ export function ReservationPage() {
                     <option key={minute} value={minute}>{minute}분</option>
                   ))}
                 </select>
-              </label>
-            </div>
-            <div className="grid grid-cols-4 gap-2 rounded-[1.35rem] bg-white/65 p-1.5 shadow-inner shadow-stone-200/60 sm:grid-cols-5">
-              {quickTimes.map((time) => (
-                <button
-                  key={time}
-                  type="button"
-                  className={[
-                    "min-h-12 rounded-[1rem] border px-2 text-sm font-semibold shadow-sm transition hover:-translate-y-0.5 hover:shadow-md active:translate-y-0",
-                    timePart(form.pickupAt) === time
-                      ? "border-cocoa bg-gradient-to-b from-cocoa to-bread text-white shadow-cocoa/20"
-                      : "border-latte/70 bg-gradient-to-b from-white to-cream text-cocoa hover:border-cocoa/40 hover:bg-white"
-                  ].join(" ")}
-                  onClick={() => setQuickTime(time)}
-                >
-                  {time}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="grid gap-2 rounded-control border border-latte bg-white/70 p-3">
-            <div className="flex items-center justify-between gap-2">
-              <span className="field-label">제품</span>
-              <button
-                type="button"
-                className="inline-flex min-h-10 items-center justify-center gap-2 rounded-[0.9rem] bg-white px-3 text-sm font-extrabold text-cocoa shadow-sm ring-1 ring-latte transition hover:-translate-y-0.5 hover:bg-cream hover:shadow-md active:translate-y-0"
-                onClick={addReservationItem}
-              >
-                <PackagePlus className="h-4 w-4" aria-hidden="true" />
-                제품 추가
-              </button>
-            </div>
-            <div className="grid gap-2">
-              {form.items.map((item, index) => {
-                const showHalfCut = canHalfCut(item.productName);
-                const showSlice = canSlice(item.productName);
-                return (
-                  <div key={item.id} className="grid min-w-0 gap-2 rounded-control bg-cream/40 p-2">
-                    <div className="grid min-w-0 gap-2 sm:grid-cols-[minmax(0,1fr)_7rem_auto] sm:items-end">
-                      <label className="grid min-w-0 gap-1">
-                        <span className="text-xs font-semibold text-muted">제품 {index + 1}</span>
-                        <select
-                          aria-label={`제품 ${index + 1}`}
-                          className="input min-w-0 w-full"
-                          value={item.productName}
-                          onChange={(event) => updateReservationItem(item.id, "productName", event.target.value)}
-                        >
-                          <option value="">제품 선택</option>
-                          {productChoices.map((productName) => (
-                            <option key={productName} value={productName}>
-                              {productName}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                      <label className="grid min-w-0 gap-1">
-                        <span className="text-xs font-semibold text-muted">수량</span>
-                        <input
-                          aria-label={`수량 ${index + 1}`}
-                          className="input min-w-0 w-full text-right"
-                          inputMode="numeric"
-                          min="1"
-                          type="number"
-                          value={item.quantity}
-                          onChange={(event) => updateReservationItem(item.id, "quantity", event.target.value)}
-                        />
-                      </label>
-                      <button
-                        type="button"
-                        className="inline-flex min-h-10 items-center justify-center gap-1 rounded-[0.9rem] border border-red/20 bg-white px-3 text-sm font-semibold text-red shadow-sm transition hover:-translate-y-0.5 hover:border-red/40 hover:bg-red/5 active:translate-y-0"
-                        onClick={() => removeReservationItem(item.id)}
-                      >
-                        <Trash2 className="h-4 w-4" aria-hidden="true" />
-                        삭제
-                      </button>
-                    </div>
-                    {showHalfCut || showSlice ? (
-                      <div className="flex flex-wrap gap-2">
-                        {showHalfCut ? (
-                          <label className="flex items-center gap-2 rounded-control border border-latte bg-white px-3 py-2 text-sm font-semibold text-cocoa">
-                            <input
-                              className="h-4 w-4 accent-cocoa"
-                              checked={isHalfCutSelected(item.cuttingOption)}
-                              type="checkbox"
-                              onChange={(event) =>
-                                updateReservationItem(
-                                  item.id,
-                                  "cuttingOption",
-                                  cuttingOptionFromFlags(event.target.checked, isSliceSelected(item.cuttingOption))
-                                )
-                              }
-                            />
-                            반컷팅
-                          </label>
-                        ) : null}
-                        {showSlice ? (
-                          <label className="flex items-center gap-2 rounded-control border border-latte bg-white px-3 py-2 text-sm font-semibold text-cocoa">
-                            <input
-                              className="h-4 w-4 accent-cocoa"
-                              checked={isSliceSelected(item.cuttingOption)}
-                              type="checkbox"
-                              onChange={(event) =>
-                                updateReservationItem(
-                                  item.id,
-                                  "cuttingOption",
-                                  cuttingOptionFromFlags(isHalfCutSelected(item.cuttingOption), event.target.checked)
-                                )
-                              }
-                            />
-                            슬라이스
-                          </label>
-                        ) : null}
-                      </div>
-                    ) : null}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-          <label className="grid min-w-0 gap-2">
-            <span className="field-label">메모</span>
-            <textarea
-              aria-label="메모"
-              className="input min-h-20 min-w-0 w-full resize-y"
-              value={form.memo}
-              onChange={(event) => setForm((current) => ({ ...current, memo: event.target.value }))}
-            />
-          </label>
-          <div className="grid gap-2 sm:grid-cols-2">
-            <label className="flex items-center gap-2 rounded-control border border-stone-200 bg-white px-3 py-2 text-sm font-semibold text-stone-800">
-              <input
-                className="h-4 w-4 accent-cocoa"
-                checked={form.isPaid}
-                type="checkbox"
-                onChange={(event) =>
-                  setForm((current) => ({ ...current, isPaid: event.target.checked }))
-                }
-              />
-              결제완료
-            </label>
-            <label className="flex items-center gap-2 rounded-control border border-stone-200 bg-white px-3 py-2 text-sm font-semibold text-stone-800">
-              <input
-                className="h-4 w-4 accent-cocoa"
-                checked={form.isBag}
-                type="checkbox"
-                onChange={(event) =>
-                  setForm((current) => ({ ...current, isBag: event.target.checked }))
-                }
-              />
-              비닐봉투
-            </label>
-          </div>
-          {editingId ? (
-            <div className="rounded-[1rem] border border-cocoa/15 bg-cocoa/5 p-1.5 shadow-sm">
-              <div className="grid grid-cols-2 gap-1.5">
-                <button
-                  type="button"
-                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[0.85rem] bg-gradient-to-r from-cocoa to-bread px-3 text-sm font-extrabold text-white shadow-elegant transition hover:-translate-y-0.5 hover:from-ink hover:to-cocoa active:translate-y-0"
-                  onClick={() => void saveReservation()}
-                >
-                  <Check className="h-4 w-4" aria-hidden="true" />
-                  수정 저장
-                </button>
-                <button
-                  type="button"
-                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[0.85rem] border border-latte bg-white px-3 text-sm font-extrabold text-cocoa shadow-sm transition hover:-translate-y-0.5 hover:border-cocoa/40 hover:shadow-md active:translate-y-0"
-                  onClick={cancelEdit}
-                >
-                  <X className="h-4 w-4" aria-hidden="true" />
-                  수정 취소
-                </button>
               </div>
             </div>
-          ) : (
-            <div className="flex flex-wrap gap-2">
-              <Button icon={Check} type="button" onClick={() => void saveReservation()}>
-                저장
-              </Button>
+
+            <label className="mb-2 block">
+              <span className="mb-[5px] block text-[11px] text-muted">제품 및 수량 *</span>
+              <input
+                aria-label="제품 및 수량"
+                className="w-full rounded-[8px] border border-latte px-[11px] py-[8px] text-[13px] outline-none focus:border-bread"
+                placeholder="예: 소금빵 x4, 크루아상 x2"
+                value={combinedProductText()}
+                onChange={(event) => updateCombinedProductText(event.target.value)}
+              />
+            </label>
+
+            <div className="mb-2">
+              <div className="mb-[5px] text-[11px] text-muted">컷팅 옵션</div>
+              <div className="flex gap-[6px]">
+                {[
+                  ["없음", "NONE"],
+                  ["반컷팅", "HALF"],
+                  ["슬라이스", "SLICE"],
+                  ["반컷팅+슬라이스", "HALF_SLICE"]
+                ].map(([label, value]) => {
+                  const isSelected = selectedCuttingOption() === value;
+                  return (
+                    <button
+                      key={value}
+                      type="button"
+                      className={[
+                        "flex-1 rounded-[8px] px-1 py-[5px] text-center text-[11.5px] font-semibold transition",
+                        isSelected ? "bg-bread text-white" : "bg-cream text-cocoa hover:bg-[#EFE6DA]"
+                      ].join(" ")}
+                      onClick={() => setPrimaryCuttingOption(value as CuttingOption)}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-          )}
+
+            <div className="mb-3 flex gap-4">
+              <label className="flex cursor-pointer items-center gap-[7px]">
+                <input
+                  className="h-[18px] w-[18px] rounded-[5px] accent-bread"
+                  checked={form.isPaid}
+                  type="checkbox"
+                  onChange={(event) =>
+                    setForm((current) => ({ ...current, isPaid: event.target.checked }))
+                  }
+                />
+                <span className="text-[12.5px] text-ink">결제완료</span>
+              </label>
+              <label className="flex cursor-pointer items-center gap-[7px]">
+                <input
+                  className="h-[18px] w-[18px] rounded-[5px] accent-bread"
+                  checked={form.isBag}
+                  type="checkbox"
+                  onChange={(event) =>
+                    setForm((current) => ({ ...current, isBag: event.target.checked }))
+                  }
+                />
+                <span className="text-[12.5px] text-ink">비닐봉투</span>
+              </label>
+            </div>
+
+            <label className="sr-only mb-[18px] block">
+              <span className="mb-[5px] block text-[11px] text-muted">메모</span>
+              <input
+                aria-label="메모"
+                className="w-full rounded-[8px] border border-latte px-[11px] py-[8px] text-[13px] outline-none focus:border-bread"
+                value={form.memo}
+                onChange={(event) => setForm((current) => ({ ...current, memo: event.target.value }))}
+              />
+            </label>
+
+            <div className="flex gap-[10px]">
+              <button
+                type="button"
+                className="flex-1 rounded-[9px] bg-cream py-[11px] text-center text-[13.5px] font-semibold text-cocoa transition hover:bg-[#EFE6DA]"
+                onClick={cancelEdit}
+              >
+                취소
+              </button>
+              <button
+                type="button"
+                className="flex-1 rounded-[9px] bg-bread py-[11px] text-center text-[13.5px] font-semibold text-white transition hover:bg-cocoa"
+                onClick={() => void saveReservation()}
+              >
+                {editingId ? "수정" : "등록"}
+              </button>
+            </div>
+          </section>
         </div>
-        </section>
       ) : null}
 
       <section className="panel min-w-0">

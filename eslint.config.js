@@ -9,13 +9,7 @@ const typedTypeScriptConfigs = tseslint.configs.recommendedTypeChecked.map((conf
 
 export default [
   {
-    ignores: [
-      "**/coverage/**",
-      "**/dist/**",
-      "**/node_modules/**",
-      "apps/api/prisma/generated/**",
-      "apps/web/public/prototype/**"
-    ]
+    ignores: ["**/coverage/**", "**/dist/**", "**/node_modules/**", "apps/api/prisma/generated/**"]
   },
   js.configs.recommended,
   {

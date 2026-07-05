@@ -12,6 +12,12 @@ import { ResponseEntryPage } from "../modules/response/ResponseEntryPage.js";
 import { ResponseInquiryPage } from "../modules/response/ResponseInquiryPage.js";
 import { todayInStoreTime } from "../shared/time/storeTime.js";
 
+const ACTIVE_NAV_CLASS = "from-cocoa";
+
+function currentMonthLabel() {
+  return `${Number(todayInStoreTime().slice(5, 7))}월`;
+}
+
 describe("App", () => {
   let scrollIntoViewMock: ReturnType<typeof vi.fn>;
 
@@ -41,18 +47,79 @@ describe("App", () => {
     vi.unstubAllGlobals();
   });
 
-  it("loads the dc.html home prototype in the app shell", () => {
+  it("shows goal notices first and keeps the schedule calendar in its own home tab", async () => {
+    vi.mocked(fetch).mockImplementation(async (input) => {
+      const url = input instanceof Request ? input.url : String(input);
+      if (url.endsWith("/annual-goal-notice")) {
+        return new Response(
+          JSON.stringify({
+            data: {
+              items: [
+                {
+                  id: "301",
+                  category: "sales",
+                  title: "올해 매출 목표",
+                  value: "전년 대비 +12%",
+                  note: "월별 매출을 함께 확인"
+                },
+                {
+                  id: "302",
+                  category: "operation",
+                  title: "운영 목표",
+                  value: "신메뉴 개발 및 판매",
+                  note: "일요일 매출 상승도 함께 확인"
+                }
+              ],
+              total: 2,
+              page: 1,
+              size: 2
+            },
+            error: null
+          }),
+          { headers: { "Content-Type": "application/json" } }
+        );
+      }
+      return new Response(
+        JSON.stringify({ data: { items: [], total: 0, page: 1, size: 0 }, error: null }),
+        { headers: { "Content-Type": "application/json" } }
+      );
+    });
+
     render(
       <AppProviders>
         <App />
       </AppProviders>
     );
 
-    expect(screen.getByTitle("폴앤폴리나 관리 시스템")).toHaveAttribute(
-      "src",
-      "/prototype/paul-paullina-management.dc.html?screen=home"
+    expect(screen.getByRole("heading", { name: "올해 목표·매출 공지" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "목표·공지" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.queryByRole("heading", { name: "연간 스케줄 달력" })).not.toBeInTheDocument();
+
+    expect(
+      await screen.findByRole("button", { name: "올해 매출 목표 전년 대비 +12% 상세 보기" })
+    ).toBeInTheDocument();
+    expect(screen.getByText("전년 대비 +12%")).toBeInTheDocument();
+    expect(screen.queryByText("월별 매출을 함께 확인")).not.toBeInTheDocument();
+    fireEvent.click(
+      screen.getByRole("button", { name: "올해 매출 목표 전년 대비 +12% 상세 보기" })
     );
+    expect(screen.getAllByText("전년 대비 +12%").length).toBeGreaterThan(0);
+    expect(screen.getByText("월별 매출을 함께 확인")).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "목표·공지 상세" })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("tab", { name: "스케줄 달력" }));
+    expect(screen.getByRole("heading", { name: "연간 스케줄 달력" })).toBeInTheDocument();
+    expect(screen.getByLabelText("스케줄 구분")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: currentMonthLabel() })).toBeInTheDocument();
+    expect(screen.queryByText("여름깜빠뉴 출시")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "삭제" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "수정" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "1년 전체 보기" }));
+    expect(screen.getByRole("heading", { name: "8월" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "스케줄 알림" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "오늘의 가용 재고" })).not.toBeInTheDocument();
   });
+
   it("adds staff schedules through the home input and places them under the matching calendar day", async () => {
     vi.mocked(fetch).mockImplementation(async (input, init) => {
       const url = input instanceof Request ? input.url : String(input);
@@ -226,7 +293,7 @@ describe("App", () => {
     );
   });
 
-  it("keeps the dc.html prototype as the main bakery work surface", () => {
+  it("shows the main bakery work tabs", () => {
     render(
       <MemoryRouter initialEntries={["/home"]}>
         <Routes>
@@ -237,11 +304,18 @@ describe("App", () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByTitle("폴앤폴리나 관리 시스템")).toHaveAttribute(
-      "src",
-      "/prototype/paul-paullina-management.dc.html?screen=home"
+    const navigation = screen.getByRole("navigation");
+    expect(
+      within(navigation)
+        .getAllByRole("link")
+        .map((link) => link.textContent)
+    ).toEqual(["홈", "일일 운영", "손님 반응", "예약", "선결제 장부", "관리"]);
+    expect(screen.getByRole("link", { name: "Paul & Paulina 홈" })).toHaveAttribute(
+      "href",
+      "/home"
     );
   });
+
   it("lets staff manage home goal and sales notices from the management tab", async () => {
     vi.stubGlobal(
       "confirm",
@@ -358,7 +432,7 @@ describe("App", () => {
     expect(await screen.findByText("홈 공지 삭제 완료")).toBeInTheDocument();
   });
 
-  it("loads the dc.html customer response prototype for response routes", () => {
+  it("keeps the customer response tab active on response entry route", () => {
     render(
       <MemoryRouter initialEntries={["/response/new"]}>
         <Routes>
@@ -369,12 +443,13 @@ describe("App", () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByTitle("폴앤폴리나 관리 시스템")).toHaveAttribute(
-      "src",
-      "/prototype/paul-paullina-management.dc.html?screen=feedback"
-    );
+    const navigation = screen.getByRole("navigation");
+    const responseLink = within(navigation).getByRole("link", { name: "손님 반응" });
+
+    expect(responseLink).toHaveClass(ACTIVE_NAV_CLASS);
   });
-  it("loads the dc.html daily operation prototype for daily routes", () => {
+
+  it("shows the daily operation tab as active on the daily log route", () => {
     render(
       <MemoryRouter initialEntries={["/daily-log/today"]}>
         <Routes>
@@ -385,27 +460,141 @@ describe("App", () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByTitle("폴앤폴리나 관리 시스템")).toHaveAttribute(
-      "src",
-      "/prototype/paul-paullina-management.dc.html?screen=daily"
-    );
+    const navigation = screen.getByRole("navigation");
+    const operationLink = within(navigation).getByRole("link", { name: "일일 운영" });
+
+    expect(operationLink).toHaveClass(ACTIVE_NAV_CLASS);
   });
-  it("loads the dc.html feedback analysis surface for lookup routes", () => {
+
+  it("renders statistics inside the integrated lookup screen", async () => {
+    vi.mocked(fetch).mockImplementation(
+      async () =>
+        new Response(
+          JSON.stringify({
+            data: {
+              total: 16,
+              major: [
+                { criterionId: 1, name: "제품", depth: 1, parentId: null, count: 12, ratio: 0.75 },
+                { criterionId: 2, name: "요청", depth: 1, parentId: null, count: 4, ratio: 0.25 }
+              ],
+              middle: [
+                {
+                  criterionId: 3,
+                  majorCriterionId: 1,
+                  name: "맛",
+                  depth: 2,
+                  parentId: 1,
+                  count: 9,
+                  ratio: 0.5625
+                },
+                {
+                  criterionId: 4,
+                  majorCriterionId: 1,
+                  name: "포장",
+                  depth: 2,
+                  parentId: 1,
+                  count: 3,
+                  ratio: 0.1875
+                },
+                {
+                  criterionId: 5,
+                  majorCriterionId: 2,
+                  name: "예약",
+                  depth: 2,
+                  parentId: 2,
+                  count: 4,
+                  ratio: 0.25
+                }
+              ],
+              minor: [
+                {
+                  criterionId: 6,
+                  majorCriterionId: 1,
+                  middleCriterionId: 3,
+                  name: "바게트",
+                  depth: 3,
+                  parentId: 3,
+                  count: 6,
+                  ratio: 0.375
+                },
+                {
+                  criterionId: 7,
+                  majorCriterionId: 1,
+                  middleCriterionId: 3,
+                  name: "식감",
+                  depth: 3,
+                  parentId: 3,
+                  count: 3,
+                  ratio: 0.1875
+                }
+              ],
+              insights: {
+                headline: "16건 중 제품 비중이 가장 큽니다.",
+                keyNotes: [
+                  "불만 12건은 우선 확인이 필요합니다.",
+                  "가장 반복된 세부 내용은 제품 > 맛 > 바게트입니다.",
+                  "대표님 보고에는 상위 반복 내용 2개만 먼저 보이면 충분합니다."
+                ],
+                repeatedTopics: [
+                  {
+                    criterionId: 6,
+                    label: "바게트",
+                    path: [
+                      { id: 1, name: "제품" },
+                      { id: 3, name: "맛" },
+                      { id: 6, name: "바게트" }
+                    ],
+                    count: 6,
+                    ratio: 0.375,
+                    sampleSummaries: ["바게트 맛 불만 반복"]
+                  }
+                ]
+              }
+            },
+            error: null
+          }),
+          {
+            headers: { "Content-Type": "application/json" }
+          }
+        )
+    );
+
     render(
       <MemoryRouter initialEntries={["/response?mode=lookup"]}>
         <Routes>
           <Route element={<AppLayout />}>
-            <Route path="/response" element={<div />} />
+            <Route path="/response" element={<ResponseInquiryPage />} />
           </Route>
         </Routes>
       </MemoryRouter>
     );
 
-    expect(screen.getByTitle("폴앤폴리나 관리 시스템")).toHaveAttribute(
-      "src",
-      "/prototype/paul-paullina-management.dc.html?screen=feedback"
+    const navigation = screen.getByRole("navigation");
+    expect(within(navigation).getByRole("link", { name: "손님 반응" })).toHaveClass(
+      ACTIVE_NAV_CLASS
     );
+    expect(screen.getByRole("tab", { name: "통계" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("tab", { name: "상세 조회" })).toHaveAttribute(
+      "aria-selected",
+      "false"
+    );
+
+    expect((await screen.findAllByText("제품")).length).toBeGreaterThan(0);
+    expect(screen.getByRole("heading", { name: "주요 사항" })).toBeInTheDocument();
+    expect(screen.getByText("16건 중 제품 비중이 가장 큽니다.")).toBeInTheDocument();
+    expect(screen.getAllByText(/제품 > 맛 > 바게트/).length).toBeGreaterThan(0);
+    expect(screen.getByText("12건 · 75%")).toBeInTheDocument();
+    expect(screen.getAllByText("맛").length).toBeGreaterThan(0);
+    expect(screen.getByText("9건 · 75%")).toBeInTheDocument();
+    expect(screen.queryByText("추천 기능")).not.toBeInTheDocument();
+    const topicLink = screen.getByRole("link", { name: "제품 > 맛 > 바게트 기록 보기" });
+    expect(topicLink).toHaveAttribute(
+      "href",
+      "/response?mode=lookup&tab=detail&from=2026-05-01&to=2026-05-31&criterion_id=6"
+    );
+    expect(screen.queryByRole("button", { name: "원형" })).not.toBeInTheDocument();
   });
+
   it("switches from statistics to detailed response lookup inside the lookup screen", async () => {
     vi.mocked(fetch).mockImplementation(async (input) => {
       const url = input instanceof Request ? input.url : String(input);
@@ -854,20 +1043,163 @@ describe("App", () => {
     expect(screen.queryByText(/AI 추천 적용됨/)).not.toBeInTheDocument();
   });
 
-  it("loads the dc.html prepaid ledger prototype for prepaid routes", () => {
+  it("lets staff manage prepaid customer balances without a paper ledger", async () => {
+    const transactions = [
+      {
+        id: "t1",
+        type: "CHARGE",
+        amount: 50000,
+        note: "바게트 10개 선결제",
+        occurredAt: "2026-07-01T09:00:00.000Z",
+        createdAt: "2026-07-01T09:00:00.000Z"
+      },
+      {
+        id: "t2",
+        type: "USE",
+        amount: 12000,
+        note: "화이트바게트 픽업",
+        occurredAt: "2026-07-01T10:00:00.000Z",
+        createdAt: "2026-07-01T10:00:00.000Z"
+      }
+    ];
+    const customer = {
+      id: "1",
+      customerName: "김선결",
+      contactPhone: "010-1234-5678",
+      memo: "단골 선결제",
+      balance: 38000,
+      lastUsedAt: "2026-07-01T10:00:00.000Z",
+      transactions
+    };
+    let createdBody: unknown = null;
+    let usedBody: unknown = null;
+    let chargedBody: unknown = null;
+    let cancelledTransactionPath: string | null = null;
+
+    vi.mocked(fetch).mockImplementation(async (input, init) => {
+      const url = input instanceof Request ? input.url : String(input);
+
+      if (url.endsWith("/auth/csrf")) {
+        return new Response(JSON.stringify({ data: { csrfToken: "test-token" }, error: null }), {
+          headers: { "Content-Type": "application/json" }
+        });
+      }
+
+      if (url.includes("/prepaid-ledger") && (!init?.method || init.method === "GET")) {
+        return new Response(
+          JSON.stringify({ data: { items: [customer], total: 1, page: 1, size: 1 }, error: null }),
+          { headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      if (url.endsWith("/prepaid-ledger") && init?.method === "POST") {
+        createdBody = typeof init.body === "string" ? JSON.parse(init.body) : init.body;
+        return new Response(
+          JSON.stringify({
+            data: {
+              ...customer,
+              id: "2",
+              customerName: "박충전",
+              contactPhone: "010-7777-7777",
+              balance: 30000,
+              transactions: []
+            },
+            error: null
+          }),
+          { headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      if (url.endsWith("/prepaid-ledger/1/use") && init?.method === "POST") {
+        usedBody = typeof init.body === "string" ? JSON.parse(init.body) : init.body;
+        return new Response(
+          JSON.stringify({ data: { ...customer, balance: 33000 }, error: null }),
+          { headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      if (url.endsWith("/prepaid-ledger/1/charge") && init?.method === "POST") {
+        chargedBody = typeof init.body === "string" ? JSON.parse(init.body) : init.body;
+        return new Response(
+          JSON.stringify({ data: { ...customer, balance: 58000 }, error: null }),
+          { headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      if (url.endsWith("/prepaid-ledger/1/transactions/t2") && init?.method === "DELETE") {
+        cancelledTransactionPath = new URL(url, "http://localhost").pathname;
+        return new Response(
+          JSON.stringify({
+            data: { ...customer, balance: 50000, transactions: transactions.slice(1) },
+            error: null
+          }),
+          { headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      return new Response(JSON.stringify({ data: { items: [], total: 0, page: 1, size: 0 }, error: null }), {
+        headers: { "Content-Type": "application/json" }
+      });
+    });
+
     render(
-      <MemoryRouter initialEntries={["/prepaid-ledger"]}>
-        <Routes>
-          <Route element={<AppLayout />}>
-            <Route path="/prepaid-ledger" element={<div />} />
-          </Route>
-        </Routes>
-      </MemoryRouter>
+      <AppProviders>
+        <App />
+      </AppProviders>
     );
 
-    expect(screen.getByTitle("폴앤폴리나 관리 시스템")).toHaveAttribute(
-      "src",
-      "/prototype/paul-paullina-management.dc.html?screen=prepaid"
+    fireEvent.click(screen.getByRole("link", { name: "선결제 장부" }));
+
+    expect(await screen.findByRole("heading", { name: "선결제 장부" })).toBeInTheDocument();
+    expect(screen.getByLabelText("손님 검색")).toBeInTheDocument();
+    expect(screen.getByText("검색 결과")).toBeInTheDocument();
+    expect(screen.getByText("총 잔액")).toBeInTheDocument();
+    expect(screen.getByText("김선결님")).toBeInTheDocument();
+    expect(screen.getByText("현재 잔액")).toBeInTheDocument();
+    expect(screen.getAllByText("38,000원")).toHaveLength(2);
+    expect(screen.getByText("화이트바게트 픽업")).toBeInTheDocument();
+    expect(
+      screen.getByText("잘못 눌렀다면 최근 내역의 “되돌리기”를 누른 뒤 정확한 금액으로 다시 입력합니다.")
+    ).toBeInTheDocument();
+
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    const cancelButtons = screen.getAllByRole("button", { name: "되돌리기" });
+    expect(cancelButtons).toHaveLength(2);
+    const cancelButton = cancelButtons[1] as HTMLElement;
+    fireEvent.click(cancelButton);
+    await waitFor(() => expect(cancelledTransactionPath).toBe("/api/v1/prepaid-ledger/1/transactions/t2"));
+    expect(await screen.findByText("사용 12,000원 되돌리기 완료 #1")).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("새 손님 이름"), { target: { value: "박충전" } });
+    fireEvent.change(screen.getByLabelText("새 손님 연락처"), { target: { value: "01077777777" } });
+    fireEvent.change(screen.getByLabelText("선결제 금액"), { target: { value: "30000" } });
+    fireEvent.change(screen.getByLabelText("선결제 메모"), { target: { value: "식빵 선결제" } });
+    fireEvent.click(screen.getByRole("button", { name: "선결제 등록" }));
+
+    await waitFor(() =>
+      expect(createdBody).toMatchObject({
+        customerName: "박충전",
+        contactPhone: "010-7777-7777",
+        amount: 30000,
+        memo: "식빵 선결제"
+      })
     );
+    expect(await screen.findByText("선결제 등록 완료 #2")).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("김선결 추가 충전 금액"), { target: { value: "20000" } });
+    fireEvent.change(screen.getByLabelText("김선결 추가 충전 메모"), { target: { value: "식빵 추가 충전" } });
+    fireEvent.click(screen.getByRole("button", { name: "김선결 추가 충전" }));
+
+    await waitFor(() =>
+      expect(chargedBody).toMatchObject({ amount: 20000, note: "식빵 추가 충전" })
+    );
+    expect(await screen.findByText("추가 충전 완료 #1")).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("김선결 사용 금액"), { target: { value: "5000" } });
+    fireEvent.change(screen.getByLabelText("김선결 사용 내용"), { target: { value: "크로와상 사용" } });
+    fireEvent.click(screen.getByRole("button", { name: "김선결 사용 처리" }));
+
+    await waitFor(() => expect(usedBody).toMatchObject({ amount: 5000, note: "크로와상 사용" }));
+    expect(await screen.findByText("사용 처리 완료 #1")).toBeInTheDocument();
   });
 });

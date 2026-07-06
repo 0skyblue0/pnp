@@ -387,11 +387,11 @@ export function PrepaidLedgerPage() {
         </div>
 
         <details className="mt-4" open={selectedCustomer !== null}>
-          <summary className="cursor-pointer text-sm font-bold text-cocoa">등록·충전·사용 상세 기능 열기</summary>
-        <div className="mt-3 grid gap-4 xl:grid-cols-[minmax(20rem,0.72fr)_minmax(0,1.28fr)]">
-          <div className="grid self-start gap-3 rounded-[1.25rem] border border-latte bg-white/75 p-3 shadow-sm">
+          <summary className="mb-3 cursor-pointer text-sm font-bold text-cocoa">등록·충전·사용 상세 기능 열기</summary>
+        <div className="grid gap-3 xl:grid-cols-[minmax(20rem,0.72fr)_minmax(0,1.28fr)]">
+          <div className="dc-card grid self-start gap-3 px-4 py-4">
             <span id="new-prepaid-form" className="sr-only">선결제 손님 신규 등록</span>
-            <div className="flex items-center gap-2 rounded-control border border-latte bg-white px-3 py-2">
+            <div className="input flex items-center gap-2 px-3 py-2">
               <Search className="h-4 w-4 shrink-0 text-muted" aria-hidden="true" />
               <label className="grid min-w-0 flex-1 gap-1">
                 <span className="text-xs font-bold text-muted">손님 검색 상세</span>
@@ -463,16 +463,16 @@ export function PrepaidLedgerPage() {
           </div>
 
           <div className="grid content-start gap-3">
-            <div className="grid gap-2 rounded-[1.2rem] border border-latte bg-white/85 p-3 shadow-sm sm:grid-cols-3">
+            <div className="dc-card grid gap-2 px-4 py-3 sm:grid-cols-3">
               <div>
                 <p className="text-xs font-bold text-muted">검색 결과</p>
                 <p className="mt-1 text-xl font-extrabold text-ink">{formatCurrency(customers.length)}명</p>
               </div>
               <div>
                 <p className="text-xs font-bold text-muted">총 잔액</p>
-                <p className="mt-1 text-xl font-extrabold text-blue">{formatCurrency(totalBalance)}원</p>
+                <p className="mt-1 text-xl font-extrabold text-bread">{formatCurrency(totalBalance)}원</p>
               </div>
-              <div className="rounded-[0.9rem] border border-blue/15 bg-blue/5 px-3 py-2 text-xs font-bold text-blue">
+              <div className="rounded-[8px] border border-latte bg-cream/50 px-3 py-2 text-xs font-bold text-cocoa">
                 잘못 눌렀다면 최근 내역의 “되돌리기”를 누른 뒤 정확한 금액으로 다시 입력합니다.
               </div>
             </div>
@@ -490,7 +490,7 @@ export function PrepaidLedgerPage() {
                   key={customer.id}
                   id="selected-prepaid-detail"
                   aria-label={`${customer.customerName} 선결제 장부`}
-                  className="rounded-[1.35rem] border border-latte bg-white p-3 shadow-sm ring-1 ring-white/70"
+                  className="dc-card px-4 py-4"
                 >
                   <div className="grid gap-3 border-b border-latte pb-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
                     <div className="min-w-0">
@@ -515,9 +515,9 @@ export function PrepaidLedgerPage() {
                         기타 메모 수정
                       </button>
                     </div>
-                    <div className="rounded-[1rem] bg-blue/10 px-4 py-3 text-right">
-                      <p className="text-xs font-bold text-blue/80">현재 잔액</p>
-                      <p className="mt-1 text-2xl font-extrabold tracking-[-0.03em] text-blue">
+                    <div className="rounded-[10px] bg-cream/70 px-4 py-3 text-right">
+                      <p className="text-xs font-bold text-muted">현재 잔액</p>
+                      <p className="mt-1 text-2xl font-extrabold tracking-[-0.03em] text-bread">
                         {formatCurrency(customer.balance)}원
                       </p>
                     </div>
@@ -538,7 +538,7 @@ export function PrepaidLedgerPage() {
                           {displayedTransactions.map((transaction) => (
                             <div
                               key={transaction.id}
-                              className="grid gap-2 rounded-[0.9rem] border border-latte bg-cream/35 px-3 py-2 text-sm sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
+                              className="dc-row grid gap-2 px-3 py-2 text-sm sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
                             >
                               <div className="min-w-0">
                                 <div className="flex flex-wrap items-center gap-2">
@@ -589,7 +589,7 @@ export function PrepaidLedgerPage() {
                       )}
                     </div>
 
-                    <div className="grid gap-3 rounded-[1rem] bg-cream/45 p-3">
+                    <div className="dc-card grid gap-3 px-3 py-3">
                       <div className="grid gap-2 border-b border-latte pb-3">
                         <p className="text-sm font-extrabold text-cocoa">추가 충전</p>
                         <label className="grid gap-1">

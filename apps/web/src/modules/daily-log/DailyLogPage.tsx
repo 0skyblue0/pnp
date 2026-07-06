@@ -704,7 +704,7 @@ export function DailyLogPage() {
         ) : null}
       </section>
 
-      <section className={viewMode === "entry" ? "grid gap-[14px]" : "panel"}>
+      <section className={viewMode === "entry" ? "grid gap-[14px]" : "grid gap-[14px]"}>
         {viewMode === "entry" ? (
           <>
             <div
@@ -849,8 +849,15 @@ function DailyLookupSection({
     lookupMode === "week" ? "전주 대비" : lookupMode === "month" ? "전월 대비" : "이전 기간 대비";
 
   return (
-    <div className="grid gap-4">
-      <div className="w-[calc(100vw-58px)] min-w-0 max-w-full rounded-control border border-latte bg-white/80 p-4 sm:w-full">
+    <div className="grid gap-[14px]">
+      <div className="dc-card-pad min-w-0">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <div>
+            <p className="dc-eyebrow">데이터 조회</p>
+            <h3 className="sr-only">일일 운영 데이터 조회</h3>
+          </div>
+          <p className="text-[11.5px] font-semibold text-muted">저장 데이터 기준</p>
+        </div>
         <div className="grid w-full min-w-0 max-w-full gap-3 md:grid-cols-2 xl:grid-cols-5">
           <label className="grid min-w-0 gap-2">
             <span className="field-label">조회 방식</span>
@@ -903,15 +910,15 @@ function DailyLookupSection({
           {lookupMode === "month" ? (
             <TextInput label="조회 월" type="month" value={lookupMonth} onChange={setLookupMonth} />
           ) : null}
-          <div className="min-w-0 rounded-control border border-latte bg-cream/60 px-3 py-2">
-            <p className="text-sm font-bold text-cocoa">조회 기간</p>
-            <p className="mt-1 text-sm text-muted">
+          <div className="min-w-0 rounded-[8px] border border-latte bg-cream/50 px-3 py-2">
+            <p className="text-[11px] font-bold text-muted">조회 기간</p>
+            <p className="mt-1 text-[13px] font-bold text-ink">
               {lookupRange.startDate} ~ {lookupRange.endDate}
             </p>
           </div>
-          <div className="min-w-0 rounded-control border border-latte bg-cream/60 px-3 py-2">
-            <p className="text-sm font-bold text-cocoa">저장된 일지</p>
-            <p className="mt-1 text-sm text-muted">
+          <div className="min-w-0 rounded-[8px] border border-latte bg-cream/50 px-3 py-2">
+            <p className="text-[11px] font-bold text-muted">저장된 일지</p>
+            <p className="mt-1 text-[13px] font-bold text-ink">
               전체 {allRecordCount}일 / 조회 {records.length}일
             </p>
           </div>
@@ -928,13 +935,13 @@ function DailyLookupSection({
         />
       </div>
 
-      <div className="rounded-control border border-latte bg-white/80 px-3 py-3 text-sm font-semibold text-muted">
+      <div className="dc-card px-5 py-3 text-[12.5px] font-semibold text-muted">
         비교 기간: {previousLookupRange.startDate} ~ {previousLookupRange.endDate} / 비교 총매출{" "}
         {formatCurrency(previousSummary.totalSales)}
       </div>
 
-      <div className="rounded-control border border-latte bg-white/80 p-4">
-        <h3 className="text-lg font-bold text-cocoa">조회된 일지</h3>
+      <div className="dc-card-pad">
+        <h3 className="dc-eyebrow">조회된 일지</h3>
         {records.length === 0 ? (
           <p className="mt-3 rounded-control border border-dashed border-latte bg-cream/40 px-3 py-6 text-center text-sm font-semibold text-muted">
             선택한 기간에 저장된 일일 운영 일지가 없습니다.
@@ -955,17 +962,17 @@ function DailyLookupSection({
                 <article
                   key={record.draft.date}
                   aria-label={`${record.draft.date} 일지 요약`}
-                  className="overflow-hidden rounded-control border border-latte bg-white/90 shadow-control"
+                  className="overflow-hidden rounded-panel border border-latte bg-white shadow-none"
                 >
-                  <div className="overflow-x-auto">
+                  <div>
                     <div
                       role="table"
                       aria-label={`${record.draft.date} 일지 한줄 요약`}
-                      className="w-full min-w-[860px] text-sm"
+                      className="w-full text-sm"
                     >
                       <div
                         role="row"
-                        className="grid grid-cols-[1.06fr_0.86fr_0.62fr_1fr_1fr_1.24fr_0.84fr_0.9fr_0.96fr_0.58fr_1.28fr] overflow-hidden rounded-control border border-latte bg-white"
+                        className="grid overflow-hidden rounded-panel border border-latte bg-white sm:grid-cols-2 lg:grid-cols-[1.06fr_0.86fr_0.62fr_1fr_1fr_1.24fr_0.84fr_0.9fr_0.96fr_0.58fr_1.28fr]"
                       >
                         <LookupSummaryCell label="날짜" value={record.draft.date} strong />
                         <LookupSummaryCell label="작성자" value={record.draft.author || "-"} />
@@ -1001,7 +1008,7 @@ function DailyLookupSection({
                         />
                         <div
                           role="cell"
-                          className="flex items-center justify-center gap-1 border-l border-latte bg-cream/40 px-1.5 py-2"
+                          className="flex items-center justify-center gap-1 border-l border-t border-latte bg-cream/40 px-1.5 py-2 sm:border-t-0"
                         >
                           <button
                             className="rounded-control border border-latte bg-white px-2.5 py-1.5 text-sm font-bold text-cocoa hover:border-cocoa"
@@ -1023,7 +1030,7 @@ function DailyLookupSection({
 
                   {isExpanded ? (
                     <div className="grid gap-3 border-t border-latte bg-cream/20 p-3 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
-                      <div className="grid grid-cols-2 overflow-hidden rounded-control border border-latte bg-white sm:grid-cols-3">
+                      <div className="grid grid-cols-2 overflow-hidden rounded-panel border border-latte bg-white sm:grid-cols-3">
                         <LookupMetric
                           label="POS 매출액"
                           value={formatCurrency(numeric(record.draft.posSalesAmount))}
@@ -1082,7 +1089,7 @@ function DailyLookupSection({
                         <div
                           role="group"
                           aria-label="기본·점검"
-                          className="rounded-control border border-latte bg-white p-3"
+                          className="rounded-panel border border-latte bg-white p-3"
                         >
                           <p className="font-bold text-cocoa">기본·점검</p>
                           <div className="mt-2 grid gap-1.5">
@@ -1103,7 +1110,7 @@ function DailyLookupSection({
                         <div
                           role="group"
                           aria-label="제품 합계"
-                          className="rounded-control border border-latte bg-white p-3"
+                          className="rounded-panel border border-latte bg-white p-3"
                         >
                           <div className="flex items-center justify-between gap-2">
                             <p className="font-bold text-cocoa">제품 합계</p>
@@ -1311,7 +1318,7 @@ function LookupSummaryCell({
 
 function SummaryCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-control border border-latte bg-white/80 px-3 py-3 shadow-control">
+    <div className="dc-card px-5 py-4">
       <p className="text-sm text-muted">{label}</p>
       <p className="mt-1 text-2xl font-bold text-cocoa">{value}</p>
     </div>

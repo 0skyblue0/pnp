@@ -320,6 +320,9 @@ export function HomePage() {
   const allGoalNotices = storedGoalNotices;
   const salesGoalNotice = currentSalesGoal(allGoalNotices, date);
   const monthlySalesTarget = currentMonthTarget(salesGoalNotice, date);
+  const monthlySalesAchievementPercent = monthlySalesTarget && monthlySalesTarget > 0
+    ? Math.min(Math.round((currentMonthSales / monthlySalesTarget) * 100), 100)
+    : 0;
   const remainingMonthlySalesTarget = Math.max((monthlySalesTarget ?? 0) - currentMonthSales, 0);
   const operationNotice = allGoalNotices.find((notice) => notice.category === "operation") ?? null;
   const staffNotice = allGoalNotices.find((notice) => notice.category === "staff") ?? null;
@@ -822,6 +825,18 @@ export function HomePage() {
           {salesGoalNotice?.targetTotal ? (
             <p className="mt-1 text-xs font-semibold text-cocoa">연간 총합 {formatCurrency(salesGoalNotice.targetTotal)}</p>
           ) : null}
+          <div className="mt-3" aria-label={`이번 달 매출 달성률 ${percentLabel(currentMonthSales, monthlySalesTarget)}`}>
+            <div className="mb-1.5 flex items-center justify-between text-[10.5px] font-bold text-muted">
+              <span>달성률</span>
+              <span className="text-bread">{percentLabel(currentMonthSales, monthlySalesTarget)}</span>
+            </div>
+            <div className="h-2.5 overflow-hidden rounded-full bg-cream ring-1 ring-latte">
+              <div
+                className="h-full rounded-full bg-bread transition-[width]"
+                style={{ width: `${monthlySalesAchievementPercent}%` }}
+              />
+            </div>
+          </div>
           <div className="mt-3 grid grid-cols-3 gap-2 rounded-control bg-cream/55 px-3 py-2 text-center">
             <div>
               <p className="text-[10.5px] font-bold text-muted">이번 달 달성률</p>

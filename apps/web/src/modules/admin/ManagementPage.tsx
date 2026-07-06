@@ -718,6 +718,27 @@ export function ManagementPage() {
     await loadManagementData();
   }
 
+  async function deleteSchedule(schedule: AnnualScheduleDto) {
+    if (!window.confirm(`${schedule.title} 스케줄을 삭제하시겠습니까?`)) {
+      return;
+    }
+
+    setMessage(null);
+    setError(null);
+    const envelope = await apiDelete<{ deleted: boolean }>(`/annual-schedule/${schedule.id}`);
+
+    if (envelope.error) {
+      setError(envelope.error.message);
+      return;
+    }
+
+    setMessage("스케줄 삭제 완료");
+    if (editingScheduleId === schedule.id) {
+      closeScheduleForm();
+    }
+    await loadManagementData();
+  }
+
 
   async function deleteGoalNotice(notice: AnnualGoalNoticeDto) {
     if (!window.confirm(`${notice.title} 홈 공지를 삭제하시겠습니까?`)) {
@@ -1169,16 +1190,19 @@ export function ManagementPage() {
               ) : null}
 
               <div className="mt-4 rounded-[12px] border border-latte bg-white px-4 py-2">
-                <div className="grid grid-cols-[8rem_6rem_minmax(0,1fr)_minmax(0,1fr)_6rem] gap-2 border-b border-[#EFE8DC] py-2 text-[11px] font-semibold text-muted">
-                  <div>날짜</div><div>구분</div><div>제목</div><div>메모</div><div>수정</div>
+                <div className="grid grid-cols-[8rem_6rem_minmax(0,1fr)_minmax(0,1fr)_8.5rem] gap-2 border-b border-[#EFE8DC] py-2 text-[11px] font-semibold text-muted">
+                  <div>날짜</div><div>구분</div><div>제목</div><div>메모</div><div>수정·삭제</div>
                 </div>
                 {annualSchedules.map((schedule) => (
-                  <div key={schedule.id} className="grid grid-cols-[8rem_6rem_minmax(0,1fr)_minmax(0,1fr)_6rem] items-center gap-2 border-b border-[#F5F0E7] py-3 text-[13px] last:border-b-0">
+                  <div key={schedule.id} className="grid grid-cols-[8rem_6rem_minmax(0,1fr)_minmax(0,1fr)_8.5rem] items-center gap-2 border-b border-[#F5F0E7] py-3 text-[13px] last:border-b-0">
                     <div className="font-semibold text-ink">{schedule.date}</div>
                     <div><span className="rounded-full bg-cream px-2 py-1 text-xs font-bold text-cocoa">{scheduleToneLabels[schedule.tone ?? "notice"]}</span></div>
                     <div className="font-semibold text-ink">{schedule.title}</div>
                     <div className="text-muted">{schedule.note || "-"}</div>
-                    <div><button className="rounded-[8px] border border-latte px-2 py-1 text-xs font-bold text-cocoa" type="button" aria-label={`${schedule.title} 수정`} onClick={() => openScheduleEdit(schedule)}>수정</button></div>
+                    <div className="flex flex-wrap gap-1.5">
+                      <button className="rounded-[8px] border border-latte px-2 py-1 text-xs font-bold text-cocoa" type="button" aria-label={`${schedule.title} 수정`} onClick={() => openScheduleEdit(schedule)}>수정</button>
+                      <button className="rounded-[8px] border border-red/30 bg-white px-2 py-1 text-xs font-bold text-red" type="button" aria-label={`${schedule.title} 삭제`} onClick={() => void deleteSchedule(schedule)}>삭제</button>
+                    </div>
                   </div>
                 ))}
                 {!isLoading && annualSchedules.length === 0 ? <div className="py-8 text-center text-sm text-muted">등록된 스케줄 없음</div> : null}

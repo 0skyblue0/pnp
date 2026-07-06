@@ -200,7 +200,7 @@ function formatPhoneInput(value: string): string {
 
 export function ReservationPage() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const [date, setDate] = useState(todayInStoreTime());
+  const [date, setDate] = useState(() => searchParams.get("date") ?? todayInStoreTime());
   const [reservationQuery, setReservationQuery] = useState("");
   const [reservations, setReservations] = useState<ReservationDto[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -224,16 +224,16 @@ export function ReservationPage() {
   ).length;
   const showReservationForm = searchParams.get("form") === "new" || editingId !== null;
 
-  const loadReservations = useCallback(async () => {
+  const loadReservations = useCallback(async (lookupDate = date, lookupQuery = reservationQuery) => {
     setIsLoading(true);
     setError(null);
 
     const params = new URLSearchParams();
-    if (reservationQuery.trim()) {
-      params.set("query", reservationQuery.trim());
+    if (lookupQuery.trim()) {
+      params.set("query", lookupQuery.trim());
     } else {
-      params.set("from", date);
-      params.set("to", date);
+      params.set("from", lookupDate);
+      params.set("to", lookupDate);
     }
     const reservationEnvelope = await apiGet<ListEnvelope<ReservationDto>>(`/reservation?${params.toString()}`);
 
@@ -249,6 +249,13 @@ export function ReservationPage() {
   useEffect(() => {
     void loadReservations();
   }, [loadReservations]);
+
+  function setReservationListDate(nextDate: string) {
+    setDate(nextDate);
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.set("date", nextDate);
+    setSearchParams(nextParams, { replace: true });
+  }
 
   function setQuickDate(daysFromToday: number) {
     const target = new Date();
@@ -380,13 +387,17 @@ export function ReservationPage() {
       return;
     }
 
+    const savedPickupDate = datePart(envelope.data.pickupAt);
     setMessage(editingId ? `예약 수정 #${envelope.data.id}` : `예약 저장 #${envelope.data.id}`);
     setFormErrors([]);
     setEditingId(null);
-    setSearchParams(new URLSearchParams(), { replace: true });
+    setReservationQuery("");
+    const nextParams = new URLSearchParams();
+    nextParams.set("date", savedPickupDate);
+    setSearchParams(nextParams, { replace: true });
     setForm(emptyReservationForm());
-    setDate(datePart(envelope.data.pickupAt));
-    await loadReservations();
+    setDate(savedPickupDate);
+    await loadReservations(savedPickupDate, "");
   }
 
   function startEdit(reservation: ReservationDto) {
@@ -420,7 +431,9 @@ export function ReservationPage() {
     setEditingId(null);
     setMessage(null);
     setFormErrors([]);
-    setSearchParams(new URLSearchParams(), { replace: true });
+    const nextParams = new URLSearchParams();
+    nextParams.set("date", date);
+    setSearchParams(nextParams, { replace: true });
     setForm(emptyReservationForm());
   }
 
@@ -736,7 +749,7 @@ export function ReservationPage() {
                 type="date"
                 value={date}
                 onClick={(event) => event.currentTarget.showPicker()}
-                onChange={(event) => setDate(event.target.value)}
+                onChange={(event) => setReservationListDate(event.target.value)}
               />
             </label>
             <label className="grid min-w-48 max-w-full gap-1">

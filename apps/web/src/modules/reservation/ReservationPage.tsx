@@ -115,9 +115,12 @@ function emptyReservationItem(): ReservationItemForm {
   };
 }
 
-function formatPickupTimeOnly(value: string): string {
+function formatPickupDateTime(value: string): string {
   return new Intl.DateTimeFormat("ko-KR", {
     timeZone: "Asia/Seoul",
+    month: "2-digit",
+    day: "2-digit",
+    weekday: "short",
     hour: "2-digit",
     minute: "2-digit",
     hour12: false
@@ -198,6 +201,7 @@ function formatPhoneInput(value: string): string {
 export function ReservationPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [date, setDate] = useState(todayInStoreTime());
+  const [reservationQuery, setReservationQuery] = useState("");
   const [reservations, setReservations] = useState<ReservationDto[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -215,13 +219,23 @@ export function ReservationPage() {
   );
   const pendingCount = reservations.filter((reservation) => reservation.status !== "COMPLETED").length;
   const completedCount = reservations.filter((reservation) => reservation.status === "COMPLETED").length;
+  const overdueCount = reservations.filter(
+    (reservation) => reservation.status !== "COMPLETED" && isPastPickup(reservation.pickupAt)
+  ).length;
   const showReservationForm = searchParams.get("form") === "new" || editingId !== null;
 
   const loadReservations = useCallback(async () => {
     setIsLoading(true);
     setError(null);
 
-    const reservationEnvelope = await apiGet<ListEnvelope<ReservationDto>>(`/reservation?from=${date}&to=${date}`);
+    const params = new URLSearchParams();
+    if (reservationQuery.trim()) {
+      params.set("query", reservationQuery.trim());
+    } else {
+      params.set("from", date);
+      params.set("to", date);
+    }
+    const reservationEnvelope = await apiGet<ListEnvelope<ReservationDto>>(`/reservation?${params.toString()}`);
 
     setIsLoading(false);
 
@@ -230,7 +244,7 @@ export function ReservationPage() {
       return;
     }
     setReservations(reservationEnvelope.data.items);
-  }, [date]);
+  }, [date, reservationQuery]);
 
   useEffect(() => {
     void loadReservations();
@@ -669,8 +683,8 @@ export function ReservationPage() {
             <h2 className="section-title">예약 · {date.replaceAll("-", ".")}</h2>
           </div>
           <div className="flex flex-wrap items-end gap-2">
-            <label className="sr-only grid min-w-40 max-w-full cursor-pointer gap-1">
-              <span className="sr-only">조회 날짜</span>
+            <label className="grid min-w-40 max-w-full cursor-pointer gap-1">
+              <span className="text-[11px] font-semibold text-muted">조회 날짜</span>
               <input
                 aria-label="예약 조회 날짜"
                 className="input w-40 max-w-full cursor-pointer"
@@ -680,9 +694,19 @@ export function ReservationPage() {
                 onChange={(event) => setDate(event.target.value)}
               />
             </label>
+            <label className="grid min-w-48 max-w-full gap-1">
+              <span className="text-[11px] font-semibold text-muted">예약 검색</span>
+              <input
+                aria-label="예약 검색"
+                className="input w-52 max-w-full"
+                placeholder="이름·연락처·제품·메모"
+                value={reservationQuery}
+                onChange={(event) => setReservationQuery(event.target.value)}
+              />
+            </label>
             <button
               type="button"
-              className="sr-only inline-flex min-h-10 items-center justify-center gap-2 rounded-[0.9rem] bg-white px-3 text-sm font-extrabold text-cocoa shadow-sm ring-1 ring-latte transition hover:-translate-y-0.5 hover:bg-cream hover:shadow-md active:translate-y-0"
+              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-[0.9rem] bg-white px-3 text-sm font-extrabold text-cocoa shadow-sm ring-1 ring-latte transition hover:-translate-y-0.5 hover:bg-cream hover:shadow-md active:translate-y-0"
               onClick={() => void loadReservations()}
             >
               <RefreshCcw className="h-4 w-4" aria-hidden="true" />
@@ -700,7 +724,8 @@ export function ReservationPage() {
           </div>
         </div>
         <p className="mb-3 text-xs font-semibold text-muted">
-          전체 {reservations.length}건 / 대기 {pendingCount}건 / 픽업완료 {completedCount}건
+          {reservationQuery.trim() ? "다른 날짜까지 검색 중" : `${date.replaceAll("-", ".")} 픽업 체크리스트`} · 전체 {reservations.length}건 / 대기 {pendingCount}건 / 픽업완료 {completedCount}건
+          {overdueCount > 0 ? <span className="ml-2 rounded-full bg-red/10 px-2 py-0.5 text-red">픽업 지연 {overdueCount}건</span> : null}
         </p>
         {!showReservationForm && message ? (
           <div className="mb-4 rounded-control border border-green/20 bg-green/10 px-3 py-2 text-sm font-semibold text-green">
@@ -729,7 +754,7 @@ export function ReservationPage() {
                 key={reservation.id}
                 className="dc-row grid grid-cols-[0.7fr_1fr_1.35fr_2.2fr_1fr_1fr_1.15fr_0.7fr] gap-2"
               >
-                <div className="font-semibold">{formatPickupTimeOnly(reservation.pickupAt)}</div>
+                <div className="font-semibold">{formatPickupDateTime(reservation.pickupAt)}</div>
                 <div>{reservation.customerName || "-"}</div>
                 <div className="text-xs text-muted">{reservation.contactPhone || "-"}</div>
                 <div className="text-xs">{reservation.items.map(formatReservationItem).join(", ") || "-"}</div>

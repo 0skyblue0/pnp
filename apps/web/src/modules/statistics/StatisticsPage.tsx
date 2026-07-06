@@ -277,20 +277,9 @@ export function StatisticsPage() {
     void loadStats();
   }, [loadStats]);
 
-  const displayTotal = stats.total || 4;
-  const displayMajor = stats.major.length > 0 ? stats.major.slice(0, 5) : [
-    { id: 1, label: "제품", count: 1 },
-    { id: 2, label: "서비스·응대", count: 1 },
-    { id: 3, label: "구매·운영", count: 1 },
-    { id: 4, label: "손님경험", count: 1 },
-    { id: 5, label: "기타", count: 0 }
-  ];
-  const displayRepeated = stats.insights.repeatedTopics.length > 0 ? stats.insights.repeatedTopics.slice(0, 4) : [
-    { criterionId: 101, label: "식감이 딱딱하다는 의견", path: [{ id: 1, name: "제품" }], count: 5, ratio: 25, sampleSummaries: ["빵이 너무 딱딱하다고 하심"] },
-    { criterionId: 102, label: "원거리 방문 손님 증가", path: [{ id: 4, name: "손님경험" }], count: 3, ratio: 25, sampleSummaries: ["청주에서 일부러 방문"] },
-    { criterionId: 103, label: "소금빵 품절 아쉬움", path: [{ id: 3, name: "구매·운영" }], count: 4, ratio: 25, sampleSummaries: ["소금빵이 없어서 아쉬워하심"] },
-    { criterionId: 104, label: "직원 응대 만족", path: [{ id: 2, name: "서비스·응대" }], count: 6, ratio: 25, sampleSummaries: ["직원이 친절하다고 하심"] }
-  ];
+  const displayTotal = stats.total;
+  const displayMajor = stats.major.slice(0, 5);
+  const displayRepeated = stats.insights.repeatedTopics.slice(0, 4);
   const colors = ["#B5654A", "#3E6EA5", "#B8862B", "#3E7A55", "#B8AEA2"];
   const donutStops = displayMajor.reduce<{ cursor: number; stops: string[] }>((acc, item, index) => {
     const pct = displayTotal > 0 ? (item.count / displayTotal) * 100 : 0;
@@ -349,6 +338,26 @@ export function StatisticsPage() {
           {isLoading ? <span className="ml-2 text-cocoa">조회 중</span> : null}
         </div>
         <div className="flex flex-wrap justify-end gap-[6px]">
+          <label className="grid gap-1 text-[11px] font-semibold text-muted">
+            시작 날짜
+            <input
+              className="rounded-control border border-latte bg-white px-2 py-1 text-cocoa"
+              aria-label="반응 분석 시작 날짜"
+              type="date"
+              value={range.from}
+              onChange={(event) => setRange((current) => ({ ...current, from: event.target.value }))}
+            />
+          </label>
+          <label className="grid gap-1 text-[11px] font-semibold text-muted">
+            종료 날짜
+            <input
+              className="rounded-control border border-latte bg-white px-2 py-1 text-cocoa"
+              aria-label="반응 분석 종료 날짜"
+              type="date"
+              value={range.to}
+              onChange={(event) => setRange((current) => ({ ...current, to: event.target.value }))}
+            />
+          </label>
           {periodOptions.map((option) => {
             const isActive = range.from === option.range.from && range.to === option.range.to;
             return (
@@ -372,11 +381,19 @@ export function StatisticsPage() {
         <div className="rounded-[10px] border border-red/20 bg-red/10 px-3 py-2 text-sm font-semibold text-red">{error}</div>
       ) : null}
 
+      <section className="rounded-[14px] border border-latte bg-white px-4 py-3">
+        <p className="text-xs font-extrabold text-bread">현장 요약</p>
+        <p className="mt-1 text-sm font-bold leading-6 text-ink">{stats.insights.headline}</p>
+        {stats.insights.keyNotes.length > 0 ? (
+          <p className="mt-1 text-xs font-semibold leading-5 text-muted">{stats.insights.keyNotes[0]}</p>
+        ) : null}
+      </section>
+
       <div className="grid gap-3 md:grid-cols-4">
         <MetricCard label="총 반응 건수" value={`${displayTotal}건`} />
-        <MetricCard label="AI 분류율" value="75%" />
+        <MetricCard label="분류된 반응" value={`${displayTotal}건`} />
         <MetricCard label="반복 주제" value={`${displayRepeated.length}건`} />
-        <MetricCard label="미해결 이슈" value="2건" danger />
+        <MetricCard label="확인 필요" value={displayTotal === 0 ? "0건" : `${stats.insights.keyNotes.length}건`} danger={stats.insights.keyNotes.length > 0} />
       </div>
 
       <div className="grid gap-[14px] lg:grid-cols-2">

@@ -71,6 +71,25 @@ export async function apiPatch<TResponse, TBody>(
   return parseEnvelope<TResponse>(response);
 }
 
+export async function apiPut<TResponse, TBody>(
+  path: string,
+  body: TBody
+): Promise<ApiEnvelope<TResponse>> {
+  const token = await getCsrfToken();
+  const response = await fetch(`${apiBaseUrl}${path}`, {
+    method: "PUT",
+    credentials: "include",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+      "X-CSRF-Token": token
+    },
+    body: JSON.stringify(body)
+  });
+
+  return parseEnvelope<TResponse>(response);
+}
+
 export async function apiDelete<TResponse>(path: string): Promise<ApiEnvelope<TResponse>> {
   const token = await getCsrfToken();
   const response = await fetch(`${apiBaseUrl}${path}`, {

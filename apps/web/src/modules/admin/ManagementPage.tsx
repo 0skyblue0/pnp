@@ -40,7 +40,13 @@ type AnnualGoalNoticeDto = {
   title: string;
   value: string;
   note: string;
+  targetYear: number | null;
+  monthlyTargets: MonthlyTargets | null;
+  targetTotal: number | null;
 };
+
+type MonthKey = "01" | "02" | "03" | "04" | "05" | "06" | "07" | "08" | "09" | "10" | "11" | "12";
+type MonthlyTargets = Record<MonthKey, number>;
 
 type ScheduleTone = "launch" | "close" | "notice";
 
@@ -86,6 +92,8 @@ type GoalNoticeForm = {
   title: string;
   value: string;
   note: string;
+  targetYear: string;
+  monthlyTargets: Record<MonthKey, string>;
 };
 
 type ScheduleForm = {
@@ -120,11 +128,19 @@ const emptyCriterionForm: CriterionForm = {
   isActive: true
 };
 
+const monthKeys: MonthKey[] = ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"];
+
+function emptyMonthlyTargetInputs(): Record<MonthKey, string> {
+  return Object.fromEntries(monthKeys.map((month) => [month, ""])) as Record<MonthKey, string>;
+}
+
 const emptyGoalNoticeForm: GoalNoticeForm = {
   category: "sales",
   title: "",
   value: "",
-  note: ""
+  note: "",
+  targetYear: String(new Date().getFullYear()),
+  monthlyTargets: emptyMonthlyTargetInputs()
 };
 
 const emptyScheduleForm: ScheduleForm = {
@@ -175,6 +191,33 @@ function statusBadge(isActive: boolean) {
     "inline-flex min-h-8 items-center rounded-control px-2 text-sm font-semibold",
     isActive ? "bg-green/10 text-green" : "bg-stone-100 text-muted"
   ].join(" ");
+}
+
+function formatCurrency(value: number): string {
+  return `${Math.round(value).toLocaleString("ko-KR")}원`;
+}
+
+function digitsToCurrencyInput(value: string): string {
+  const digits = value.replace(/\D/g, "");
+  return digits ? Number(digits).toLocaleString("ko-KR") : "";
+}
+
+function numericInput(value: string): number {
+  const parsed = Number(value.replace(/\D/g, ""));
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function monthlyTargetInputsFromNotice(notice: AnnualGoalNoticeDto): Record<MonthKey, string> {
+  const targets = notice.monthlyTargets;
+  return Object.fromEntries(
+    monthKeys.map((month) => [month, targets ? targets[month].toLocaleString("ko-KR") : ""])
+  ) as Record<MonthKey, string>;
+}
+
+function monthlyTargetsFromForm(form: GoalNoticeForm): MonthlyTargets {
+  return Object.fromEntries(
+    monthKeys.map((month) => [month, numericInput(form.monthlyTargets[month])])
+  ) as MonthlyTargets;
 }
 
 function criteriaByParent(criteria: ResponseCriterionDto[], parentId: number | null) {
@@ -413,7 +456,9 @@ export function ManagementPage() {
       category: notice.category,
       title: notice.title,
       value: notice.value,
-      note: notice.note
+      note: notice.note,
+      targetYear: String(notice.targetYear ?? new Date().getFullYear()),
+      monthlyTargets: monthlyTargetInputsFromNotice(notice)
     });
     setIsGoalNoticeFormOpen(true);
   }
@@ -595,13 +640,29 @@ export function ManagementPage() {
     const title = goalNoticeForm.title.trim();
     const value = goalNoticeForm.value.trim();
     const note = goalNoticeForm.note.trim();
+    const targetYear = Number(goalNoticeForm.targetYear);
 
-    if (!title || !value) {
+    if (!title || (goalNoticeForm.category !== "sales" && !value)) {
       setError("공지 제목과 내용을 입력하세요.");
       return;
     }
+    if (goalNoticeForm.category === "sales" && !Number.isInteger(targetYear)) {
+      setError("목표 연도를 확인하세요.");
+      return;
+    }
 
-    const body = { category: goalNoticeForm.category, title, value, note };
+    const monthlyTargets = monthlyTargetsFromForm(goalNoticeForm);
+    const body =
+      goalNoticeForm.category === "sales"
+        ? {
+            category: goalNoticeForm.category,
+            title,
+            value: `${targetYear}년 매출 목표`,
+            note,
+            targetYear,
+            monthlyTargets
+          }
+        : { category: goalNoticeForm.category, title, value, note };
     const envelope =
       editingGoalNoticeId === null
         ? await apiPost<AnnualGoalNoticeDto, Record<string, unknown>>("/annual-goal-notice", body)
@@ -827,9 +888,14 @@ export function ManagementPage() {
           </div>
         ) : null}
 
-        <div className="sr-only mb-4 rounded-control border border-bread/30 bg-cream/60 px-3 py-3 text-sm leading-6 text-cocoa">
+        <div className="mb-4 rounded-control border border-bread/30 bg-cream/60 px-3 py-3 text-sm leading-6 text-cocoa">
           관리 탭은 매일 입력하는 곳이 아니라 제품, 직원, 손님 반응 분류, 홈 공지를 깨끗하게 유지하는 기준 정보입니다.
           테스트처럼 보이는 이름이나 쓰지 않는 항목은 비활성 처리하면 예약·손님 반응 입력에서 실수가 줄어듭니다.
+          <div className="mt-3 grid gap-2 text-xs font-semibold text-muted sm:grid-cols-3">
+            <div className="rounded-control border border-latte bg-white px-3 py-2">데이터 청소: 안 쓰는 제품·직원·테스트 항목 정리</div>
+            <div className="rounded-control border border-latte bg-white px-3 py-2">홈 표시 관리: 매출 목표·운영 목표·직원 공지 최신화</div>
+            <div className="rounded-control border border-latte bg-white px-3 py-2">분류 기준 관리: 손님 반응 AI 기준을 현장 언어로 유지</div>
+          </div>
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -981,11 +1047,47 @@ export function ManagementPage() {
                       <span className="field-label">공지 제목</span>
                       <input className="input" aria-label="공지 제목" value={goalNoticeForm.title} onChange={(event) => setGoalNoticeForm((current) => ({ ...current, title: event.target.value }))} />
                     </label>
-                    <label className="grid gap-2">
-                      <span className="field-label">공지 내용</span>
-                      <input className="input" aria-label="공지 내용" value={goalNoticeForm.value} onChange={(event) => setGoalNoticeForm((current) => ({ ...current, value: event.target.value }))} />
-                    </label>
+                    {goalNoticeForm.category === "sales" ? (
+                      <label className="grid gap-2">
+                        <span className="field-label">목표 연도</span>
+                        <input className="input" aria-label="목표 연도" inputMode="numeric" value={goalNoticeForm.targetYear} onChange={(event) => setGoalNoticeForm((current) => ({ ...current, targetYear: event.target.value.replace(/\D/g, "").slice(0, 4) }))} />
+                      </label>
+                    ) : (
+                      <label className="grid gap-2">
+                        <span className="field-label">공지 내용</span>
+                        <input className="input" aria-label="공지 내용" value={goalNoticeForm.value} onChange={(event) => setGoalNoticeForm((current) => ({ ...current, value: event.target.value }))} />
+                      </label>
+                    )}
                   </div>
+                  {goalNoticeForm.category === "sales" ? (
+                    <div className="mt-3 rounded-[12px] border border-latte bg-white p-3">
+                      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                        <p className="text-sm font-bold text-cocoa">월별 매출 목표</p>
+                        <p className="text-sm font-extrabold text-bread">최종 총합 {formatCurrency(Object.values(monthlyTargetsFromForm(goalNoticeForm)).reduce((total, amount) => total + amount, 0))}</p>
+                      </div>
+                      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                        {monthKeys.map((month) => (
+                          <label key={month} className="grid gap-1">
+                            <span className="text-xs font-bold text-muted">{Number(month)}월</span>
+                            <input
+                              className="input text-right"
+                              aria-label={`${Number(month)}월 매출 목표`}
+                              inputMode="numeric"
+                              placeholder="0"
+                              value={goalNoticeForm.monthlyTargets[month]}
+                              onChange={(event) => setGoalNoticeForm((current) => ({
+                                ...current,
+                                monthlyTargets: {
+                                  ...current.monthlyTargets,
+                                  [month]: digitsToCurrencyInput(event.target.value)
+                                }
+                              }))}
+                            />
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
                   <label className="mt-3 grid gap-2">
                     <span className="field-label">공지 메모</span>
                     <textarea className="input min-h-20 py-3" aria-label="공지 메모" value={goalNoticeForm.note} onChange={(event) => setGoalNoticeForm((current) => ({ ...current, note: event.target.value }))} />
@@ -1008,7 +1110,14 @@ export function ManagementPage() {
                       </div>
                     </div>
                     <p className="font-bold text-ink">{notice.title}</p>
-                    <p className="mt-2 text-[15px] font-bold text-cocoa">{notice.value}</p>
+                    {notice.category === "sales" ? (
+                      <div className="mt-2 grid gap-1 text-sm text-cocoa">
+                        <p className="font-bold">{notice.targetYear ?? "연도 미지정"}년 매출 목표</p>
+                        <p>총합 {formatCurrency(notice.targetTotal ?? 0)}</p>
+                      </div>
+                    ) : (
+                      <p className="mt-2 text-[15px] font-bold text-cocoa">{notice.value}</p>
+                    )}
                     {notice.note ? <p className="mt-2 text-sm leading-6 text-muted">{notice.note}</p> : null}
                   </div>
                 ))}

@@ -1,13 +1,12 @@
 import { Save, Trash2 } from "lucide-react";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
+import { apiDelete, apiGet, apiPut } from "../../shared/api/client.js";
+import type { ListEnvelope } from "../../shared/api/types.js";
 import { todayInStoreTime } from "../../shared/time/storeTime.js";
 import { Button } from "../../shared/ui/Button.js";
 import { productLineup } from "../../shared/productLineup.js";
-import {
-  providedDailyOperationDefaultMonth,
-  providedDailyOperationRecords
-} from "./providedDailyOperationRecords.js";
+import { providedDailyOperationDefaultMonth } from "./providedDailyOperationRecords.js";
 
 type DailyTab = "basic" | "products" | "sales" | "notes";
 type DailyViewMode = "entry" | "lookup";
@@ -75,6 +74,17 @@ export type DailyOperationSavedRecord = {
   channelRows: ChannelRow[];
   staffSpecialRows: StaffSpecialRows;
   savedAt: string;
+};
+
+type DailyOperationRecordDto = {
+  id: string;
+  date: string;
+  draft: DailyOperationDraft;
+  productRows: ProductRow[];
+  channelRows: ChannelRow[];
+  staffSpecialRows: StaffSpecialRows;
+  createdAt: string;
+  updatedAt: string;
 };
 
 type ProductTotals = {
@@ -255,73 +265,14 @@ function summarizeChannels(rows: ChannelRow[]): ChannelTotals {
   );
 }
 
-const deletedDailyRecordsKey = "pnp:daily-operation-deleted-dates";
-
-function draftStorageKey(date: string): string {
-  return `pnp:daily-operation-draft:${date}`;
-}
-
-function loadDeletedDailyRecordDates(): Set<string> {
-  if (typeof window === "undefined") {
-    return new Set();
-  }
-
-  try {
-    const parsed: unknown = JSON.parse(window.localStorage.getItem(deletedDailyRecordsKey) ?? "[]");
-    return new Set(
-      Array.isArray(parsed) ? parsed.filter((date): date is string => typeof date === "string") : []
-    );
-  } catch {
-    return new Set();
-  }
-}
-
-function storeDeletedDailyRecordDates(dates: Set<string>) {
-  window.localStorage.setItem(deletedDailyRecordsKey, JSON.stringify(Array.from(dates).sort()));
-}
-
-function isDailyOperationRecord(value: unknown): value is DailyOperationSavedRecord {
-  if (!value || typeof value !== "object") {
-    return false;
-  }
-  const record = value as Partial<DailyOperationSavedRecord>;
-  return Boolean(
-    record.draft?.date &&
-    Array.isArray(record.productRows) &&
-    Array.isArray(record.channelRows) &&
-    record.staffSpecialRows &&
-    typeof record.savedAt === "string"
-  );
-}
-
-function loadStoredDailyRecords(): DailyOperationSavedRecord[] {
-  if (typeof window === "undefined") {
-    return providedDailyOperationRecords;
-  }
-  const recordsByDate = new Map<string, DailyOperationSavedRecord>();
-  const deletedDates = loadDeletedDailyRecordDates();
-  for (const record of providedDailyOperationRecords) {
-    if (!deletedDates.has(record.draft.date)) {
-      recordsByDate.set(record.draft.date, record);
-    }
-  }
-
-  Object.keys(window.localStorage)
-    .filter((key) => key.startsWith("pnp:daily-operation-draft:"))
-    .forEach((key) => {
-      try {
-        const parsed: unknown = JSON.parse(window.localStorage.getItem(key) ?? "null");
-        if (isDailyOperationRecord(parsed)) {
-          recordsByDate.set(parsed.draft.date, parsed);
-        }
-      } catch {
-        // 저장 중 깨진 임시 기록은 조회에서 제외합니다.
-      }
-    });
-
-  return Array.from(recordsByDate.values()).sort((left, right) =>
-    right.draft.date.localeCompare(left.draft.date)
-  );
+function fromDailyOperationDto(record: DailyOperationRecordDto): DailyOperationSavedRecord {
+  return {
+    draft: record.draft,
+    productRows: record.productRows,
+    channelRows: record.channelRows,
+    staffSpecialRows: record.staffSpecialRows,
+    savedAt: record.updatedAt
+  };
 }
 
 function addDays(date: Date, days: number): Date {
@@ -479,9 +430,7 @@ export function DailyLogPage() {
   const [staffSpecialRows, setStaffSpecialRows] = useState<StaffSpecialRows>(() =>
     createStaffSpecialRows()
   );
-  const [savedRecords, setSavedRecords] = useState<DailyOperationSavedRecord[]>(() =>
-    loadStoredDailyRecords()
-  );
+  const [savedRecords, setSavedRecords] = useState<DailyOperationSavedRecord[]>([]);
   const [lookupMode, setLookupMode] = useState<LookupMode>("month");
   const [lookupDate, setLookupDate] = useState(today);
   const [lookupStartDate, setLookupStartDate] = useState(today);
@@ -535,6 +484,23 @@ export function DailyLogPage() {
       ),
     [comparisonRange.endDate, comparisonRange.startDate, savedRecords]
   );
+
+  useEffect(() => {
+    let isActive = true;
+    async function loadRecords() {
+      const envelope = await apiGet<ListEnvelope<DailyOperationRecordDto>>(
+        `/daily-operation?from=${comparisonRange.startDate < lookupRange.startDate ? comparisonRange.startDate : lookupRange.startDate}&to=${comparisonRange.endDate > lookupRange.endDate ? comparisonRange.endDate : lookupRange.endDate}`
+      );
+      if (!isActive || envelope.error) {
+        return;
+      }
+      setSavedRecords(envelope.data.items.map(fromDailyOperationDto));
+    }
+    void loadRecords();
+    return () => {
+      isActive = false;
+    };
+  }, [comparisonRange.endDate, comparisonRange.startDate, lookupRange.endDate, lookupRange.startDate]);
 
   function updateDraft<K extends keyof DailyOperationDraft>(key: K, value: DailyOperationDraft[K]) {
     setDraft((current) => ({ ...current, [key]: value }));
@@ -590,7 +556,7 @@ export function DailyLogPage() {
     }, 0);
   }
 
-  function saveDraft() {
+  async function saveDraft() {
     const missing = collectMissingDailyItems(draft, productRows);
     if (missing.length > 0) {
       setMissingItems(missing);
@@ -600,24 +566,27 @@ export function DailyLogPage() {
     }
 
     setMissingItems([]);
-    const deletedDates = loadDeletedDailyRecordDates();
-    if (deletedDates.delete(draft.date)) {
-      storeDeletedDailyRecordDates(deletedDates);
-    }
-
-    window.localStorage.setItem(
-      draftStorageKey(draft.date),
-      JSON.stringify({
+    const envelope = await apiPut<DailyOperationRecordDto, Record<string, unknown>>(
+      `/daily-operation/${draft.date}`,
+      {
         draft,
         productRows,
         channelRows,
-        staffSpecialRows,
-        savedAt: new Date().toISOString()
-      })
+        staffSpecialRows
+      }
     );
-    setSavedRecords(loadStoredDailyRecords());
+    if (envelope.error) {
+      setMessage(envelope.error.message);
+      return;
+    }
+    setSavedRecords((current) => {
+      const saved = fromDailyOperationDto(envelope.data);
+      return [saved, ...current.filter((record) => record.draft.date !== saved.draft.date)].sort((left, right) =>
+        right.draft.date.localeCompare(left.draft.date)
+      );
+    });
     setMessage(
-      "일일 운영 입력 내용이 저장되었습니다. 조회 화면에서 날짜별·기간별로 확인할 수 있습니다."
+      "일일 운영 입력 내용이 서버에 저장되었습니다. 조회 화면에서 날짜별·기간별로 확인할 수 있습니다."
     );
   }
 
@@ -634,16 +603,17 @@ export function DailyLogPage() {
     setMessage(`${record.draft.date} 일지를 불러왔습니다. 저장하면 같은 날짜 기록이 갱신됩니다.`);
   }
 
-  function deleteRecord(record: DailyOperationSavedRecord) {
+  async function deleteRecord(record: DailyOperationSavedRecord) {
     if (!window.confirm(`${record.draft.date} 일지를 삭제할까요?`)) {
       return;
     }
 
-    window.localStorage.removeItem(draftStorageKey(record.draft.date));
-    const deletedDates = loadDeletedDailyRecordDates();
-    deletedDates.add(record.draft.date);
-    storeDeletedDailyRecordDates(deletedDates);
-    setSavedRecords(loadStoredDailyRecords());
+    const envelope = await apiDelete<{ deleted: boolean }>(`/daily-operation/${record.draft.date}`);
+    if (envelope.error) {
+      setMessage(envelope.error.message);
+      return;
+    }
+    setSavedRecords((current) => current.filter((item) => item.draft.date !== record.draft.date));
     setMessage("선택한 일일 운영 일지를 삭제했습니다.");
   }
 
@@ -658,17 +628,17 @@ export function DailyLogPage() {
           <div className="flex items-center gap-3">
             <span className="text-[12.5px] text-muted">{draft.date.replaceAll("-", ".")}</span>
           {viewMode === "entry" ? (
-            <Button aria-label="일일 운영 저장" className="dc-action min-h-0" icon={Save} type="button" onClick={saveDraft}>
+            <Button aria-label="일일 운영 저장" className="dc-action min-h-0" icon={Save} type="button" onClick={() => void saveDraft()}>
               저장
             </Button>
           ) : null}
           </div>
         </div>
-        <div className="sr-only" role="tablist" aria-label="일일 운영 화면 선택">
+        <div className="mb-4 flex flex-wrap gap-2" role="tablist" aria-label="일일 운영 화면 선택">
           {(
             [
               ["entry", "입력"],
-              ["lookup", "조회"]
+              ["lookup", "데이터 조회"]
             ] as Array<[DailyViewMode, string]>
           ).map(([mode, label]) => (
             <button
@@ -685,7 +655,7 @@ export function DailyLogPage() {
               onClick={() => {
                 setViewMode(mode);
                 if (mode === "lookup") {
-                  setSavedRecords(loadStoredDailyRecords());
+                  // 서버 조회는 조회 기간 변경 effect에서 자동으로 갱신됩니다.
                 }
               }}
             >
@@ -864,7 +834,7 @@ function DailyLookupSection({
   setLookupMonth: (month: string) => void;
   setLookupSortOrder: (sortOrder: LookupSortOrder) => void;
   onEditRecord: (record: DailyOperationSavedRecord) => void;
-  onDeleteRecord: (record: DailyOperationSavedRecord) => void;
+  onDeleteRecord: (record: DailyOperationSavedRecord) => void | Promise<void>;
 }) {
   const [expandedDates, setExpandedDates] = useState<string[]>([]);
   const [productDetailDates, setProductDetailDates] = useState<string[]>([]);
@@ -1094,7 +1064,7 @@ function DailyLookupSection({
                             <button
                               className="inline-flex items-center gap-1 rounded-control border border-red/40 bg-white px-2.5 py-1.5 text-sm font-bold text-red hover:bg-red/10"
                               type="button"
-                              onClick={() => onDeleteRecord(record)}
+                              onClick={() => void onDeleteRecord(record)}
                             >
                               <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
                               삭제
@@ -1779,8 +1749,8 @@ function NotesSection({
       <section className="rounded-[12px] border border-latte bg-cream/30 px-4 py-3">
         <div className="dc-eyebrow mb-[12px]">시설 점검사항</div>
         <div className="grid gap-3 md:grid-cols-2">
-          <WorkerTimeInput label="첫출근자" nameLabel="첫 출근자 이름" nameValue={draft.firstWorker} timeLabel="첫 출근자 출근시간" timeValue={draft.firstWorkerTime || "06:00"} onNameChange={(value) => updateDraft("firstWorker", value)} onTimeChange={(value) => updateDraft("firstWorkerTime", value)} />
-          <WorkerTimeInput label="최종퇴근자" nameLabel="최종퇴근자 이름" nameValue={draft.lastWorker} timeLabel="최종퇴근자 퇴근시간" timeValue={draft.lastWorkerTime || "19:30"} onNameChange={(value) => updateDraft("lastWorker", value)} onTimeChange={(value) => updateDraft("lastWorkerTime", value)} />
+          <WorkerTimeInput label="첫출근자" nameLabel="첫 출근자 이름" nameValue={draft.firstWorker} timeLabel="첫 출근자 출근시간" timeValue={draft.firstWorkerTime || "06:00"} startHour={5} endHour={9} onNameChange={(value) => updateDraft("firstWorker", value)} onTimeChange={(value) => updateDraft("firstWorkerTime", value)} />
+          <WorkerTimeInput label="최종퇴근자" nameLabel="최종퇴근자 이름" nameValue={draft.lastWorker} timeLabel="최종퇴근자 퇴근시간" timeValue={draft.lastWorkerTime || "19:30"} startHour={16} endHour={20} onNameChange={(value) => updateDraft("lastWorker", value)} onTimeChange={(value) => updateDraft("lastWorkerTime", value)} />
           <TextInput label="위생&마감 점검" value={draft.hygieneChecker} onChange={(value) => updateDraft("hygieneChecker", value)} />
           <TextInput label="최종 점검" value={draft.finalChecker} onChange={(value) => updateDraft("finalChecker", value)} />
           <div className="sr-only">
@@ -1799,6 +1769,8 @@ function WorkerTimeInput({
   nameValue,
   timeLabel,
   timeValue,
+  startHour,
+  endHour,
   onNameChange,
   onTimeChange
 }: {
@@ -1807,40 +1779,72 @@ function WorkerTimeInput({
   nameValue: string;
   timeLabel: string;
   timeValue: string;
+  startHour: number;
+  endHour: number;
   onNameChange: (value: string) => void;
   onTimeChange: (value: string) => void;
 }) {
-  const timeOptions = Array.from({ length: 48 }, (_, index) => {
-    const hour = Math.floor(index / 2);
-    const minute = index % 2 === 0 ? "00" : "30";
-    return `${String(hour).padStart(2, "0")}:${minute}`;
-  });
+  const [overrideTime, setOverrideTime] = useState(false);
+  const hourOptions = Array.from({ length: endHour - startHour + 1 }, (_, index) =>
+    String(startHour + index).padStart(2, "0")
+  );
+  const minuteOptions = ["00", "30"];
+  const [hour = hourOptions[0] ?? "00", minute = "00"] = timeValue.split(":");
 
   return (
-    <label className="grid min-w-0 gap-2">
+    <div className="grid min-w-0 gap-2">
       <span className="field-label">{label}</span>
-      <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_8rem] gap-2 rounded-control border border-latte bg-white p-1.5">
+      <div className="grid min-w-0 gap-2 rounded-control border border-latte bg-white p-1.5">
         <input
           aria-label={nameLabel}
-          className="min-w-0 rounded-control bg-transparent px-2 outline-none focus:bg-cream/70"
+          className="min-w-0 rounded-control bg-transparent px-2 py-1 outline-none focus:bg-cream/70"
           placeholder="이름"
           value={nameValue}
           onChange={(event) => onNameChange(event.target.value)}
         />
-        <select
-          aria-label={timeLabel}
-          className="min-w-0 rounded-control bg-transparent px-2 outline-none focus:bg-cream/70"
-          value={timeValue}
-          onChange={(event) => onTimeChange(event.target.value)}
-        >
-          {timeOptions.map((time) => (
-            <option key={time} value={time}>
-              {time}
-            </option>
-          ))}
-        </select>
+        {overrideTime ? (
+          <input
+            aria-label={timeLabel}
+            className="min-w-0 rounded-control bg-cream/50 px-2 py-1 outline-none focus:bg-cream"
+            type="time"
+            value={timeValue}
+            onChange={(event) => onTimeChange(event.target.value)}
+          />
+        ) : (
+          <div className="grid grid-cols-2 gap-2">
+            <select
+              aria-label={`${timeLabel} 시`}
+              className="min-w-0 rounded-control bg-cream/50 px-2 py-1 outline-none focus:bg-cream"
+              value={hourOptions.includes(hour) ? hour : hourOptions[0]}
+              onChange={(event) => onTimeChange(`${event.target.value}:${minuteOptions.includes(minute) ? minute : "00"}`)}
+            >
+              {hourOptions.map((option) => (
+                <option key={option} value={option}>{option}시</option>
+              ))}
+            </select>
+            <select
+              aria-label={`${timeLabel} 분`}
+              className="min-w-0 rounded-control bg-cream/50 px-2 py-1 outline-none focus:bg-cream"
+              value={minuteOptions.includes(minute) ? minute : "00"}
+              onChange={(event) => onTimeChange(`${hourOptions.includes(hour) ? hour : hourOptions[0]}:${event.target.value}`)}
+            >
+              {minuteOptions.map((option) => (
+                <option key={option} value={option}>{option}분</option>
+              ))}
+            </select>
+          </div>
+        )}
+        <label className="flex items-center gap-2 px-1 text-xs font-bold text-muted">
+          <input
+            className="accent-bread"
+            type="checkbox"
+            checked={overrideTime}
+            onChange={(event) => setOverrideTime(event.target.checked)}
+          />
+          시간 직접 수정
+        </label>
       </div>
-    </label>
+    </div>
   );
 }
 

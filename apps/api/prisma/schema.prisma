@@ -276,16 +276,33 @@ model AnnualSchedule {
 }
 
 model AnnualGoalNotice {
-  id        BigInt   @id @default(autoincrement())
-  category  String   @db.VarChar(20)
-  title     String   @db.VarChar(120)
-  value     String   @db.VarChar(200)
-  note      String?  @db.Text
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+  id             BigInt   @id @default(autoincrement())
+  category       String   @db.VarChar(20)
+  title          String   @db.VarChar(120)
+  value          String   @db.VarChar(200)
+  note           String?  @db.Text
+  targetYear     Int?     @map("target_year") @db.SmallInt
+  monthlyTargets Json?    @map("monthly_targets")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
 
   @@index([category, createdAt], map: "idx_annual_goal_notice_category")
+  @@index([category, targetYear], map: "idx_annual_goal_notice_category_year")
   @@map("annual_goal_notice")
+}
+
+model DailyOperationRecord {
+  id               BigInt   @id @default(autoincrement())
+  date             DateTime @unique @db.Date
+  draft            Json
+  productRows      Json     @map("product_rows")
+  channelRows      Json     @map("channel_rows")
+  staffSpecialRows Json     @map("staff_special_rows")
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  @@index([date], map: "idx_daily_operation_record_date")
+  @@map("daily_operation_record")
 }
 
 model AuditLog {

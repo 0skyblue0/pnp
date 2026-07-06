@@ -29,3 +29,9 @@ export const chargePrepaidBalanceSchema = z.object({
   amount: z.coerce.number().int().positive().max(99_999_999),
   note: z.string().trim().max(2000).optional()
 });
+
+export const updatePrepaidCustomerSchema = z.object({
+  customerName: z.string().trim().min(1).max(80).optional(),
+  contactPhone: z.string().trim().max(40).optional(),
+  memo: z.string().trim().max(2000).optional()
+});

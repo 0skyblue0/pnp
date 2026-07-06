@@ -8,6 +8,7 @@ import {
   idParamsSchema,
   listPrepaidLedgerQuerySchema,
   transactionParamsSchema,
+  updatePrepaidCustomerSchema,
   usePrepaidBalanceSchema
 } from "./prepaid-ledger.schemas.js";
 
@@ -179,6 +180,45 @@ export async function registerPrepaidLedgerRoutes(app: FastifyInstance): Promise
     });
 
     return sendOk(reply, toPrepaidCustomerDto(customer));
+  });
+
+  app.patch("/:id", async (request, reply) => {
+    const params = idParamsSchema.parse(request.params);
+    const input = updatePrepaidCustomerSchema.parse(request.body);
+    const existing = await findPrepaidCustomer(app, params.id);
+
+    if (!existing || !existing.isActive) {
+      throw new HttpError(404, "PREPAID_CUSTOMER_NOT_FOUND", "Prepaid customer not found");
+    }
+
+    const customer = await app.prisma.prepaidCustomer.update({
+      where: { id: params.id },
+      data: {
+        ...(input.customerName !== undefined ? { customerName: input.customerName } : {}),
+        ...(input.contactPhone !== undefined ? { contactPhone: input.contactPhone || null } : {}),
+        ...(input.memo !== undefined ? { memo: input.memo || null } : {}),
+        updatedAt: new Date()
+      },
+      include: { transactions: true }
+    });
+
+    return sendOk(reply, toPrepaidCustomerDto(customer));
+  });
+
+  app.delete("/:id", async (request, reply) => {
+    const params = idParamsSchema.parse(request.params);
+    const existing = await findPrepaidCustomer(app, params.id);
+
+    if (!existing || !existing.isActive) {
+      throw new HttpError(404, "PREPAID_CUSTOMER_NOT_FOUND", "Prepaid customer not found");
+    }
+
+    await app.prisma.prepaidCustomer.update({
+      where: { id: params.id },
+      data: { isActive: false, updatedAt: new Date() }
+    });
+
+    return sendOk(reply, { deleted: true });
   });
 
   app.delete("/:id/transactions/:transactionId", async (request, reply) => {

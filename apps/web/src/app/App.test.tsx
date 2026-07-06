@@ -6,13 +6,28 @@ import { App } from "./App.js";
 import { AppLayout } from "./layouts/AppLayout.js";
 import { AppProviders } from "./providers/AppProviders.js";
 import { ManagementPage } from "../modules/admin/ManagementPage.js";
-import { DailyLogPage } from "../modules/daily-log/DailyLogPage.js";
+import { DailyLogPage, type DailyOperationSavedRecord } from "../modules/daily-log/DailyLogPage.js";
+import { providedDailyOperationRecords } from "../modules/daily-log/providedDailyOperationRecords.js";
 import { HomePage } from "../modules/home/HomePage.js";
 import { ResponseEntryPage } from "../modules/response/ResponseEntryPage.js";
 import { ResponseInquiryPage } from "../modules/response/ResponseInquiryPage.js";
 import { todayInStoreTime } from "../shared/time/storeTime.js";
 
 const ACTIVE_NAV_CLASS = "from-cocoa";
+const monthlyTargetsFixture = {
+  "01": 0,
+  "02": 0,
+  "03": 0,
+  "04": 0,
+  "05": 0,
+  "06": 0,
+  "07": 48_000_000,
+  "08": 0,
+  "09": 0,
+  "10": 0,
+  "11": 0,
+  "12": 0
+};
 
 function currentMonthLabel() {
   return `${Number(todayInStoreTime().slice(5, 7))}월`;
@@ -60,7 +75,10 @@ describe("App", () => {
                   category: "sales",
                   title: "올해 매출 목표",
                   value: "전년 대비 +12%",
-                  note: "월별 매출을 함께 확인"
+                  note: "월별 매출을 함께 확인",
+                  targetYear: 2026,
+                  monthlyTargets: monthlyTargetsFixture,
+                  targetTotal: 48_000_000
                 },
                 {
                   id: "302",
@@ -95,16 +113,15 @@ describe("App", () => {
     expect(screen.getByRole("tab", { name: "목표·공지" })).toHaveAttribute("aria-selected", "true");
     expect(screen.queryByRole("heading", { name: "연간 스케줄 달력" })).not.toBeInTheDocument();
 
-    expect(
-      await screen.findByRole("button", { name: "올해 매출 목표 전년 대비 +12% 상세 보기" })
-    ).toBeInTheDocument();
-    expect(screen.getByText("전년 대비 +12%")).toBeInTheDocument();
+    expect(await screen.findByText("7월 48,000,000원")).toBeInTheDocument();
+    expect(screen.getByText("이번 달 달성률")).toBeInTheDocument();
     expect(screen.queryByText("월별 매출을 함께 확인")).not.toBeInTheDocument();
-    fireEvent.click(
-      screen.getByRole("button", { name: "올해 매출 목표 전년 대비 +12% 상세 보기" })
-    );
-    expect(screen.getAllByText("전년 대비 +12%").length).toBeGreaterThan(0);
-    expect(screen.getByText("월별 매출을 함께 확인")).toBeInTheDocument();
+    const salesGoalButton = screen.getByText("7월 48,000,000원").closest("button");
+    if (!salesGoalButton) {
+      throw new Error("매출 목표 버튼이 필요합니다.");
+    }
+    fireEvent.click(salesGoalButton);
+    expect(screen.getAllByText("월별 매출을 함께 확인").length).toBeGreaterThan(0);
     expect(screen.queryByRole("heading", { name: "목표·공지 상세" })).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("tab", { name: "스케줄 달력" }));
@@ -399,7 +416,10 @@ describe("App", () => {
                   category: "sales",
                   title: "올해 매출 목표",
                   value: "전년 대비 +8%",
-                  note: "월별 매출을 함께 확인"
+                  note: "월별 매출을 함께 확인",
+                  targetYear: 2026,
+                  monthlyTargets: monthlyTargetsFixture,
+                  targetTotal: 48_000_000
                 }
               ],
               total: 1,
@@ -476,7 +496,8 @@ describe("App", () => {
     fireEvent.click(screen.getByRole("button", { name: "홈 공지 관리" }));
     expect(screen.getByText(/홈 화면에 노출되는 매출 목표 공지/)).toBeInTheDocument();
     expect(screen.getByText("직원 공지 등록 및 수정")).toBeInTheDocument();
-    expect(screen.getByText("전년 대비 +8%")).toBeInTheDocument();
+    expect(screen.getByText("2026년 매출 목표")).toBeInTheDocument();
+    expect(screen.getByText("총합 48,000,000원")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "홈 공지 추가" }));
     fireEvent.change(screen.getByLabelText("공지 종류"), { target: { value: "staff" } });
     fireEvent.change(screen.getByLabelText("공지 제목"), { target: { value: "직원 공지" } });
@@ -709,7 +730,7 @@ describe("App", () => {
 
     expect((await screen.findAllByText("제품")).length).toBeGreaterThan(0);
     expect(screen.getByRole("heading", { name: "주요 사항" })).toBeInTheDocument();
-    expect(screen.getByText("16건 중 제품 비중이 가장 큽니다.")).toBeInTheDocument();
+    expect(screen.getAllByText("16건 중 제품 비중이 가장 큽니다.").length).toBeGreaterThan(0);
     expect(screen.getAllByText(/제품 > 맛 > 바게트/).length).toBeGreaterThan(0);
     expect(screen.getByText("12건 · 75%")).toBeInTheDocument();
     expect(screen.getAllByText("맛").length).toBeGreaterThan(0);
@@ -769,6 +790,78 @@ describe("App", () => {
   });
 
   it("organizes the daily operation page with fixed products, non-POS sales, and staff check tables", async () => {
+    let dailyOperationApiItems = providedDailyOperationRecords.map((record, index) => ({
+      id: String(index + 1),
+      date: record.draft.date,
+      draft: record.draft,
+      productRows: record.productRows,
+      channelRows: record.channelRows,
+      staffSpecialRows: record.staffSpecialRows,
+      createdAt: record.savedAt,
+      updatedAt: record.savedAt
+    }));
+
+    vi.mocked(fetch).mockImplementation(async (input, init) => {
+      const url = input instanceof Request ? input.url : String(input);
+      if (url.endsWith("/auth/csrf")) {
+        return new Response(JSON.stringify({ data: { csrfToken: "test-token" }, error: null }), {
+          headers: { "Content-Type": "application/json" }
+        });
+      }
+      if (url.includes("/daily-operation") && (!init?.method || init.method === "GET")) {
+        return new Response(
+          JSON.stringify({
+            data: {
+              items: dailyOperationApiItems,
+              total: dailyOperationApiItems.length,
+              page: 1,
+              size: dailyOperationApiItems.length
+            },
+            error: null
+          }),
+          { headers: { "Content-Type": "application/json" } }
+        );
+      }
+      if (url.includes("/daily-operation/") && init?.method === "PUT") {
+        const bodyText = typeof init.body === "string" ? init.body : "{}";
+        const body = JSON.parse(bodyText) as Pick<
+          DailyOperationSavedRecord,
+          "draft" | "productRows" | "channelRows" | "staffSpecialRows"
+        >;
+        const saved = {
+          id: "999",
+          date: body.draft.date,
+          draft: body.draft,
+          productRows: body.productRows,
+          channelRows: body.channelRows,
+          staffSpecialRows: body.staffSpecialRows,
+          createdAt: "2026-07-06T00:00:00.000Z",
+          updatedAt: "2026-07-06T00:00:00.000Z"
+        };
+        dailyOperationApiItems = [
+          saved,
+          ...dailyOperationApiItems.filter((record) => record.date !== saved.date)
+        ];
+        return new Response(
+          JSON.stringify({
+            data: saved,
+            error: null
+          }),
+          { headers: { "Content-Type": "application/json" } }
+        );
+      }
+      if (url.includes("/daily-operation/") && init?.method === "DELETE") {
+        const date = decodeURIComponent(url.split("/daily-operation/")[1] ?? "");
+        dailyOperationApiItems = dailyOperationApiItems.filter((record) => record.date !== date);
+        return new Response(JSON.stringify({ data: { deleted: true }, error: null }), {
+          headers: { "Content-Type": "application/json" }
+        });
+      }
+      return new Response(JSON.stringify({ data: { items: [], total: 0, page: 1, size: 0 }, error: null }), {
+        headers: { "Content-Type": "application/json" }
+      });
+    });
+
     render(
       <MemoryRouter initialEntries={["/daily-log/today"]}>
         <Routes>
@@ -778,7 +871,7 @@ describe("App", () => {
     );
 
     expect(await screen.findByRole("heading", { name: "매장 운영일지" })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("tab", { name: "조회" }));
+    fireEvent.click(screen.getByRole("tab", { name: "데이터 조회" }));
     expect(screen.getByLabelText("조회 방식")).toHaveValue("month");
     expect(screen.getByLabelText("조회 월")).toHaveValue("2026-05");
     expect(screen.getAllByText("69,703,800원").length).toBeGreaterThan(0);
@@ -874,20 +967,22 @@ describe("App", () => {
       target: { value: "오븐 주변 청소 완료" }
     });
     fireEvent.change(screen.getByLabelText("첫 출근자 이름"), { target: { value: "아침직원" } });
-    fireEvent.change(screen.getByLabelText("첫 출근자 출근시간"), { target: { value: "07:00" } });
+    fireEvent.change(screen.getByLabelText("첫 출근자 출근시간 시"), { target: { value: "07" } });
     fireEvent.change(screen.getByLabelText("최종퇴근자 이름"), { target: { value: "마감직원" } });
-    fireEvent.change(screen.getByLabelText("최종퇴근자 퇴근시간"), { target: { value: "20:00" } });
+    fireEvent.change(screen.getByLabelText("최종퇴근자 퇴근시간 시"), { target: { value: "20" } });
     fireEvent.change(screen.getByLabelText("위생 점검자"), { target: { value: "위생담당" } });
     fireEvent.change(screen.getByLabelText("최종 점검자"), { target: { value: "마감담당" } });
 
     fireEvent.click(screen.getByRole("button", { name: "일일 운영 저장" }));
-    fireEvent.click(screen.getByRole("tab", { name: "조회" }));
+    expect(await screen.findByText(/서버에 저장되었습니다/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("tab", { name: "데이터 조회" }));
     expect(screen.getByLabelText("조회 방식")).toBeInTheDocument();
     expect(screen.getByLabelText("나열 방식")).toHaveValue("desc");
     fireEvent.change(screen.getByLabelText("조회 방식"), { target: { value: "date" } });
     expect(screen.getByText("조회 날짜")).toBeInTheDocument();
     expect(screen.getAllByText(todayInStoreTime()).length).toBeGreaterThan(0);
     expect(screen.getByLabelText("조회 날짜")).toHaveValue(todayInStoreTime());
+    expect(screen.getByRole("tab", { name: "데이터 조회" })).toBeInTheDocument();
     expect(
       screen.getAllByText(
         (_content, element) => element?.textContent?.includes("조회 1일") ?? false
@@ -974,13 +1069,13 @@ describe("App", () => {
     fireEvent.click(screen.getByRole("tab", { name: "제품" }));
     expect(screen.getByLabelText("바게트 생산량")).toHaveValue("10");
 
-    fireEvent.click(screen.getByRole("tab", { name: "조회" }));
+    fireEvent.click(screen.getByRole("tab", { name: "데이터 조회" }));
     fireEvent.change(screen.getByLabelText("조회 방식"), { target: { value: "date" } });
     const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
     fireEvent.click(screen.getByRole("button", { name: "상세" }));
     fireEvent.click(screen.getByRole("button", { name: "삭제" }));
     expect(confirmSpy).toHaveBeenCalledWith(`${todayInStoreTime()} 일지를 삭제할까요?`);
-    expect(screen.getByText("선택한 일일 운영 일지를 삭제했습니다.")).toBeInTheDocument();
+    expect(await screen.findByText("선택한 일일 운영 일지를 삭제했습니다.")).toBeInTheDocument();
     expect(screen.queryByText("닭가슴살 재고 확인 필요합니다")).not.toBeInTheDocument();
     confirmSpy.mockRestore();
 
@@ -1000,26 +1095,28 @@ describe("App", () => {
     expect(screen.getByLabelText("위생 점검자")).toBeInTheDocument();
     expect(screen.getByLabelText("최종 점검자")).toBeInTheDocument();
     expect(screen.getByLabelText("첫 출근자 이름")).toBeInTheDocument();
-    expect(screen.getByLabelText("첫 출근자 출근시간")).toHaveRole("combobox");
+    expect(screen.getByLabelText("첫 출근자 출근시간 시")).toHaveRole("combobox");
+    expect(screen.getByLabelText("첫 출근자 출근시간 분")).toHaveRole("combobox");
     expect(
-      within(screen.getByLabelText("첫 출근자 출근시간")).getByRole("option", { name: "07:00" })
+      within(screen.getByLabelText("첫 출근자 출근시간 시")).getByRole("option", { name: "07시" })
     ).toBeInTheDocument();
     expect(
-      within(screen.getByLabelText("첫 출근자 출근시간")).getByRole("option", { name: "07:30" })
+      within(screen.getByLabelText("첫 출근자 출근시간 분")).getByRole("option", { name: "30분" })
     ).toBeInTheDocument();
     expect(
-      within(screen.getByLabelText("첫 출근자 출근시간")).queryByRole("option", { name: "07:01" })
+      within(screen.getByLabelText("첫 출근자 출근시간 분")).queryByRole("option", { name: "01분" })
     ).not.toBeInTheDocument();
     expect(screen.getByLabelText("최종퇴근자 이름")).toBeInTheDocument();
-    expect(screen.getByLabelText("최종퇴근자 퇴근시간")).toHaveRole("combobox");
+    expect(screen.getByLabelText("최종퇴근자 퇴근시간 시")).toHaveRole("combobox");
+    expect(screen.getByLabelText("최종퇴근자 퇴근시간 분")).toHaveRole("combobox");
     expect(
-      within(screen.getByLabelText("최종퇴근자 퇴근시간")).getByRole("option", { name: "20:00" })
+      within(screen.getByLabelText("최종퇴근자 퇴근시간 시")).getByRole("option", { name: "20시" })
     ).toBeInTheDocument();
     expect(
-      within(screen.getByLabelText("최종퇴근자 퇴근시간")).getByRole("option", { name: "20:30" })
+      within(screen.getByLabelText("최종퇴근자 퇴근시간 분")).getByRole("option", { name: "30분" })
     ).toBeInTheDocument();
     expect(
-      within(screen.getByLabelText("최종퇴근자 퇴근시간")).queryByRole("option", { name: "20:01" })
+      within(screen.getByLabelText("최종퇴근자 퇴근시간 분")).queryByRole("option", { name: "01분" })
     ).not.toBeInTheDocument();
     expect(screen.getByRole("row", { name: /금일/ })).toBeInTheDocument();
     expect(screen.getByRole("row", { name: /내일/ })).toBeInTheDocument();
@@ -1351,6 +1448,7 @@ describe("App", () => {
     expect(screen.getByText("현재 잔액")).toBeInTheDocument();
     expect(screen.getAllByText("38,000원")).toHaveLength(2);
     expect(screen.getByText("화이트바게트 픽업")).toBeInTheDocument();
+    expect(screen.getByText("현재 선택한 손님")).toBeInTheDocument();
     expect(screen.queryByText("여섯번째 상세 내역")).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "김선결 전체 거래 내역 6건 보기" }));
     expect(screen.getByText("여섯번째 상세 내역")).toBeInTheDocument();

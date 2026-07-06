@@ -35,7 +35,13 @@ type AnnualGoalNoticeDto = {
   title: string;
   value: string;
   note: string;
+  targetYear: number | null;
+  monthlyTargets: MonthlyTargets | null;
+  targetTotal: number | null;
 };
+
+type MonthKey = "01" | "02" | "03" | "04" | "05" | "06" | "07" | "08" | "09" | "10" | "11" | "12";
+type MonthlyTargets = Record<MonthKey, number>;
 
 type ReservationDto = {
   id: string;
@@ -44,6 +50,16 @@ type ReservationDto = {
 
 type ResponseDto = {
   id: string;
+};
+
+type DailyOperationRecordDto = {
+  date: string;
+  draft: {
+    posSalesAmount?: string | number | null;
+  };
+  channelRows: Array<{
+    amount?: string | number | null;
+  }>;
 };
 
 type ScheduleTone = "launch" | "close" | "notice";
@@ -73,6 +89,9 @@ type AnnualGoalNotice = {
   title: string;
   value: string;
   note: string;
+  targetYear: number | null;
+  monthlyTargets: MonthlyTargets | null;
+  targetTotal: number | null;
 };
 
 const goalNoticeCategoryLabels: Record<AnnualGoalNoticeCategory, string> = {
@@ -111,7 +130,10 @@ function toAnnualGoalNotice(item: AnnualGoalNoticeDto): AnnualGoalNotice {
     category: item.category,
     title: item.title,
     value: item.value,
-    note: item.note
+    note: item.note,
+    targetYear: item.targetYear,
+    monthlyTargets: item.monthlyTargets,
+    targetTotal: item.targetTotal
   };
 }
 
@@ -150,6 +172,56 @@ function scheduleFormFromItem(item: AnnualScheduleItem, year: string): ScheduleF
 
 function scheduleItemKey(item: AnnualScheduleItem): string {
   return item.id ?? `static-${item.month}-${item.day}-${item.title}`;
+}
+
+function formatCurrency(value: number): string {
+  return `${Math.round(value).toLocaleString("ko-KR")}원`;
+}
+
+function numeric(value: string | number | null | undefined): number {
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : 0;
+  }
+  if (!value) {
+    return 0;
+  }
+  return Number(value.toString().replace(/[^0-9.-]/g, "")) || 0;
+}
+
+function dailyOperationSales(record: DailyOperationRecordDto): number {
+  return numeric(record.draft.posSalesAmount) + record.channelRows.reduce((total, row) => total + numeric(row.amount), 0);
+}
+
+function monthRangeFor(date: string): { from: string; to: string } {
+  const [yearText, monthText] = date.split("-");
+  const year = Number(yearText);
+  const month = Number(monthText);
+  const lastDay = new Date(year, month, 0).getDate();
+  return {
+    from: `${yearText}-${monthText}-01`,
+    to: `${yearText}-${monthText}-${String(lastDay).padStart(2, "0")}`
+  };
+}
+
+function percentLabel(value: number, target: number | null): string {
+  if (!target || target <= 0) {
+    return "0%";
+  }
+  return `${Math.round((value / target) * 100)}%`;
+}
+
+function currentSalesGoal(notices: AnnualGoalNotice[], date: string): AnnualGoalNotice | null {
+  const year = Number(date.slice(0, 4));
+  return notices.find((notice) => notice.category === "sales" && notice.targetYear === year) ?? null;
+}
+
+function currentMonthTarget(notice: AnnualGoalNotice | null, date: string): number | null {
+  const month = date.slice(5, 7) as MonthKey;
+  return notice?.monthlyTargets?.[month] ?? null;
+}
+
+function scheduleDateValue(item: AnnualScheduleItem, year: string): string {
+  return `${year}-${String(item.month).padStart(2, "0")}-${String(item.day).padStart(2, "0")}`;
 }
 
 function scheduleBadgeLabel(tone: AnnualScheduleItem["tone"]): string {
@@ -215,6 +287,7 @@ export function HomePage() {
   const [todayReservationCount, setTodayReservationCount] = useState(0);
   const [pendingReservationCount, setPendingReservationCount] = useState(0);
   const [todayResponseCount, setTodayResponseCount] = useState(0);
+  const [currentMonthSales, setCurrentMonthSales] = useState(0);
   const [dailyOperationSaved, setDailyOperationSaved] = useState(() => hasSavedDailyOperation(date));
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -245,6 +318,20 @@ export function HomePage() {
     [allScheduleItems, detailScheduleKey]
   );
   const allGoalNotices = storedGoalNotices;
+  const salesGoalNotice = currentSalesGoal(allGoalNotices, date);
+  const monthlySalesTarget = currentMonthTarget(salesGoalNotice, date);
+  const remainingMonthlySalesTarget = Math.max((monthlySalesTarget ?? 0) - currentMonthSales, 0);
+  const operationNotice = allGoalNotices.find((notice) => notice.category === "operation") ?? null;
+  const staffNotice = allGoalNotices.find((notice) => notice.category === "staff") ?? null;
+  const upcomingScheduleItems = useMemo(
+    () =>
+      allScheduleItems
+        .filter((item) => scheduleDateValue(item, currentYear) >= date)
+        .sort((left, right) =>
+          scheduleDateValue(left, currentYear).localeCompare(scheduleDateValue(right, currentYear))
+        ),
+    [allScheduleItems, currentYear, date]
+  );
   const detailGoalNotice = useMemo(
     () => allGoalNotices.find((item) => goalNoticeKey(item) === detailGoalNoticeKey) ?? null,
     [allGoalNotices, detailGoalNoticeKey]
@@ -378,9 +465,14 @@ export function HomePage() {
   const loadTodayOverview = useCallback(async () => {
     setDailyOperationSaved(hasSavedDailyOperation(date));
     try {
-      const [reservationEnvelope, responseEnvelope] = await Promise.all([
+      const monthRange = monthRangeFor(date);
+      const [reservationEnvelope, responseEnvelope, todayDailyEnvelope, monthDailyEnvelope] = await Promise.all([
         apiGet<ListEnvelope<ReservationDto>>(`/reservation?from=${date}&to=${date}`),
-        apiGet<ListEnvelope<ResponseDto>>(`/response?from=${date}&to=${date}`)
+        apiGet<ListEnvelope<ResponseDto>>(`/response?from=${date}&to=${date}`),
+        apiGet<ListEnvelope<DailyOperationRecordDto>>(`/daily-operation?from=${date}&to=${date}`),
+        apiGet<ListEnvelope<DailyOperationRecordDto>>(
+          `/daily-operation?from=${monthRange.from}&to=${monthRange.to}`
+        )
       ]);
 
       if (!reservationEnvelope.error) {
@@ -392,6 +484,14 @@ export function HomePage() {
       }
       if (!responseEnvelope.error) {
         setTodayResponseCount(responseEnvelope.data.items.length);
+      }
+      if (!todayDailyEnvelope.error) {
+        setDailyOperationSaved(todayDailyEnvelope.data.items.length > 0 || hasSavedDailyOperation(date));
+      }
+      if (!monthDailyEnvelope.error) {
+        setCurrentMonthSales(
+          monthDailyEnvelope.data.items.reduce((total, record) => total + dailyOperationSales(record), 0)
+        );
       }
     } catch {
       // 홈의 오늘 할 일은 보조 정보이므로 일부 API가 실패해도 화면 전체를 막지 않습니다.
@@ -667,9 +767,6 @@ export function HomePage() {
   return (
     <div className="mx-auto grid max-w-none gap-4">
       <section className="min-w-0">
-        <div className="mb-5 flex items-baseline justify-end gap-3">
-          <span className="text-[12.5px] text-muted">{date}</span>
-        </div>
         <div className="grid gap-3 md:grid-cols-3">
           <Link
             to="/daily-log/today"
@@ -712,22 +809,54 @@ export function HomePage() {
         </div>
       </section>
 
-      <section className="grid gap-3 lg:grid-cols-[1.12fr_0.88fr]">
-        <div className="rounded-panel bg-bread px-5 py-[18px] text-white">
-          <p className="text-[11.5px] opacity-85">7월 매출 목표</p>
-          <p className="mt-1 text-base font-bold">4,800만원 중 오늘 목표 확인</p>
-          <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-white/25">
-            <div className="h-full w-[48%] rounded-full bg-white" />
-          </div>
-        </div>
-        <div className="rounded-panel border border-latte bg-white px-5 py-[18px]">
-          <p className="text-[11.5px] text-muted">직원 공지</p>
-          <p className="mt-2 text-[13px] leading-6 text-ink">
-            {allGoalNotices.find((notice) => notice.category === "staff")?.value ||
-              "마감 재고와 예약 픽업 시간을 함께 확인해주세요."}
+      <section className="grid gap-3 md:grid-cols-3">
+        <button
+          className="rounded-panel border border-latte bg-white px-5 py-[18px] text-left transition hover:border-bread"
+          type="button"
+          onClick={() => salesGoalNotice ? setDetailGoalNoticeKey(goalNoticeKey(salesGoalNotice)) : undefined}
+        >
+          <p className="text-[11.5px] text-muted">매출 목표</p>
+          <p className="mt-2 text-base font-bold text-ink">
+            {monthlySalesTarget !== null ? `${Number(date.slice(5, 7))}월 ${formatCurrency(monthlySalesTarget)}` : "올해 매출 목표 미등록"}
           </p>
-        </div>
+          {salesGoalNotice?.targetTotal ? (
+            <p className="mt-1 text-xs font-semibold text-cocoa">연간 총합 {formatCurrency(salesGoalNotice.targetTotal)}</p>
+          ) : null}
+          <div className="mt-3 grid grid-cols-3 gap-2 rounded-control bg-cream/55 px-3 py-2 text-center">
+            <div>
+              <p className="text-[10.5px] font-bold text-muted">이번 달 달성률</p>
+              <p className="mt-0.5 text-sm font-extrabold text-bread">{percentLabel(currentMonthSales, monthlySalesTarget)}</p>
+            </div>
+            <div>
+              <p className="text-[10.5px] font-bold text-muted">현재 누적</p>
+              <p className="mt-0.5 text-sm font-extrabold text-ink">{formatCurrency(currentMonthSales)}</p>
+            </div>
+            <div>
+              <p className="text-[10.5px] font-bold text-muted">남은 목표</p>
+              <p className="mt-0.5 text-sm font-extrabold text-cocoa">{formatCurrency(remainingMonthlySalesTarget)}</p>
+            </div>
+          </div>
+        </button>
+        <button
+          className="rounded-panel border border-latte bg-white px-5 py-[18px] text-left transition hover:border-bread"
+          type="button"
+          onClick={() => operationNotice ? setDetailGoalNoticeKey(goalNoticeKey(operationNotice)) : undefined}
+        >
+          <p className="text-[11.5px] text-muted">운영 목표</p>
+          <p className="mt-2 text-base font-bold text-ink">{operationNotice?.title ?? "운영 목표 미등록"}</p>
+          <p className="mt-1 line-clamp-2 text-[13px] leading-6 text-cocoa">{operationNotice?.value ?? "관리 탭에서 운영 목표를 입력해 주세요."}</p>
+        </button>
+        <button
+          className="rounded-panel border border-latte bg-white px-5 py-[18px] text-left transition hover:border-bread"
+          type="button"
+          onClick={() => staffNotice ? setDetailGoalNoticeKey(goalNoticeKey(staffNotice)) : undefined}
+        >
+          <p className="text-[11.5px] text-muted">직원 공지</p>
+          <p className="mt-2 text-base font-bold text-ink">{staffNotice?.title ?? "직원 공지 미등록"}</p>
+          <p className="mt-1 line-clamp-2 text-[13px] leading-6 text-cocoa">{staffNotice?.value ?? "관리 탭에서 직원 공지를 입력해 주세요."}</p>
+        </button>
       </section>
+      {renderGoalNoticeDetail()}
 
       <section className="grid gap-3 lg:grid-cols-2">
         <div className="rounded-panel border border-latte bg-white px-5 py-4">
@@ -735,7 +864,7 @@ export function HomePage() {
             연간 스케줄
           </p>
           <div className="divide-y divide-[#F1EAE0]">
-            {allScheduleItems.slice(0, 4).map((item) => (
+            {upcomingScheduleItems.slice(0, 4).map((item) => (
               <div
                 key={scheduleItemKey(item)}
                 className="grid grid-cols-[3.5rem_2.8rem_1fr] items-center gap-2 py-2.5 text-[12.5px]"
@@ -749,8 +878,8 @@ export function HomePage() {
                 <span className="truncate text-ink">{item.title} 일정</span>
               </div>
             ))}
-            {allScheduleItems.length === 0 ? (
-              <div className="py-8 text-center text-sm text-muted">등록된 스케줄 없음</div>
+            {upcomingScheduleItems.length === 0 ? (
+              <div className="py-8 text-center text-sm text-muted">다가오는 스케줄 없음</div>
             ) : null}
           </div>
         </div>

@@ -123,6 +123,7 @@ export async function registerReservationRoutes(app: FastifyInstance): Promise<v
 
   app.get("/", async (request, reply) => {
     const query = listReservationQuerySchema.parse(request.query);
+    const search = query.query?.trim();
     const where: Prisma.ReservationWhereInput = {
       ...(query.status ? { status: query.status } : {}),
       ...(query.from || query.to
@@ -131,6 +132,16 @@ export async function registerReservationRoutes(app: FastifyInstance): Promise<v
               ...(query.from ? { gte: parseStoreDateStart(query.from) } : {}),
               ...(query.to ? { lt: parseStoreDateEnd(query.to) } : {})
             }
+          }
+        : {}),
+      ...(search
+        ? {
+            OR: [
+              { customerName: { contains: search, mode: "insensitive" } },
+              { contactPhone: { contains: search, mode: "insensitive" } },
+              { memo: { contains: search, mode: "insensitive" } },
+              { items: { some: { product: { name: { contains: search, mode: "insensitive" } } } } }
+            ]
           }
         : {})
     };

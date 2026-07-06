@@ -1,7 +1,7 @@
 import { MinusCircle, Plus, RotateCcw, Search } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { apiDelete, apiGet, apiPost } from "../../shared/api/client.js";
+import { apiDelete, apiGet, apiPatch, apiPost } from "../../shared/api/client.js";
 import type { ListEnvelope } from "../../shared/api/types.js";
 import { Button } from "../../shared/ui/Button.js";
 
@@ -39,6 +39,10 @@ type UseLedgerForm = {
 type ChargeLedgerForm = {
   amount: string;
   note: string;
+};
+
+type MemoEditForm = {
+  memo: string;
 };
 
 function emptyNewLedgerForm(): NewLedgerForm {
@@ -106,6 +110,8 @@ export function PrepaidLedgerPage() {
   const [newForm, setNewForm] = useState<NewLedgerForm>(() => emptyNewLedgerForm());
   const [useForms, setUseForms] = useState<Record<string, UseLedgerForm>>({});
   const [chargeForms, setChargeForms] = useState<Record<string, ChargeLedgerForm>>({});
+  const [memoForms, setMemoForms] = useState<Record<string, MemoEditForm>>({});
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
   const [expandedTransactionCustomers, setExpandedTransactionCustomers] = useState<string[]>([]);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -118,6 +124,10 @@ export function PrepaidLedgerPage() {
   const totalBalance = useMemo(
     () => customers.reduce((total, customer) => total + customer.balance, 0),
     [customers]
+  );
+  const selectedCustomer = useMemo(
+    () => customers.find((customer) => customer.id === selectedCustomerId) ?? sortedCustomers[0] ?? null,
+    [customers, selectedCustomerId, sortedCustomers]
   );
 
   const loadLedger = useCallback(async () => {
@@ -164,6 +174,50 @@ export function PrepaidLedgerPage() {
         ...next
       }
     }));
+  }
+
+  function selectCustomer(customer: PrepaidCustomerDto) {
+    setSelectedCustomerId(customer.id);
+    setMemoForms((current) => ({
+      ...current,
+      [customer.id]: { memo: current[customer.id]?.memo ?? customer.memo ?? "" }
+    }));
+    setExpandedTransactionCustomers((current) => current.includes(customer.id) ? current : [...current, customer.id]);
+    window.setTimeout(() => document.getElementById("selected-prepaid-detail")?.scrollIntoView({ behavior: "smooth", block: "start" }), 0);
+  }
+
+  async function saveMemo(customer: PrepaidCustomerDto) {
+    setMessage(null);
+    setError(null);
+    const memo = memoForms[customer.id]?.memo ?? customer.memo ?? "";
+    const envelope = await apiPatch<PrepaidCustomerDto, Record<string, unknown>>(
+      `/prepaid-ledger/${customer.id}`,
+      { memo }
+    );
+
+    if (envelope.error) {
+      setError(envelope.error.message);
+      return;
+    }
+
+    setMessage(`${customer.customerName}님 메모 수정 완료`);
+    await loadLedger();
+  }
+
+  async function deleteCustomer(customer: PrepaidCustomerDto) {
+    if (!window.confirm(`${customer.customerName}님 선결제 장부를 삭제할까요?\n기록은 비활성 처리됩니다.`)) {
+      return;
+    }
+    setMessage(null);
+    setError(null);
+    const envelope = await apiDelete<{ deleted: boolean }>(`/prepaid-ledger/${customer.id}`);
+    if (envelope.error) {
+      setError(envelope.error.message);
+      return;
+    }
+    setMessage(`${customer.customerName}님 선결제 장부 삭제 완료`);
+    setSelectedCustomerId((current) => current === customer.id ? null : current);
+    await loadLedger();
   }
 
   async function createLedger() {
@@ -319,10 +373,10 @@ export function PrepaidLedgerPage() {
                 <div className="font-bold text-ink">잔액 {formatCurrency(customer.balance)}원</div>
                 <div className="text-muted">{last ? `${formatLedgerDate(last.occurredAt)} ${transactionLabel(last.type)} ${transactionAmountLabel(last)}` : "-"}</div>
                 <div className="flex flex-wrap gap-2">
-                  <button className="rounded-full bg-blue/10 px-2 py-1 text-xs font-bold text-blue" type="button" onClick={() => document.getElementById(`${customer.id}-ledger-actions`)?.scrollIntoView({ behavior: "smooth" })}>충전</button>
-                  <button className="rounded-full bg-[#F4E3D8] px-2 py-1 text-xs font-bold text-cocoa" type="button" onClick={() => document.getElementById(`${customer.id}-ledger-actions`)?.scrollIntoView({ behavior: "smooth" })}>사용</button>
-                  <button className="rounded-full bg-cream px-2 py-1 text-xs font-bold text-muted" type="button" onClick={() => document.getElementById(`${customer.id}-ledger-actions`)?.scrollIntoView({ behavior: "smooth" })}>되돌리기 상세</button>
-                  <button className="rounded-full bg-red/10 px-2 py-1 text-xs font-bold text-red" type="button" onClick={() => document.getElementById(`${customer.id}-ledger-actions`)?.scrollIntoView({ behavior: "smooth" })}>삭제</button>
+                  <button className="rounded-full bg-blue/10 px-2 py-1 text-xs font-bold text-blue" type="button" onClick={() => selectCustomer(customer)}>충전</button>
+                  <button className="rounded-full bg-[#F4E3D8] px-2 py-1 text-xs font-bold text-cocoa" type="button" onClick={() => selectCustomer(customer)}>사용</button>
+                  <button className="rounded-full bg-cream px-2 py-1 text-xs font-bold text-muted" type="button" onClick={() => selectCustomer(customer)}>되돌리기 상세</button>
+                  <button className="rounded-full bg-red/10 px-2 py-1 text-xs font-bold text-red" type="button" onClick={() => void deleteCustomer(customer)}>삭제</button>
                 </div>
               </div>
             );
@@ -332,7 +386,7 @@ export function PrepaidLedgerPage() {
           ) : null}
         </div>
 
-        <details className="mt-4">
+        <details className="mt-4" open={selectedCustomer !== null}>
           <summary className="cursor-pointer text-sm font-bold text-cocoa">등록·충전·사용 상세 기능 열기</summary>
         <div className="mt-3 grid gap-4 xl:grid-cols-[minmax(20rem,0.72fr)_minmax(0,1.28fr)]">
           <div className="grid self-start gap-3 rounded-[1.25rem] border border-latte bg-white/75 p-3 shadow-sm">
@@ -423,9 +477,10 @@ export function PrepaidLedgerPage() {
               </div>
             </div>
 
-            {sortedCustomers.map((customer) => {
+            {(selectedCustomer ? [selectedCustomer] : []).map((customer) => {
               const useForm = useForms[customer.id] ?? { amount: "", note: "" };
               const chargeForm = chargeForms[customer.id] ?? { amount: "", note: "" };
+              const memoForm = memoForms[customer.id] ?? { memo: customer.memo ?? "" };
               const showAllTransactions = expandedTransactionCustomers.includes(customer.id);
               const displayedTransactions = showAllTransactions
                 ? customer.transactions
@@ -433,15 +488,32 @@ export function PrepaidLedgerPage() {
               return (
                 <article
                   key={customer.id}
-                  id={`${customer.id}-ledger-actions`}
+                  id="selected-prepaid-detail"
                   aria-label={`${customer.customerName} 선결제 장부`}
                   className="rounded-[1.35rem] border border-latte bg-white p-3 shadow-sm ring-1 ring-white/70"
                 >
                   <div className="grid gap-3 border-b border-latte pb-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
                     <div className="min-w-0">
+                      <p className="mb-1 text-xs font-extrabold text-bread">현재 선택한 손님</p>
                       <h3 className="truncate text-lg font-extrabold text-ink">{customer.customerName}님</h3>
                       <p className="text-sm font-semibold text-muted">{customer.contactPhone || "연락처 없음"}</p>
                       {customer.memo ? <p className="mt-1 text-sm font-semibold text-cocoa">{customer.memo}</p> : null}
+                      <label className="mt-3 grid gap-1">
+                        <span className="text-xs font-bold text-muted">기타 메모</span>
+                        <textarea
+                          aria-label={`${customer.customerName} 기타 메모`}
+                          className="input min-h-20 resize-y"
+                          value={memoForm.memo}
+                          onChange={(event) => setMemoForms((current) => ({ ...current, [customer.id]: { memo: event.target.value } }))}
+                        />
+                      </label>
+                      <button
+                        type="button"
+                        className="mt-2 rounded-full border border-latte bg-white px-3 py-1 text-xs font-extrabold text-cocoa shadow-sm transition hover:bg-cream"
+                        onClick={() => void saveMemo(customer)}
+                      >
+                        기타 메모 수정
+                      </button>
                     </div>
                     <div className="rounded-[1rem] bg-blue/10 px-4 py-3 text-right">
                       <p className="text-xs font-bold text-blue/80">현재 잔액</p>

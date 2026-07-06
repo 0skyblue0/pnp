@@ -63,7 +63,8 @@ export const upsertRegularCustomerSchema = z.object({
 export const listReservationQuerySchema = z.object({
   from: dateOnlySchema.optional(),
   to: dateOnlySchema.optional(),
-  status: reservationStatusSchema.optional()
+  status: reservationStatusSchema.optional(),
+  query: z.string().trim().max(80).optional()
 });
 
 export const availabilityParamsSchema = z.object({

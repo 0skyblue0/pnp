@@ -12,6 +12,7 @@ import { registerAdminRoutes } from "./modules/admin/admin.routes.js";
 import { registerAnnualGoalNoticeRoutes } from "./modules/annual-goal-notice/annual-goal-notice.routes.js";
 import { registerAnnualScheduleRoutes } from "./modules/annual-schedule/annual-schedule.routes.js";
 import { registerAuthRoutes } from "./modules/auth/auth.routes.js";
+import { registerDailyOperationRoutes } from "./modules/daily-log/daily-operation.routes.js";
 import { registerDailyLogRoutes } from "./modules/daily-log/daily-log.routes.js";
 import { registerNotificationRoutes } from "./modules/notification/notification.routes.js";
 import { registerPrepaidLedgerRoutes } from "./modules/prepaid-ledger/prepaid-ledger.routes.js";
@@ -69,6 +70,7 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Fas
   await app.register(registerAdminRoutes, { prefix: "/api/v1" });
   await app.register(registerAnnualGoalNoticeRoutes, { prefix: "/api/v1" });
   await app.register(registerAnnualScheduleRoutes, { prefix: "/api/v1" });
+  await app.register(registerDailyOperationRoutes, { prefix: "/api/v1/daily-operation" });
   await app.register(registerDailyLogRoutes, { prefix: "/api/v1" });
   await app.register(registerProductionLotRoutes, { prefix: "/api/v1/production-lot" });
   await app.register(registerPrepaidLedgerRoutes, { prefix: "/api/v1/prepaid-ledger" });

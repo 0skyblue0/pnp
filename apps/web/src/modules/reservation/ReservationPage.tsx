@@ -282,28 +282,32 @@ export function ReservationPage() {
     }));
   }
 
-  function combinedProductText(): string {
-    return form.items
-      .filter((item) => item.productName.trim())
-      .map((item) => `${item.productName} x${item.quantity || "1"}`)
-      .join(", ");
-  }
-
-  function updateCombinedProductText(value: string) {
-    const firstEntry = value.split(",")[0]?.trim() ?? "";
-    const match = firstEntry.match(/^(.*?)(?:\s*[xX×]\s*(\d+))?$/);
-    const productName = (match?.[1] ?? firstEntry).trim();
-    const quantity = match?.[2] ?? "1";
+  function updateReservationItem(itemId: string, updates: Partial<Pick<ReservationItemForm, "productName" | "quantity">>) {
     setForm((current) => ({
       ...current,
-      items: [
-        {
-          ...(current.items[0] ?? emptyReservationItem()),
-          productName,
-          quantity,
-          cuttingOption: normalizedCuttingOption(productName, current.items[0]?.cuttingOption ?? "NONE")
+      items: current.items.map((item) => {
+        if (item.id !== itemId) {
+          return item;
         }
-      ]
+        const productName = updates.productName ?? item.productName;
+        return {
+          ...item,
+          ...updates,
+          productName,
+          cuttingOption: normalizedCuttingOption(productName, item.cuttingOption)
+        };
+      })
+    }));
+  }
+
+  function addReservationItem() {
+    setForm((current) => ({ ...current, items: [...current.items, emptyReservationItem()] }));
+  }
+
+  function removeReservationItem(itemId: string) {
+    setForm((current) => ({
+      ...current,
+      items: current.items.length > 1 ? current.items.filter((item) => item.id !== itemId) : [emptyReservationItem()]
     }));
   }
 
@@ -584,16 +588,57 @@ export function ReservationPage() {
               </div>
             </div>
 
-            <label className="mb-2 block">
-              <span className="mb-[5px] block text-[11px] text-muted">제품 및 수량 *</span>
-              <input
-                aria-label="제품 및 수량"
-                className="w-full rounded-[8px] border border-latte px-[11px] py-[8px] text-[13px] outline-none focus:border-bread"
-                placeholder="예: 소금빵 x4, 크루아상 x2"
-                value={combinedProductText()}
-                onChange={(event) => updateCombinedProductText(event.target.value)}
-              />
-            </label>
+            <div className="mb-2">
+              <div className="mb-[5px] flex items-center justify-between gap-2">
+                <span className="block text-[11px] text-muted">제품 및 수량 *</span>
+                <button
+                  type="button"
+                  className="rounded-full bg-cream px-2.5 py-1 text-[11px] font-bold text-cocoa transition hover:bg-[#EFE6DA]"
+                  onClick={addReservationItem}
+                >
+                  제품 추가
+                </button>
+              </div>
+              <div className="grid gap-2">
+                {form.items.map((item, index) => (
+                  <div
+                    key={item.id}
+                    className="grid min-w-0 grid-cols-[minmax(0,1fr)_5.5rem_3.25rem] items-end gap-2 rounded-[10px] border border-latte bg-white px-3 py-2"
+                  >
+                    <label className="grid min-w-0 gap-1">
+                      <span className="text-[10.5px] font-semibold text-muted">제품명</span>
+                      <input
+                        aria-label={`제품명 ${index + 1}`}
+                        className="min-w-0 rounded-[8px] border border-latte px-[11px] py-[8px] text-[13px] outline-none focus:border-bread"
+                        placeholder="예: 소금빵"
+                        value={item.productName}
+                        onChange={(event) => updateReservationItem(item.id, { productName: event.target.value })}
+                      />
+                    </label>
+                    <label className="grid min-w-0 gap-1">
+                      <span className="text-[10.5px] font-semibold text-muted">수량</span>
+                      <input
+                        aria-label={`수량 ${index + 1}`}
+                        className="min-w-0 rounded-[8px] border border-latte px-[9px] py-[8px] text-right text-[13px] outline-none focus:border-bread"
+                        inputMode="numeric"
+                        min="1"
+                        type="number"
+                        value={item.quantity}
+                        onChange={(event) => updateReservationItem(item.id, { quantity: event.target.value })}
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      className="rounded-[8px] border border-latte bg-cream px-1.5 py-[8px] text-[12px] font-bold text-cocoa transition hover:bg-red/10 hover:text-red disabled:cursor-not-allowed disabled:opacity-45"
+                      disabled={form.items.length === 1 && !item.productName.trim()}
+                      onClick={() => removeReservationItem(item.id)}
+                    >
+                      삭제
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
 
             <div className="mb-2">
               <div className="mb-[5px] text-[11px] text-muted">컷팅 옵션</div>

@@ -12,7 +12,7 @@ services:
       SESSION_SECRET: docker-dev-session-secret-with-at-least-32-chars
       BOOTSTRAP_USERNAME: owner
       BOOTSTRAP_PASSWORD_HASH: $$2a$$12$$dE7HlHWASnJP9txW.Xd1.eaC9mQnxa.u65Xox33aT0/B.33uTqu7a
-      CORS_ORIGIN: http://localhost:5173
+      CORS_ORIGIN: http://localhost:5173,https://localhost:5173,https://127.0.0.1:5173,https://1.226.52.124:5173
       HERMES_API_BASE_URL: ${HERMES_API_BASE_URL:-http://host.docker.internal:8642/v1}
       HERMES_API_KEY: ${HERMES_API_KEY:-}
       HERMES_API_MODEL: ${HERMES_API_MODEL:-pnp-response-classifier}
@@ -46,6 +46,7 @@ services:
     environment:
       VITE_API_BASE_URL: /api/v1
       VITE_API_PROXY_TARGET: http://api:3000
+      VITE_DEV_HTTPS: "true"
     command: npm run dev -w @pnp/web
     ports:
       - "5173:5173"
@@ -59,7 +60,7 @@ services:
       test:
         [
           "CMD-SHELL",
-          'node -e "fetch(''http://127.0.0.1:5173/'').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"'
+          'NODE_TLS_REJECT_UNAUTHORIZED=0 node -e "fetch(''https://127.0.0.1:5173/'').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"'
         ]
       interval: 10s
       timeout: 5s

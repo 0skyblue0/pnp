@@ -32,11 +32,11 @@ docker compose up --build
 
 Services:
 
-- Web: `https://localhost:5173` (self-signed local certificate)
+- Web: `http://localhost:5173` and `https://localhost:5173` (HTTPS uses a self-signed local certificate)
 - API: `http://localhost:3001` on the host, `http://api:3000` inside Compose
 - PostgreSQL: host-installed PostgreSQL through `host.docker.internal:5432`
 
-The web dev server proxies `/api/*` to the API container. Docker Compose enables HTTPS on port `5173` with a self-signed local certificate, so the browser may show a one-time certificate warning. The API container runs Prisma generate before starting Fastify.
+The web dev server proxies `/api/*` to the API container. Docker Compose enables both HTTP and HTTPS on the same `5173` port; HTTPS uses a self-signed local certificate, so the browser may show a one-time certificate warning. The API container runs Prisma generate before starting Fastify.
 
 Set `DATABASE_URL` before running Compose when your local PostgreSQL credentials differ:
 

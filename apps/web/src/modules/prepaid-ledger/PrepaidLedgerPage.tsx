@@ -449,16 +449,19 @@ export function PrepaidLedgerPage() {
               </label>
               <label className="grid gap-1">
                 <span className="field-label">선결제 금액</span>
-                <input
-                  aria-label="선결제 금액"
-                  className="input text-right"
-                  inputMode="numeric"
-                  placeholder="50,000"
-                  value={newForm.amount}
-                  onChange={(event) =>
-                    setNewForm((current) => ({ ...current, amount: formatAmountInput(event.target.value) }))
-                  }
-                />
+                <span className="relative block">
+                  <input
+                    aria-label="선결제 금액"
+                    className="input w-full pr-8 text-right"
+                    inputMode="numeric"
+                    placeholder="50,000"
+                    value={newForm.amount}
+                    onChange={(event) =>
+                      setNewForm((current) => ({ ...current, amount: formatAmountInput(event.target.value) }))
+                    }
+                  />
+                  <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-muted">원</span>
+                </span>
               </label>
               <label className="grid gap-1">
                 <span className="field-label">메모</span>
@@ -608,16 +611,19 @@ export function PrepaidLedgerPage() {
                         <p className="text-sm font-extrabold text-cocoa">추가 충전</p>
                         <label className="grid gap-1">
                           <span className="text-xs font-semibold text-muted">충전 금액</span>
-                          <input
-                            aria-label={`${customer.customerName} 추가 충전 금액`}
-                            className="input text-right"
-                            inputMode="numeric"
-                            placeholder="20,000"
-                            value={chargeForm.amount}
-                            onChange={(event) =>
-                              setChargeForm(customer.id, { amount: formatAmountInput(event.target.value) })
-                            }
-                          />
+                          <span className="relative block">
+                            <input
+                              aria-label={`${customer.customerName} 추가 충전 금액`}
+                              className="input w-full pr-8 text-right"
+                              inputMode="numeric"
+                              placeholder="20,000"
+                              value={chargeForm.amount}
+                              onChange={(event) =>
+                                setChargeForm(customer.id, { amount: formatAmountInput(event.target.value) })
+                              }
+                            />
+                            <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-muted">원</span>
+                          </span>
                         </label>
                         <label className="grid gap-1">
                           <span className="text-xs font-semibold text-muted">충전 메모</span>
@@ -643,14 +649,17 @@ export function PrepaidLedgerPage() {
                         <p className="text-sm font-extrabold text-cocoa">사용 차감</p>
                         <label className="grid gap-1">
                           <span className="text-xs font-semibold text-muted">사용 금액</span>
-                          <input
-                            aria-label={`${customer.customerName} 사용 금액`}
-                            className="input text-right"
-                            inputMode="numeric"
-                            placeholder="5,000"
-                            value={useForm.amount}
-                            onChange={(event) => setUseForm(customer.id, { amount: formatAmountInput(event.target.value) })}
-                          />
+                          <span className="relative block">
+                            <input
+                              aria-label={`${customer.customerName} 사용 금액`}
+                              className="input w-full pr-8 text-right"
+                              inputMode="numeric"
+                              placeholder="5,000"
+                              value={useForm.amount}
+                              onChange={(event) => setUseForm(customer.id, { amount: formatAmountInput(event.target.value) })}
+                            />
+                            <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-muted">원</span>
+                          </span>
                         </label>
                         <label className="grid gap-1">
                           <span className="text-xs font-semibold text-muted">사용 내용</span>

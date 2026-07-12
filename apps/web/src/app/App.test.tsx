@@ -647,6 +647,8 @@ describe("App", () => {
     expect(screen.getByRole("heading", { name: "매출 요약" })).toBeInTheDocument();
     expect(screen.getByLabelText("작성자")).toBeInTheDocument();
     expect(screen.getByLabelText("외부온도")).toBeInTheDocument();
+    expect(screen.getByLabelText("외부온도").parentElement).toHaveTextContent("℃");
+    expect(screen.getByLabelText("외부습도").parentElement).toHaveTextContent("%");
     expect(screen.getByRole("button", { name: "폭염" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "한파" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "일일 운영 저장" }));
@@ -662,6 +664,8 @@ describe("App", () => {
     fireEvent.click(screen.getByRole("tab", { name: "매출" }));
     expect(screen.getByLabelText("POS 매출액")).toBeInTheDocument();
     expect(screen.getByLabelText("POS 매출건수")).toBeInTheDocument();
+    expect(screen.getByLabelText("POS 매출액").parentElement).toHaveTextContent("원");
+    expect(screen.getByLabelText("POS 매출건수").parentElement).toHaveTextContent("건");
     expect(screen.getByLabelText("POS 외 매출액")).toHaveTextContent("0원");
     expect(screen.getByRole("heading", { name: "POS 외 매출" })).toBeInTheDocument();
     for (const channel of ["선물", "쿠팡이츠", "배민", "제로페이", "택배", "납품"]) {
@@ -684,6 +688,8 @@ describe("App", () => {
     fireEvent.click(screen.getByRole("tab", { name: "제품" }));
     expect(screen.getByText("바게트")).toBeInTheDocument();
     expect(screen.getByText("치킨샌드위치")).toBeInTheDocument();
+    expect(screen.getByText("생산량(개)")).toBeInTheDocument();
+    expect(screen.getByText("판매량(개)")).toBeInTheDocument();
     expect(screen.getByText("기타(+)/(-)")).toBeInTheDocument();
     expect(screen.getByLabelText("바게트 기타 입고 +")).toBeInTheDocument();
     expect(screen.getByLabelText("바게트 기타 출고 -")).toBeInTheDocument();

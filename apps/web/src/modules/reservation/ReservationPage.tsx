@@ -630,15 +630,18 @@ export function ReservationPage() {
                     </label>
                     <label className="grid min-w-0 gap-1">
                       <span className="text-[10.5px] font-semibold text-muted">수량</span>
-                      <input
-                        aria-label={`수량 ${index + 1}`}
-                        className="min-w-0 rounded-[8px] border border-latte px-[9px] py-[8px] text-right text-[13px] outline-none focus:border-bread"
-                        inputMode="numeric"
-                        min="1"
-                        type="number"
-                        value={item.quantity}
-                        onChange={(event) => updateReservationItem(item.id, { quantity: event.target.value })}
-                      />
+                      <span className="relative block min-w-0">
+                        <input
+                          aria-label={`수량 ${index + 1}`}
+                          className="min-w-0 w-full rounded-[8px] border border-latte px-[9px] py-[8px] pr-7 text-right text-[13px] outline-none focus:border-bread"
+                          inputMode="numeric"
+                          min="1"
+                          type="number"
+                          value={item.quantity}
+                          onChange={(event) => updateReservationItem(item.id, { quantity: event.target.value })}
+                        />
+                        <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[11px] font-bold text-muted">개</span>
+                      </span>
                     </label>
                     <button
                       type="button"

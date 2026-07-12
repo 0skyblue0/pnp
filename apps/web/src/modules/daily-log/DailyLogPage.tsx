@@ -1,5 +1,5 @@
 import { Save, Trash2 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type InputHTMLAttributes } from "react";
 
 import { apiDelete, apiGet, apiPut } from "../../shared/api/client.js";
 import type { ListEnvelope } from "../../shared/api/types.js";
@@ -1418,6 +1418,22 @@ function SummaryCard({ label, value }: { label: string; value: string }) {
   );
 }
 
+function UnitInput({
+  unit,
+  wrapperClassName,
+  className,
+  ...props
+}: InputHTMLAttributes<HTMLInputElement> & { unit: string; wrapperClassName?: string }) {
+  return (
+    <span className={["relative block min-w-0", wrapperClassName ?? ""].filter(Boolean).join(" ")}>
+      <input {...props} className={[className ?? "", "pr-7"].filter(Boolean).join(" ")} />
+      <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[11px] font-bold text-muted">
+        {unit}
+      </span>
+    </span>
+  );
+}
+
 function BasicSection({
   draft,
   updateDraft
@@ -1452,16 +1468,20 @@ function BasicSection({
         <div className="grid min-w-0 gap-[5px]">
           <div className="text-[11px] text-muted">외부 온도(℃) / 습도(%)</div>
           <div className="flex gap-[6px]">
-            <input
+            <UnitInput
               aria-label="외부온도"
-              className="h-[34px] w-0 flex-1 rounded-[8px] border border-latte px-[10px] text-[13px] outline-none focus:border-bread"
+              wrapperClassName="w-0 flex-1"
+              className="h-[34px] w-full rounded-[8px] border border-latte px-[10px] text-[13px] outline-none focus:border-bread"
+              unit="℃"
               value={draft.outsideTemp || "28.5"}
               onFocus={(event) => event.currentTarget.select()}
               onChange={(event) => updateDraft("outsideTemp", event.target.value)}
             />
-            <input
+            <UnitInput
               aria-label="외부습도"
-              className="h-[34px] w-0 flex-1 rounded-[8px] border border-latte px-[10px] text-[13px] outline-none focus:border-bread"
+              wrapperClassName="w-0 flex-1"
+              className="h-[34px] w-full rounded-[8px] border border-latte px-[10px] text-[13px] outline-none focus:border-bread"
+              unit="%"
               value={draft.outsideHumidity || "62"}
               onFocus={(event) => event.currentTarget.select()}
               onChange={(event) => updateDraft("outsideHumidity", event.target.value)}
@@ -1471,16 +1491,20 @@ function BasicSection({
         <div className="grid min-w-0 gap-[5px]">
           <div className="text-[11px] text-muted">내부 온도(℃) / 습도(%)</div>
           <div className="flex gap-[6px]">
-            <input
+            <UnitInput
               aria-label="내부온도"
-              className="h-[34px] w-0 flex-1 rounded-[8px] border border-latte px-[10px] text-[13px] outline-none focus:border-bread"
+              wrapperClassName="w-0 flex-1"
+              className="h-[34px] w-full rounded-[8px] border border-latte px-[10px] text-[13px] outline-none focus:border-bread"
+              unit="℃"
               value={draft.insideTemp || "24.0"}
               onFocus={(event) => event.currentTarget.select()}
               onChange={(event) => updateDraft("insideTemp", event.target.value)}
             />
-            <input
+            <UnitInput
               aria-label="내부습도"
-              className="h-[34px] w-0 flex-1 rounded-[8px] border border-latte px-[10px] text-[13px] outline-none focus:border-bread"
+              wrapperClassName="w-0 flex-1"
+              className="h-[34px] w-full rounded-[8px] border border-latte px-[10px] text-[13px] outline-none focus:border-bread"
+              unit="%"
               value={draft.insideHumidity || "48"}
               onFocus={(event) => event.currentTarget.select()}
               onChange={(event) => updateDraft("insideHumidity", event.target.value)}
@@ -1541,13 +1565,15 @@ function SalesSection({
         <div className="dc-eyebrow mb-[12px]">매출 요약 (자동 계산)</div>
         <div className="flex items-center justify-between py-[6px]">
           <span className="text-[12.5px] text-cocoa/90">POS 매출액</span>
-          <input
+          <UnitInput
             aria-label="POS 매출액"
-            className="h-[32px] w-[120px] rounded-[7px] border border-latte px-[8px] text-right text-[12.5px] outline-none focus:border-bread"
+            wrapperClassName="w-[120px]"
+            className="h-[32px] w-full rounded-[7px] border border-latte px-[8px] text-right text-[12.5px] outline-none focus:border-bread"
+            unit="원"
             value={
               draft.posSalesAmount && draft.posSalesAmount !== "0"
                 ? draft.posSalesAmount
-                : "1842000"
+                : "1,842,000"
             }
             onFocus={(event) => event.currentTarget.select()}
             onChange={(event) =>
@@ -1557,9 +1583,11 @@ function SalesSection({
         </div>
         <div className="flex items-center justify-between py-[6px]">
           <span className="text-[12.5px] text-cocoa/90">POS 매출건수</span>
-          <input
+          <UnitInput
             aria-label="POS 매출건수"
-            className="h-[32px] w-[120px] rounded-[7px] border border-latte px-[8px] text-right text-[12.5px] outline-none focus:border-bread"
+            wrapperClassName="w-[120px]"
+            className="h-[32px] w-full rounded-[7px] border border-latte px-[8px] text-right text-[12.5px] outline-none focus:border-bread"
+            unit="건"
             value={draft.posSalesCount && draft.posSalesCount !== "0" ? draft.posSalesCount : "128"}
             onFocus={(event) => event.currentTarget.select()}
             onChange={(event) => updateDraft("posSalesCount", event.target.value)}
@@ -1628,11 +1656,11 @@ function ProductsSection({
       <div className="max-h-[420px] overflow-y-auto rounded-[10px] border border-latte bg-white pr-1">
         <div className="sticky top-0 z-10 grid grid-cols-[1.1fr_0.8fr_0.98fr_0.98fr_0.8fr_0.8fr] gap-[8px] border-b border-[#EFE8DC] bg-white px-[8px] py-[9px] text-[11px] font-semibold text-muted">
         <div>제품명</div>
-        <div>생산량</div>
-        <div>손실량</div>
-        <div>시식량</div>
-        <div>재고(남음)</div>
-        <div>판매량</div>
+        <div>생산량(개)</div>
+        <div>손실량(개)</div>
+        <div>시식량(개)</div>
+        <div>재고(남음, 개)</div>
+        <div>판매량(개)</div>
       </div>
       {rows.map((row) => (
         <div
@@ -1701,17 +1729,17 @@ function ProductsSection({
             onChange={(event) => updateRow(row.productName, "stockQty", event.target.value)}
           />
           <div className="text-[13px] font-bold text-bread">
-            {row.manualSold ? row.soldQty : calculatedSold(row)}
+            {row.manualSold ? row.soldQty : calculatedSold(row)}개
           </div>
         </div>
       ))}
       </div>
       <div className="flex justify-end gap-[24px] pt-[10px] text-[12.5px] text-muted">
         <div>
-          총 생산량 <span className="font-bold text-ink">{totals.produced}</span>
+          총 생산량 <span className="font-bold text-ink">{totals.produced.toLocaleString("ko-KR")}개</span>
         </div>
         <div>
-          총 판매량 <span className="font-bold text-bread">{totals.sold}</span>
+          총 판매량 <span className="font-bold text-bread">{totals.sold.toLocaleString("ko-KR")}개</span>
         </div>
       </div>
       <div className="sr-only">
@@ -1859,11 +1887,11 @@ function ChannelsSection({
   updateRow: (name: string, key: keyof Omit<ChannelRow, "name">, value: string) => void;
 }) {
   const defaults: Record<string, { amount: string; count: string }> = {
-    쿠팡이츠: { amount: "186000", count: "8" },
-    배민: { amount: "224500", count: "10" },
-    선물: { amount: "48000", count: "3" },
+    쿠팡이츠: { amount: "186,000", count: "8" },
+    배민: { amount: "224,500", count: "10" },
+    선물: { amount: "48,000", count: "3" },
     제로페이: { amount: "0", count: "0" },
-    택배: { amount: "50000", count: "2" },
+    택배: { amount: "50,000", count: "2" },
     납품: { amount: "0", count: "0" }
   };
 
@@ -1880,9 +1908,10 @@ function ChannelsSection({
           className="grid grid-cols-[1fr_1fr_0.7fr] items-center gap-[8px] border-b border-[#F5F0E7] py-[6px]"
         >
           <span className="text-[12.5px] text-cocoa/90">{row.name}</span>
-          <input
+          <UnitInput
             aria-label={`${row.name} 매출액`}
             className="h-[32px] w-full rounded-[7px] border border-latte px-[8px] text-right text-[12.5px] outline-none focus:border-bread"
+            unit="원"
             value={
               row.amount && row.amount !== "0" ? row.amount : defaults[row.name]?.amount || "0"
             }
@@ -1891,9 +1920,10 @@ function ChannelsSection({
               updateRow(row.name, "amount", formatAmountInput(event.target.value))
             }
           />
-          <input
+          <UnitInput
             aria-label={`${row.name} 매출건수`}
             className="h-[32px] w-full rounded-[7px] border border-latte px-[8px] text-right text-[12.5px] outline-none focus:border-bread"
+            unit="건"
             value={row.count && row.count !== "0" ? row.count : defaults[row.name]?.count || "0"}
             onFocus={(event) => event.currentTarget.select()}
             onChange={(event) => updateRow(row.name, "count", event.target.value)}

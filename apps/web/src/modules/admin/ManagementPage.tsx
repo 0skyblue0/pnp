@@ -1278,20 +1278,23 @@ export function ManagementPage() {
                         {monthKeys.map((month) => (
                           <label key={month} className="grid gap-1">
                             <span className="text-xs font-bold text-muted">{Number(month)}월</span>
-                            <input
-                              className="input text-right"
-                              aria-label={`${Number(month)}월 매출 목표`}
-                              inputMode="numeric"
-                              placeholder="0"
-                              value={goalNoticeForm.monthlyTargets[month]}
-                              onChange={(event) => setGoalNoticeForm((current) => ({
-                                ...current,
-                                monthlyTargets: {
-                                  ...current.monthlyTargets,
-                                  [month]: digitsToCurrencyInput(event.target.value)
-                                }
-                              }))}
-                            />
+                            <span className="relative block">
+                              <input
+                                className="input w-full pr-8 text-right"
+                                aria-label={`${Number(month)}월 매출 목표`}
+                                inputMode="numeric"
+                                placeholder="0"
+                                value={goalNoticeForm.monthlyTargets[month]}
+                                onChange={(event) => setGoalNoticeForm((current) => ({
+                                  ...current,
+                                  monthlyTargets: {
+                                    ...current.monthlyTargets,
+                                    [month]: digitsToCurrencyInput(event.target.value)
+                                  }
+                                }))}
+                              />
+                              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-muted">원</span>
+                            </span>
                           </label>
                         ))}
                       </div>

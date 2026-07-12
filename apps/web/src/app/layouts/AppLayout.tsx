@@ -47,33 +47,17 @@ export function AppLayout() {
   }, [location.pathname]);
 
   return (
-    <div className="pnp-page-shell min-h-screen text-ink">
-      <header className="pnp-topbar px-5 py-4 text-[#fff8ef] lg:px-9 lg:py-0">
-        <div className="mx-auto flex w-full flex-col gap-3 lg:h-[74px] lg:flex-row lg:items-center lg:gap-7">
-          <NavLink
-            to="/home"
-            className="group flex shrink-0 items-center gap-3"
-            aria-label="Paul & Paulina 홈"
-            title="홈으로 이동"
-          >
-            <span className="pnp-logo-mark grid h-[42px] w-[42px] place-items-center rounded-[7px] text-[18px] font-serif text-[#fff8ef]">
-              P
+    <div className="min-h-screen bg-[#F8F5EF] text-ink">
+      <header className="border-b border-latte bg-white px-5 py-4 lg:px-9 lg:py-0">
+        <div className="mx-auto flex w-full flex-col gap-3 lg:h-[68px] lg:flex-row lg:items-center lg:gap-7">
+          <NavLink to="/home" className="shrink-0" aria-label="Paul & Paulina 홈" title="홈으로 이동">
+            <span className="block font-serif text-[19px] font-bold tracking-[0.01em] text-ink">
+              Paul&amp;Paulina
             </span>
-            <span className="block">
-              <span className="pnp-logo-type block text-[21px] font-semibold leading-none text-[#fff8ef]">
-                Paul &amp; Paulina
-              </span>
-              <span className="pnp-brand-rule mt-1.5 block h-px w-full" aria-hidden="true" />
-              <span className="mt-1 block text-[10px] font-semibold uppercase tracking-[0.22em] text-[#ecd8c5]">
-                Daily Bread · 운영 시스템
-              </span>
-            </span>
+            <span className="mt-0.5 block text-[10px] text-muted">운영 시스템</span>
           </NavLink>
 
-          <nav
-            className="flex min-w-0 flex-1 gap-1 overflow-x-auto lg:justify-center"
-            aria-label="주요 메뉴"
-          >
+          <nav className="flex min-w-0 flex-1 gap-1 overflow-x-auto lg:justify-center" aria-label="주요 메뉴">
             {navItems.map((item) => (
               <NavLink
                 key={item.to}
@@ -83,8 +67,8 @@ export function AppLayout() {
                   [
                     "relative shrink-0 rounded-control px-4 py-2 text-[13px] font-semibold transition",
                     isActive
-                      ? "from-cocoa bg-[#fff8ef] text-cocoa shadow-[inset_0_0_0_1px_rgba(255,255,255,0.45)]"
-                      : "text-[#f3dfce] hover:bg-white/10 hover:text-white"
+                      ? "from-cocoa bg-bread text-white"
+                      : "text-[#5c5548] hover:bg-cream hover:text-ink"
                   ].join(" ")
                 }
               >
@@ -94,15 +78,15 @@ export function AppLayout() {
           </nav>
 
           <div className="flex shrink-0 items-center justify-between gap-3 sm:justify-start">
-            <span className="text-xs font-semibold text-[#efdcca]">{dateText}</span>
+            <span className="text-xs text-muted">{dateText}</span>
             <NavLink
               to="/notification"
               className={({ isActive }) =>
                 [
                   "relative hidden rounded-control px-3 py-2 text-[13px] font-semibold transition sm:inline-flex",
                   isActive
-                    ? "bg-[#fff8ef] text-cocoa"
-                    : "text-[#f3dfce] hover:bg-white/10 hover:text-white"
+                    ? "from-cocoa bg-bread text-white"
+                    : "text-[#5c5548] hover:bg-cream hover:text-ink"
                 ].join(" ")
               }
               title="알림"
@@ -116,7 +100,7 @@ export function AppLayout() {
             </NavLink>
             <NavLink
               to="/notification"
-              className="relative grid h-8 w-8 place-items-center rounded-full bg-[#fff8ef] text-xs font-bold text-cocoa transition hover:bg-[#f3dfce]"
+              className="relative grid h-8 w-8 place-items-center rounded-full bg-[#F4E3D8] text-xs font-bold text-cocoa transition hover:bg-[#ead3c5]"
               title="알림"
             >
               <Bell className="h-4 w-4 sm:hidden" aria-hidden="true" />
@@ -130,7 +114,6 @@ export function AppLayout() {
       </header>
 
       <main className="w-full px-5 py-7 lg:px-9">
-        <div className="pnp-brick-wash pointer-events-none fixed left-0 top-[74px] hidden h-[calc(100vh-74px)] w-[18px] border-r border-latte/70 opacity-70 lg:block" />
         <Outlet />
       </main>
     </div>

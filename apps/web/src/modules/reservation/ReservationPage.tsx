@@ -4,6 +4,7 @@ import { useSearchParams } from "react-router-dom";
 
 import { apiGet, apiPatch, apiPost } from "../../shared/api/client.js";
 import type { ListEnvelope } from "../../shared/api/types.js";
+import { productLineup } from "../../shared/productLineup.js";
 import { todayInStoreTime } from "../../shared/time/storeTime.js";
 
 type ReservationDto = {
@@ -46,12 +47,32 @@ type ReservationItemForm = {
   cuttingOption: CuttingOption;
 };
 
+type ProductDto = {
+  id: number;
+  name: string;
+  isActive: boolean;
+};
+
 const modalQuickTimes = Array.from({ length: 10 }, (_, index) => `${String(index + 10).padStart(2, "0")}:00`);
 const pickupHours = Array.from({ length: 10 }, (_, index) => String(index + 10).padStart(2, "0"));
 const pickupMinutes = ["00", "10", "20", "30", "40", "50"];
 const halfCuttableProducts = new Set(["바게트", "깜빠뉴", "호밀빵", "화이트바게트", "식빵"]);
 const sliceableProducts = new Set(["식빵"]);
+const productLineupOrder = new Map<string, number>(
+  productLineup.map((name, index) => [name, index])
+);
 let reservationItemIdSequence = 0;
+
+function sortProductNames(productNames: string[]): string[] {
+  return [...productNames].sort((left, right) => {
+    const leftOrder = productLineupOrder.get(left) ?? Number.MAX_SAFE_INTEGER;
+    const rightOrder = productLineupOrder.get(right) ?? Number.MAX_SAFE_INTEGER;
+    if (leftOrder !== rightOrder) {
+      return leftOrder - rightOrder;
+    }
+    return left.localeCompare(right, "ko-KR");
+  });
+}
 
 function nextReservationItemId(): string {
   reservationItemIdSequence += 1;
@@ -209,6 +230,7 @@ export function ReservationPage() {
   const [formErrors, setFormErrors] = useState<string[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<ReservationForm>(() => emptyReservationForm());
+  const [productOptions, setProductOptions] = useState<string[]>(() => [...productLineup]);
 
   const sortedReservations = useMemo(
     () =>
@@ -249,6 +271,21 @@ export function ReservationPage() {
   useEffect(() => {
     void loadReservations();
   }, [loadReservations]);
+
+  useEffect(() => {
+    let isActive = true;
+    async function loadProducts() {
+      const envelope = await apiGet<ListEnvelope<ProductDto>>("/product?active=true");
+      if (!isActive || envelope.error || envelope.data.items.length === 0) {
+        return;
+      }
+      setProductOptions(sortProductNames(envelope.data.items.map((product) => product.name)));
+    }
+    void loadProducts();
+    return () => {
+      isActive = false;
+    };
+  }, []);
 
   function setReservationListDate(nextDate: string) {
     setDate(nextDate);
@@ -613,20 +650,32 @@ export function ReservationPage() {
                 </button>
               </div>
               <div className="grid gap-2">
-                {form.items.map((item, index) => (
+                {form.items.map((item, index) => {
+                  const rowProductOptions = sortProductNames(
+                    item.productName && !productOptions.includes(item.productName)
+                      ? [...productOptions, item.productName]
+                      : productOptions
+                  );
+                  return (
                   <div
                     key={item.id}
                     className="grid min-w-0 grid-cols-[minmax(0,1fr)_5.5rem_3.25rem] items-end gap-2 rounded-[10px] border border-latte bg-white px-3 py-2"
                   >
                     <label className="grid min-w-0 gap-1">
                       <span className="text-[10.5px] font-semibold text-muted">제품명</span>
-                      <input
+                      <select
                         aria-label={`제품명 ${index + 1}`}
                         className="min-w-0 rounded-[8px] border border-latte px-[11px] py-[8px] text-[13px] outline-none focus:border-bread"
-                        placeholder="예: 소금빵"
                         value={item.productName}
                         onChange={(event) => updateReservationItem(item.id, { productName: event.target.value })}
-                      />
+                      >
+                        <option value="">제품 선택</option>
+                        {rowProductOptions.map((productName) => (
+                          <option key={productName} value={productName}>
+                            {productName}
+                          </option>
+                        ))}
+                      </select>
                     </label>
                     <label className="grid min-w-0 gap-1">
                       <span className="text-[10.5px] font-semibold text-muted">수량</span>
@@ -652,7 +701,8 @@ export function ReservationPage() {
                       삭제
                     </button>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 
@@ -662,8 +712,7 @@ export function ReservationPage() {
                 {[
                   ["없음", "NONE"],
                   ["반컷팅", "HALF"],
-                  ["슬라이스", "SLICE"],
-                  ["반컷팅+슬라이스", "HALF_SLICE"]
+                  ["슬라이스", "SLICE"]
                 ].map(([label, value]) => {
                   const isSelected = selectedCuttingOption() === value;
                   return (
@@ -708,11 +757,12 @@ export function ReservationPage() {
               </label>
             </div>
 
-            <label className="sr-only mb-[18px] block">
-              <span className="mb-[5px] block text-[11px] text-muted">메모</span>
-              <input
-                aria-label="메모"
-                className="w-full rounded-[8px] border border-latte px-[11px] py-[8px] text-[13px] outline-none focus:border-bread"
+            <label className="mb-[18px] block">
+              <span className="mb-[5px] block text-[11px] text-muted">예약 메모</span>
+              <textarea
+                aria-label="예약 메모"
+                className="min-h-[76px] w-full rounded-[8px] border border-latte px-[11px] py-[8px] text-[13px] outline-none focus:border-bread"
+                placeholder="예: 깜빠뉴 반씩 따로 포장"
                 value={form.memo}
                 onChange={(event) => setForm((current) => ({ ...current, memo: event.target.value }))}
               />

@@ -763,7 +763,7 @@ describe("App", () => {
 
     expect(await screen.findByRole("heading", { name: "대표 리포트" })).toBeInTheDocument();
     expect(
-      screen.getAllByText("이번 기간은 제품 점검과 즉시 확인을 먼저 봐야 합니다.").length
+      (await screen.findAllByText("이번 기간은 제품 점검과 주의 신호를 먼저 봐야 합니다.")).length
     ).toBeGreaterThan(0);
     expect(screen.getAllByText("매출 기회").length).toBeGreaterThan(0);
     expect(
@@ -772,16 +772,15 @@ describe("App", () => {
     expect(screen.getAllByText("놓친 매출").length).toBeGreaterThan(0);
     expect(screen.getAllByText("제품 점검").length).toBeGreaterThan(0);
     expect(screen.getAllByText("방문 흐름").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("즉시 확인").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("주의 신호").length).toBeGreaterThan(0);
     expect(screen.queryByText("손님이 직접 한 말")).not.toBeInTheDocument();
     expect(screen.getByText("주요 반응 근거")).toBeInTheDocument();
     expect(screen.getAllByText(/청주에서 일부러 방문/).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/식감 개선 필요/).length).toBeGreaterThan(0);
     expect(screen.getAllByText("바게트가 전보다 딱딱함").length).toBeGreaterThan(0);
-    expect(screen.getByText("2026-07-11")).toBeInTheDocument();
     expect(screen.getAllByText(/제품 > 맛 > 바게트/).length).toBeGreaterThan(0);
     expect(screen.getAllByText("4건").length).toBeGreaterThan(0);
-    expect(screen.getByText("월별 빠른 조회")).toBeInTheDocument();
+    expect(screen.queryByText("월별 빠른 조회")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "2026년 7월" })).toHaveAttribute(
       "aria-pressed",
       "false"
@@ -860,7 +859,7 @@ describe("App", () => {
     expect(screen.getByRole("heading", { name: "상세 조회" })).toBeInTheDocument();
     expect(screen.getByLabelText("시작일")).toHaveValue("2026-05-01");
     expect(screen.getByLabelText("종료일")).toHaveValue("2026-05-31");
-    expect(await screen.findByLabelText("기준")).toHaveValue("6");
+    expect(await screen.findByLabelText("대분류 기준")).toHaveValue("6");
     expect(await screen.findByText("조회된 고객 반응 없음")).toBeInTheDocument();
   });
 
@@ -968,6 +967,7 @@ describe("App", () => {
       expect.objectContaining({ method: "PATCH" })
     );
 
+    fireEvent.click(screen.getByRole("button", { name: "수정" }));
     fireEvent.click(screen.getByRole("button", { name: "삭제" }));
     await waitFor(() => {
       expect(screen.queryByText("크로와상 시식 후 구매로 이어짐")).not.toBeInTheDocument();
@@ -1542,6 +1542,7 @@ describe("App", () => {
     expect(screen.getByLabelText("한 줄 요약")).toHaveValue("바게트 식감 딱딱함 반응");
     expect(screen.getByText("선택 기준: AI 추천 · 제품 > 식감 > 딱딱함")).toBeInTheDocument();
 
+    fireEvent.click(screen.getByRole("button", { name: "분류 직접 수정" }));
     fireEvent.click(screen.getByRole("button", { name: "서비스·응대" }));
 
     expect(screen.getByText("선택 기준: 서비스·응대")).toBeInTheDocument();
@@ -1800,11 +1801,12 @@ describe("App", () => {
 
     expect(screen.getByRole("tab", { name: "대표 요약" })).toBeVisible();
     expect(screen.getByRole("tab", { name: "상세 기록" })).toHaveAttribute("aria-selected", "true");
-    expect(await screen.findByLabelText("기준")).not.toHaveTextContent("비활성");
+    expect(await screen.findByLabelText("대분류 기준")).not.toHaveTextContent("비활성");
     expect(screen.queryByLabelText("과거 기준 포함")).not.toBeInTheDocument();
     expect(screen.getByPlaceholderText("예: 깜빠뉴, 품절, 컷팅")).toBeInTheDocument();
     expect(await screen.findByText("직원이 직접 분류한 반응")).toBeInTheDocument();
-    expect(screen.getByText("AI 재분류 필요")).toBeInTheDocument();
+    expect(screen.getByText("직원 분류")).toBeInTheDocument();
+    expect(screen.queryByText("AI 재분류 필요")).not.toBeInTheDocument();
     expect(screen.queryByText(/일일업무보고서 6월.xlsx/)).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "수정" }));

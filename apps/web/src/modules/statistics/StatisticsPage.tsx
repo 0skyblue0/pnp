@@ -278,6 +278,14 @@ function checkNeededDetailLink(range: DateRange): string {
   return `/response?${params.toString()}`;
 }
 
+function displayBucketTitle(title: string): string {
+  return title === "즉시 확인" ? "주의 신호" : title;
+}
+
+function displayHeadline(headline: string): string {
+  return headline.replaceAll("즉시 확인을", "주의 신호를").replaceAll("즉시 확인", "주의 신호");
+}
+
 export function StatisticsPage() {
   const today = todayInStoreTime();
   const [range, setRange] = useState<DateRange>(recentThirtyDays(today));
@@ -386,7 +394,7 @@ export function StatisticsPage() {
     <div className="grid gap-[14px]">
       <section className="sr-only">
         <h2>대표 리포트 접근성 요약</h2>
-        <p>{stats.insights.headline}</p>
+        <p>{displayHeadline(stats.insights.headline)}</p>
         {stats.insights.repeatedTopics.map((topic) => (
           <Link key={topic.criterionId} to={detailLink(range, topic.criterionId)}>
             {topic.path.map((item) => item.name).join(" > ")} 기록 보기
@@ -459,14 +467,7 @@ export function StatisticsPage() {
         </div>
       </div>
 
-      <section className="rounded-[14px] border border-latte bg-white px-4 py-3">
-        <div className="mb-2">
-          <p className="text-xs font-extrabold text-bread">월별 빠른 조회</p>
-          <p className="mt-1 text-[11.5px] font-semibold text-muted">
-            한 달 단위로 손님 반응 흐름과 반복 주제를 바로 비교합니다.
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-[6px]">
+      <div className="flex flex-wrap justify-end gap-[6px]">
           {monthOptions.map((option) => {
             const isActive = range.from === option.range.from && range.to === option.range.to;
             return (
@@ -484,8 +485,7 @@ export function StatisticsPage() {
               </button>
             );
           })}
-        </div>
-      </section>
+      </div>
 
       {error ? (
         <div className="rounded-[10px] border border-red/20 bg-red/10 px-3 py-2 text-sm font-semibold text-red">
@@ -499,10 +499,10 @@ export function StatisticsPage() {
             <p className="dc-eyebrow">통계 요약</p>
             <h2 className="section-title">대표 리포트</h2>
             <p className="mt-2 text-[15px] font-extrabold leading-7 text-ink">
-              {stats.insights.headline}
+              {displayHeadline(stats.insights.headline)}
             </p>
             <p className="mt-1 text-xs font-semibold leading-5 text-muted">
-              매출 기회, 놓친 매출, 제품 점검, 즉시 확인할 문제를 먼저 판단합니다.
+              매출 기회, 놓친 매출, 제품 점검, 확인이 필요한 신호를 먼저 판단합니다.
             </p>
             {checkNeededCount > 0 && stats.insights.keyNotes[0] ? (
               <Link
@@ -510,7 +510,7 @@ export function StatisticsPage() {
                 to={checkNeededDetailLink(range)}
                 aria-label={`확인 필요 반응 ${checkNeededCount.toLocaleString("ko-KR")}건 상세 기록 보기`}
               >
-                즉시 확인 {checkNeededCount.toLocaleString("ko-KR")}건
+                확인 필요 {checkNeededCount.toLocaleString("ko-KR")}건
               </Link>
             ) : null}
           </div>
@@ -520,7 +520,7 @@ export function StatisticsPage() {
         </div>
       </section>
 
-      <div className="grid gap-3 lg:grid-cols-2 xl:grid-cols-5">
+      <div className="grid gap-3 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
         {displayBuckets.map((bucket) => (
           <ExecutiveBucketCard
             key={bucket.key}
@@ -633,7 +633,9 @@ function ExecutiveBucketCard({
     <section className="dc-card-pad">
       <div className="mb-2 flex items-start justify-between gap-2">
         <div>
-          <div className="text-[11px] font-extrabold text-bread">{bucket.title}</div>
+          <div className="text-[11px] font-extrabold text-bread">
+            {displayBucketTitle(bucket.title)}
+          </div>
           <div className="mt-1 text-[24px] font-extrabold text-ink">
             {bucket.count.toLocaleString("ko-KR")}건
           </div>
@@ -647,7 +649,7 @@ function ExecutiveBucketCard({
       </p>
       <div
         className="mt-3 h-2 overflow-hidden rounded-full bg-[#F1EAE0]"
-        aria-label={`${bucket.title} 비율 ${percent}%`}
+        aria-label={`${displayBucketTitle(bucket.title)} 비율 ${percent}%`}
       >
         <div
           className="h-full rounded-full bg-bread"
@@ -660,38 +662,13 @@ function ExecutiveBucketCard({
             대표 주제 · {topTopic.count.toLocaleString("ko-KR")}건
           </div>
           <div className="mt-0.5 text-[12.5px] font-bold text-ink">{topTopic.label}</div>
-          <div className="mt-2 grid max-h-44 gap-1 overflow-y-auto pr-1">
-            {(topTopic.items?.length
-              ? topTopic.items
-              : topTopic.sampleSummaries.map((sample) => ({
-                  id: sample,
-                  date: "",
-                  summary: sample,
-                  text: sample
-                }))
-            )
-              .slice(0, 2)
-              .map((item) => (
-                <div
-                  key={`${topTopic.criterionId}-${item.id}`}
-                  className="rounded-[8px] bg-white/70 px-2 py-1.5"
-                >
-                  {item.date ? (
-                    <div className="text-[10px] font-extrabold text-bread">{item.date}</div>
-                  ) : null}
-                  <div className="text-[11px] font-bold leading-4 text-ink">{item.summary}</div>
-                  {item.text && item.text !== item.summary ? (
-                    <div className="mt-0.5 text-[10.5px] font-semibold leading-4 text-muted">
-                      {item.text}
-                    </div>
-                  ) : null}
-                </div>
-              ))}
-          </div>
+          <p className="mt-2 text-[11px] font-semibold leading-4 text-muted">
+            실제 기록 예시는 아래 주요 반응 근거에서 확인합니다.
+          </p>
           <Link
             className="mt-2 inline-flex text-[11px] font-extrabold text-blue hover:underline"
             to={bucketDetailLink(range, bucket.key)}
-            aria-label={`${bucket.title} ${bucket.count.toLocaleString("ko-KR")}건 이 신호 전체 보기`}
+            aria-label={`${displayBucketTitle(bucket.title)} ${bucket.count.toLocaleString("ko-KR")}건 이 신호 전체 보기`}
           >
             {bucket.count.toLocaleString("ko-KR")}건 이 신호 전체 보기
           </Link>

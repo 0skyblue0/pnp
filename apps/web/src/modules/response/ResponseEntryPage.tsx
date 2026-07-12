@@ -68,6 +68,7 @@ export function ResponseEntryPage({ embedded = false }: { embedded?: boolean } =
   const [isLoadingCriteria, setIsLoadingCriteria] = useState(false);
   const [isSuggesting, setIsSuggesting] = useState(false);
   const [aiSuggestionPath, setAiSuggestionPath] = useState<CriterionPathItem[] | null>(null);
+  const [showManualCriteria, setShowManualCriteria] = useState(true);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const dateInputRef = useRef<HTMLInputElement | null>(null);
@@ -136,6 +137,7 @@ export function ResponseEntryPage({ embedded = false }: { embedded?: boolean } =
   }, [loadCriteria]);
 
   function selectMajor(id: number) {
+    setShowManualCriteria(true);
     setAiSuggestionPath(null);
     setSelectedMajorId(id);
     setSelectedMiddleId(null);
@@ -144,6 +146,7 @@ export function ResponseEntryPage({ embedded = false }: { embedded?: boolean } =
   }
 
   function selectMiddle(id: number) {
+    setShowManualCriteria(true);
     setAiSuggestionPath(null);
     setSelectedMiddleId(id);
     setSelectedMinorId(null);
@@ -151,6 +154,7 @@ export function ResponseEntryPage({ embedded = false }: { embedded?: boolean } =
   }
 
   function selectMinor(id: number) {
+    setShowManualCriteria(true);
     setAiSuggestionPath(null);
     setSelectedMinorId(id);
     setValue("criterionId", id, { shouldValidate: true });
@@ -194,6 +198,7 @@ export function ResponseEntryPage({ embedded = false }: { embedded?: boolean } =
 
       applyCriterionPath(envelope.data.criterionPath, envelope.data.criterionId);
       setAiSuggestionPath(envelope.data.criterionPath);
+      setShowManualCriteria(false);
       setValue("shortSummary", envelope.data.shortSummary, { shouldValidate: true });
       setValue("llmAssisted", true, { shouldValidate: true });
       setSaveMessage(`AI 추천 적용됨: ${pathLabel(envelope.data.criterionPath)}`);
@@ -219,6 +224,7 @@ export function ResponseEntryPage({ embedded = false }: { embedded?: boolean } =
 
     setSaveMessage(`저장 완료 #${envelope.data.id}`);
     setAiSuggestionPath(null);
+    setShowManualCriteria(true);
     setSelectedMajorId(null);
     setSelectedMiddleId(null);
     setSelectedMinorId(null);
@@ -282,87 +288,6 @@ export function ResponseEntryPage({ embedded = false }: { embedded?: boolean } =
             />
           </label>
 
-          <div className="grid gap-4">
-            <div>
-              <span className="field-label">대분류</span>
-              <div className="flex flex-wrap gap-2">
-                {majorCriteria.map((criterion) => (
-                  <button
-                    key={criterion.id}
-                    className={criterionButtonClass(selectedMajorId === criterion.id)}
-                    type="button"
-                    onClick={() => selectMajor(criterion.id)}
-                  >
-                    {criterion.name}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {selectedMajorId && middleCriteria.length > 0 ? (
-              <div>
-                <span className="field-label">중분류</span>
-                <div className="flex flex-wrap gap-2">
-                  {middleCriteria.map((criterion) => (
-                    <button
-                      key={criterion.id}
-                      className={criterionButtonClass(selectedMiddleId === criterion.id)}
-                      type="button"
-                      onClick={() => selectMiddle(criterion.id)}
-                    >
-                      {criterion.name}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ) : null}
-
-            {selectedMiddleId && minorCriteria.length > 0 ? (
-              <div>
-                <span className="field-label">소분류</span>
-                <div className="flex flex-wrap gap-2">
-                  {minorCriteria.map((criterion) => (
-                    <button
-                      key={criterion.id}
-                      className={criterionButtonClass(selectedMinorId === criterion.id)}
-                      type="button"
-                      onClick={() => selectMinor(criterion.id)}
-                    >
-                      {criterion.name}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ) : null}
-
-            <div className="rounded-control border border-latte bg-cream/40 px-3 py-2 text-sm font-semibold text-stone-700">
-              선택 기준:{" "}
-              {selectedCriterionId > 0
-                ? `${aiSuggestionPath ? "AI 추천 · " : ""}${criterionPathLabel(selectedPath)}`
-                : "미선택"}
-            </div>
-            {errors.criterionId ? (
-              <span className="text-sm font-medium text-red">{errors.criterionId.message}</span>
-            ) : null}
-            {!isLoadingCriteria && majorCriteria.length === 0 ? (
-              <div className="rounded-control border border-stone-200 px-3 py-6 text-center text-sm font-medium text-muted">
-                관리 메뉴에서 반응 기준을 먼저 등록하세요.
-              </div>
-            ) : null}
-          </div>
-
-          <label className="grid gap-2">
-            <span className="field-label">한 줄 요약</span>
-            <input
-              className="input"
-              placeholder="고객 반응을 한 줄로 요약"
-              {...register("shortSummary")}
-            />
-            {errors.shortSummary ? (
-              <span className="text-sm font-medium text-red">{errors.shortSummary.message}</span>
-            ) : null}
-          </label>
-
           <div className="grid gap-2">
             <span className="field-label">예시 문구</span>
             <div className="flex flex-wrap gap-2">
@@ -393,16 +318,122 @@ export function ResponseEntryPage({ embedded = false }: { embedded?: boolean } =
               <span className="text-sm font-medium text-red">{errors.fullText.message}</span>
             ) : null}
           </label>
+
+          <Button
+            className="bg-[#F4E3D8] text-cocoa hover:bg-[#ecd8ca]"
+            disabled={isSuggesting || criteria.length === 0 || !fullText?.trim()}
+            icon={Sparkles}
+            type="button"
+            onClick={() => void suggestWithAi()}
+          >
+            {isSuggesting ? "AI 분류 중" : "AI 분류하기"}
+          </Button>
+
+          <div className="grid gap-3 rounded-control border border-latte bg-white px-3 py-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <span className="field-label">분류 확인·수정</span>
+                <p className="mt-1 text-xs font-semibold text-muted">
+                  AI 추천을 확인하고, 다르면 직접 고쳐주세요.
+                </p>
+              </div>
+              {aiSuggestionPath ? (
+                <button
+                  className="rounded-full border border-latte bg-cream px-3 py-1 text-xs font-bold text-cocoa hover:bg-[#F4E3D8]"
+                  type="button"
+                  onClick={() => setShowManualCriteria((current) => !current)}
+                >
+                  {showManualCriteria ? "분류 선택 접기" : "분류 직접 수정"}
+                </button>
+              ) : null}
+            </div>
+
+            <div className="rounded-control border border-latte bg-cream/40 px-3 py-2 text-sm font-semibold text-stone-700">
+              선택 기준:{" "}
+              {selectedCriterionId > 0
+                ? `${aiSuggestionPath ? "AI 추천 · " : ""}${criterionPathLabel(selectedPath)}`
+                : "미선택"}
+            </div>
+            {errors.criterionId ? (
+              <span className="text-sm font-medium text-red">{errors.criterionId.message}</span>
+            ) : null}
+
+            {showManualCriteria ? (
+              <div className="grid gap-4">
+                <div>
+                  <span className="field-label">대분류</span>
+                  <div className="flex flex-wrap gap-2">
+                    {majorCriteria.map((criterion) => (
+                      <button
+                        key={criterion.id}
+                        className={criterionButtonClass(selectedMajorId === criterion.id)}
+                        type="button"
+                        onClick={() => selectMajor(criterion.id)}
+                      >
+                        {criterion.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {selectedMajorId && middleCriteria.length > 0 ? (
+                  <div>
+                    <span className="field-label">중분류</span>
+                    <div className="flex flex-wrap gap-2">
+                      {middleCriteria.map((criterion) => (
+                        <button
+                          key={criterion.id}
+                          className={criterionButtonClass(selectedMiddleId === criterion.id)}
+                          type="button"
+                          onClick={() => selectMiddle(criterion.id)}
+                        >
+                          {criterion.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+
+                {selectedMiddleId && minorCriteria.length > 0 ? (
+                  <div>
+                    <span className="field-label">소분류</span>
+                    <div className="flex flex-wrap gap-2">
+                      {minorCriteria.map((criterion) => (
+                        <button
+                          key={criterion.id}
+                          className={criterionButtonClass(selectedMinorId === criterion.id)}
+                          type="button"
+                          onClick={() => selectMinor(criterion.id)}
+                        >
+                          {criterion.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+
+                {!isLoadingCriteria && majorCriteria.length === 0 ? (
+                  <div className="rounded-control border border-stone-200 px-3 py-6 text-center text-sm font-medium text-muted">
+                    관리 메뉴에서 반응 기준을 먼저 등록하세요.
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
+
+          <label className="grid gap-2">
+            <span className="field-label">한 줄 요약</span>
+            <input
+              className="input"
+              placeholder="고객 반응을 한 줄로 요약"
+              {...register("shortSummary")}
+            />
+            {errors.shortSummary ? (
+              <span className="text-sm font-medium text-red">{errors.shortSummary.message}</span>
+            ) : null}
+          </label>
+
           <div className="flex gap-2">
-            <Button
-              className="flex-1 bg-[#F4E3D8] text-cocoa hover:bg-[#ecd8ca]"
-              disabled={isSuggesting || criteria.length === 0 || !fullText?.trim()}
-              icon={Sparkles}
-              type="button"
-              onClick={() => void suggestWithAi()}
-            >
-              {isSuggesting ? "AI 분류 중" : "AI 분류하기"}
-            </Button>
             <Button
               className="dc-action flex-1"
               disabled={isSubmitting || criteria.length === 0}

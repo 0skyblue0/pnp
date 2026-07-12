@@ -48,8 +48,10 @@ const insightBucketLabels: Record<string, string> = {
   missedSales: "놓친 매출 신호",
   productImprovements: "제품 개선 신호",
   visitFlow: "방문 흐름 신호",
-  serviceRisk: "응대·위험 신호"
+  serviceRisk: "주의 신호"
 };
+
+const INITIAL_VISIBLE_RESPONSE_COUNT = 20;
 
 type ResponseEditDraft = {
   date: string;
@@ -161,6 +163,7 @@ export function ResponseListPage() {
   const [editDraft, setEditDraft] = useState<ResponseEditDraft | null>(null);
   const [savingResponseId, setSavingResponseId] = useState<string | null>(null);
   const [suggestingResponseId, setSuggestingResponseId] = useState<string | null>(null);
+  const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE_RESPONSE_COUNT);
   const [error, setError] = useState<string | null>(null);
 
   const criterionOptions = useMemo(() => flattenCriteria(criteria), [criteria]);
@@ -170,6 +173,22 @@ export function ResponseListPage() {
   );
   const selectedCriterionLabel = criterionPathLabel(
     criterionPathFromSelection(criterionOptions, selectedCriterion)
+  );
+  const selectedCriterionPath = useMemo(
+    () => criterionPathFromSelection(criterionOptions, selectedCriterion),
+    [criterionOptions, selectedCriterion]
+  );
+  const selectedMajorFilterId = selectedCriterionPath[0]?.id.toString() ?? "";
+  const selectedMiddleFilterId = selectedCriterionPath[1]?.id.toString() ?? "";
+  const selectedMinorFilterId = selectedCriterionPath[2]?.id.toString() ?? "";
+  const majorFilterOptions = useMemo(() => criteriaByParent(criteria, null), [criteria]);
+  const middleFilterOptions = useMemo(
+    () => (selectedMajorFilterId ? criteriaByParent(criteria, Number(selectedMajorFilterId)) : []),
+    [criteria, selectedMajorFilterId]
+  );
+  const minorFilterOptions = useMemo(
+    () => (selectedMiddleFilterId ? criteriaByParent(criteria, Number(selectedMiddleFilterId)) : []),
+    [criteria, selectedMiddleFilterId]
   );
   const filteredResponses = useMemo(() => {
     const keyword = filters.keyword.trim().toLocaleLowerCase("ko-KR");
@@ -189,6 +208,10 @@ export function ResponseListPage() {
       return haystack.includes(keyword);
     });
   }, [filters.keyword, responses]);
+  const visibleResponses = useMemo(
+    () => filteredResponses.slice(0, visibleCount),
+    [filteredResponses, visibleCount]
+  );
 
   const loadCriteria = useCallback(async () => {
     setIsLoadingCriteria(true);
@@ -257,6 +280,10 @@ export function ResponseListPage() {
   useEffect(() => {
     void loadResponses();
   }, [loadResponses]);
+
+  useEffect(() => {
+    setVisibleCount(INITIAL_VISIBLE_RESPONSE_COUNT);
+  }, [filters.from, filters.to, filters.criterionId, filters.insightBucket, filters.checkNeeded, filters.keyword]);
 
   const startEditing = (response: ResponseDto) => {
     setEditingResponseId(response.id);
@@ -447,7 +474,7 @@ export function ResponseListPage() {
           </button>
         </div>
 
-        <div className="grid gap-3 lg:grid-cols-[150px_150px_minmax(220px,1.2fr)_minmax(180px,1fr)_auto_auto] lg:items-end">
+        <div className="grid gap-3 lg:grid-cols-[140px_140px_minmax(150px,0.8fr)_minmax(150px,0.8fr)_minmax(150px,0.8fr)_minmax(180px,1fr)_auto_auto] lg:items-end">
           <label className="grid min-w-0 gap-2">
             <span className="field-label">시작일</span>
             <input
@@ -471,11 +498,11 @@ export function ResponseListPage() {
             />
           </label>
           <label className="grid min-w-0 gap-2">
-            <span className="field-label">기준</span>
+            <span className="field-label">대분류 기준</span>
             <select
               className="input min-w-0 w-full"
               disabled={isLoadingCriteria}
-              value={filters.criterionId}
+              value={selectedMajorFilterId}
               onChange={(event) =>
                 setFilters((current) => ({
                   ...current,
@@ -485,9 +512,53 @@ export function ResponseListPage() {
               }
             >
               <option value="">전체</option>
-              {criterionOptions.map((criterion) => (
+              {majorFilterOptions.map((criterion) => (
                 <option key={criterion.id} value={criterion.id}>
-                  {criterionOptionLabel(criterion)}
+                  {criterion.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="grid min-w-0 gap-2">
+            <span className="field-label">중분류 기준</span>
+            <select
+              className="input min-w-0 w-full"
+              disabled={isLoadingCriteria || !selectedMajorFilterId || middleFilterOptions.length === 0}
+              value={selectedMiddleFilterId}
+              onChange={(event) =>
+                setFilters((current) => ({
+                  ...current,
+                  criterionId: event.target.value || selectedMajorFilterId,
+                  insightBucket: ""
+                }))
+              }
+            >
+              <option value="">전체</option>
+              {middleFilterOptions.map((criterion) => (
+                <option key={criterion.id} value={criterion.id}>
+                  {criterion.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="grid min-w-0 gap-2">
+            <span className="field-label">세부 기준</span>
+            <select
+              className="input min-w-0 w-full"
+              disabled={isLoadingCriteria || !selectedMiddleFilterId || minorFilterOptions.length === 0}
+              value={selectedMinorFilterId}
+              onChange={(event) =>
+                setFilters((current) => ({
+                  ...current,
+                  criterionId: event.target.value || selectedMiddleFilterId || selectedMajorFilterId,
+                  insightBucket: ""
+                }))
+              }
+            >
+              <option value="">전체</option>
+              {minorFilterOptions.map((criterion) => (
+                <option key={criterion.id} value={criterion.id}>
+                  {criterion.name}
                 </option>
               ))}
             </select>
@@ -547,14 +618,14 @@ export function ResponseListPage() {
             <p className="text-sm text-muted">입력된 내용</p>
             <h2 className="section-title">반응 목록</h2>
             <p className="mt-1 text-xs font-semibold text-muted">
-              {filteredResponses.length}건 표시 / 조회 결과 {totalResponses}건
+              {visibleResponses.length}건 표시 / 조회 결과 {totalResponses}건
               {totalResponses >= 100 ? " · 최근 100건까지 표시" : ""}
             </p>
           </div>
           <MessageSquareText className="h-5 w-5 text-bread" aria-hidden="true" />
         </div>
         <div className="space-y-3">
-          {filteredResponses.map((response) => (
+          {visibleResponses.map((response) => (
             <article key={response.id} className="rounded-control border border-stone-200 p-3">
               {editingResponseId === response.id && editDraft ? (
                 <div className="grid gap-3">
@@ -633,6 +704,13 @@ export function ResponseListPage() {
                     <Button type="button" onClick={() => void saveEditing(response.id)}>
                       {savingResponseId === response.id ? "저장 중" : "저장"}
                     </Button>
+                    <button
+                      type="button"
+                      className="inline-flex min-h-10 items-center justify-center rounded-control border border-red/20 bg-white px-4 text-[13px] font-semibold text-red transition hover:bg-red/10"
+                      onClick={() => void deleteResponse(response)}
+                    >
+                      {savingResponseId === response.id ? "삭제 중" : "삭제"}
+                    </button>
                   </div>
                 </div>
               ) : (
@@ -649,7 +727,7 @@ export function ResponseListPage() {
                       </p>
                     ) : null}
                     <span className="mt-2 inline-flex rounded-full bg-[#F4E3D8] px-2 py-1 text-[11px] font-bold text-cocoa">
-                      {response.llmAssisted ? "AI 분류" : "AI 재분류 필요"}
+                      {response.llmAssisted ? "AI 분류" : "직원 분류"}
                     </span>
                   </div>
                   <div className="flex shrink-0 gap-2 lg:justify-end">
@@ -660,18 +738,20 @@ export function ResponseListPage() {
                     >
                       수정
                     </button>
-                    <button
-                      type="button"
-                      className="inline-flex min-h-10 items-center justify-center rounded-control border border-latte bg-white px-4 text-[13px] font-semibold text-red transition hover:bg-red/10"
-                      onClick={() => void deleteResponse(response)}
-                    >
-                      {savingResponseId === response.id ? "삭제 중" : "삭제"}
-                    </button>
                   </div>
                 </div>
               )}
             </article>
           ))}
+          {visibleCount < filteredResponses.length ? (
+            <button
+              type="button"
+              className="mx-auto inline-flex min-h-10 items-center justify-center rounded-control border border-latte bg-white px-5 text-[13px] font-semibold text-cocoa transition hover:bg-cream"
+              onClick={() => setVisibleCount((current) => current + INITIAL_VISIBLE_RESPONSE_COUNT)}
+            >
+              더 보기 ({filteredResponses.length - visibleResponses.length}건 남음)
+            </button>
+          ) : null}
           {!isLoading && responses.length === 0 ? (
             <div className="rounded-control border border-stone-200 px-3 py-6 text-center text-sm font-medium text-muted">
               조회된 고객 반응 없음

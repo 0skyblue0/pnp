@@ -714,6 +714,101 @@ describe("App", () => {
     expect(await screen.findByText("조회된 고객 반응 없음")).toBeInTheDocument();
   });
 
+  it("lets staff edit and delete responses from the detail lookup screen", async () => {
+    let responseItem = {
+      id: "101",
+      date: "2026-05-30",
+      criterionId: 6,
+      majorCriterionId: 1,
+      middleCriterionId: 3,
+      minorCriterionId: 6,
+      criterionPath: [
+        { id: 1, name: "제품" },
+        { id: 3, name: "맛" },
+        { id: 6, name: "바게트" }
+      ],
+      shortSummary: "갓 나온 크로와상 시식 반응 좋음",
+      fullText: "[일일업무보고서]\n\n갓 나온 크로와상 시식 반응 좋음",
+      createdAt: "2026-07-12T00:00:00.000Z"
+    };
+    vi.stubGlobal("confirm", vi.fn(() => true));
+    vi.mocked(fetch).mockImplementation(async (input, init) => {
+      const url = input instanceof Request ? input.url : String(input);
+      if (url.endsWith("/auth/csrf")) {
+        return new Response(JSON.stringify({ data: { csrfToken: "test-token" }, error: null }), {
+          headers: { "Content-Type": "application/json" }
+        });
+      }
+      if (url.includes("/response-criteria")) {
+        return new Response(
+          JSON.stringify({
+            data: {
+              items: [
+                { id: 1, parentId: null, depth: 1, name: "제품", sortOrder: 1, isActive: true },
+                { id: 3, parentId: 1, depth: 2, name: "맛", sortOrder: 1, isActive: true },
+                { id: 6, parentId: 3, depth: 3, name: "바게트", sortOrder: 1, isActive: true }
+              ],
+              total: 3,
+              page: 1,
+              size: 3
+            },
+            error: null
+          }),
+          { headers: { "Content-Type": "application/json" } }
+        );
+      }
+      if (url.includes("/response/101") && init?.method === "PATCH") {
+        const bodyText = typeof init.body === "string" ? init.body : "{}";
+        const body = JSON.parse(bodyText) as { shortSummary: string; fullText: string };
+        responseItem = { ...responseItem, shortSummary: body.shortSummary, fullText: body.fullText };
+        return new Response(JSON.stringify({ data: responseItem, error: null }), {
+          headers: { "Content-Type": "application/json" }
+        });
+      }
+      if (url.includes("/response/101") && init?.method === "DELETE") {
+        return new Response(JSON.stringify({ data: { deleted: true }, error: null }), {
+          headers: { "Content-Type": "application/json" }
+        });
+      }
+      return new Response(
+        JSON.stringify({ data: { items: [responseItem], total: 1, page: 1, size: 1 }, error: null }),
+        { headers: { "Content-Type": "application/json" } }
+      );
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/response?mode=lookup&tab=detail&from=2026-05-30&to=2026-05-30"]}>
+        <Routes>
+          <Route path="/response" element={<ResponseInquiryPage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByText("갓 나온 크로와상 시식 반응 좋음")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "수정" }));
+    fireEvent.change(screen.getByDisplayValue("갓 나온 크로와상 시식 반응 좋음"), {
+      target: { value: "크로와상 시식 후 구매로 이어짐" }
+    });
+    fireEvent.click(screen.getByRole("button", { name: "저장" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("크로와상 시식 후 구매로 이어짐")).toBeInTheDocument();
+    });
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringContaining("/response/101"),
+      expect.objectContaining({ method: "PATCH" })
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "삭제" }));
+    await waitFor(() => {
+      expect(screen.queryByText("크로와상 시식 후 구매로 이어짐")).not.toBeInTheDocument();
+    });
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringContaining("/response/101"),
+      expect.objectContaining({ method: "DELETE" })
+    );
+  });
+
   it("organizes the daily operation page with fixed products, non-POS sales, and staff check tables", async () => {
     let dailyOperationApiItems = providedDailyOperationRecords.map((record, index) => ({
       id: String(index + 1),

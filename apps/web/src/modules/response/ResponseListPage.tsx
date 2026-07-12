@@ -2,7 +2,7 @@ import { MessageSquareText, RefreshCcw } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 
-import { apiGet } from "../../shared/api/client.js";
+import { apiDelete, apiGet, apiPatch } from "../../shared/api/client.js";
 import type { ListEnvelope } from "../../shared/api/types.js";
 import { todayInStoreTime } from "../../shared/time/storeTime.js";
 import { Button } from "../../shared/ui/Button.js";
@@ -37,6 +37,13 @@ type FilterState = {
   from: string;
   to: string;
   criterionId: string;
+};
+
+type ResponseEditDraft = {
+  date: string;
+  criterionId: string;
+  shortSummary: string;
+  fullText: string;
 };
 
 function buildQuery(filters: FilterState): string {
@@ -81,6 +88,9 @@ export function ResponseListPage() {
   const [responses, setResponses] = useState<ResponseDto[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingCriteria, setIsLoadingCriteria] = useState(false);
+  const [editingResponseId, setEditingResponseId] = useState<string | null>(null);
+  const [editDraft, setEditDraft] = useState<ResponseEditDraft | null>(null);
+  const [savingResponseId, setSavingResponseId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const criterionOptions = useMemo(() => flattenCriteria(criteria), [criteria]);
@@ -135,6 +145,86 @@ export function ResponseListPage() {
   useEffect(() => {
     void loadResponses();
   }, [loadResponses]);
+
+  const startEditing = (response: ResponseDto) => {
+    setEditingResponseId(response.id);
+    setEditDraft({
+      date: response.date,
+      criterionId: response.criterionId.toString(),
+      shortSummary: response.shortSummary ?? "",
+      fullText: response.fullText ?? ""
+    });
+    setError(null);
+  };
+
+  const cancelEditing = () => {
+    setEditingResponseId(null);
+    setEditDraft(null);
+  };
+
+  const saveEditing = async (responseId: string) => {
+    if (!editDraft) {
+      return;
+    }
+
+    if (!editDraft.date || !editDraft.criterionId || editDraft.shortSummary.trim().length === 0) {
+      setError("날짜, 기준, 요약을 확인하세요.");
+      return;
+    }
+
+    setSavingResponseId(responseId);
+    setError(null);
+
+    try {
+      const envelope = await apiPatch<ResponseDto, Record<string, unknown>>(`/response/${responseId}`, {
+        date: editDraft.date,
+        criterionId: Number(editDraft.criterionId),
+        shortSummary: editDraft.shortSummary.trim(),
+        fullText: editDraft.fullText.trim() || undefined
+      });
+
+      if (envelope.error) {
+        setError(envelope.error.message);
+        return;
+      }
+
+      setResponses((current) =>
+        current.map((response) => (response.id === responseId ? envelope.data : response))
+      );
+      cancelEditing();
+    } catch (unknownError) {
+      setError(unknownError instanceof Error ? unknownError.message : "고객 반응을 수정하지 못했습니다.");
+    } finally {
+      setSavingResponseId(null);
+    }
+  };
+
+  const deleteResponse = async (response: ResponseDto) => {
+    if (!window.confirm(`이 반응을 삭제할까요?\n${response.shortSummary ?? "요약 없음"}`)) {
+      return;
+    }
+
+    setSavingResponseId(response.id);
+    setError(null);
+
+    try {
+      const envelope = await apiDelete<{ deleted: boolean }>(`/response/${response.id}`);
+
+      if (envelope.error) {
+        setError(envelope.error.message);
+        return;
+      }
+
+      setResponses((current) => current.filter((item) => item.id !== response.id));
+      if (editingResponseId === response.id) {
+        cancelEditing();
+      }
+    } catch (unknownError) {
+      setError(unknownError instanceof Error ? unknownError.message : "고객 반응을 삭제하지 못했습니다.");
+    } finally {
+      setSavingResponseId(null);
+    }
+  };
 
   return (
     <div className="mx-auto grid max-w-7xl gap-4">
@@ -213,20 +303,110 @@ export function ResponseListPage() {
         <div className="space-y-3">
           {responses.map((response) => (
             <article key={response.id} className="rounded-control border border-stone-200 p-3">
-              <div className="grid gap-3 lg:grid-cols-[120px_minmax(180px,260px)_minmax(0,1fr)] lg:items-start">
-                <span className="font-semibold">{response.date}</span>
-                <span className="min-w-0 rounded-control bg-blue/10 px-2 py-1 text-left text-sm font-semibold text-blue sm:text-center">
-                  {criterionPathLabel(response.criterionPath)}
-                </span>
-                <div className="min-w-0">
-                  <p className="font-semibold">{response.shortSummary ?? "요약 없음"}</p>
-                  {response.fullText ? (
-                    <p className="mt-1 whitespace-pre-wrap break-words text-sm text-muted [overflow-wrap:anywhere]">
-                      {response.fullText}
-                    </p>
-                  ) : null}
+              {editingResponseId === response.id && editDraft ? (
+                <div className="grid gap-3">
+                  <div className="grid gap-3 lg:grid-cols-[150px_minmax(220px,1fr)]">
+                    <label className="grid gap-1">
+                      <span className="field-label">날짜</span>
+                      <input
+                        className="input"
+                        type="date"
+                        value={editDraft.date}
+                        onChange={(event) =>
+                          setEditDraft((current) =>
+                            current ? { ...current, date: event.target.value } : current
+                          )
+                        }
+                      />
+                    </label>
+                    <label className="grid gap-1">
+                      <span className="field-label">기준</span>
+                      <select
+                        className="input"
+                        value={editDraft.criterionId}
+                        onChange={(event) =>
+                          setEditDraft((current) =>
+                            current ? { ...current, criterionId: event.target.value } : current
+                          )
+                        }
+                      >
+                        {criterionOptions.map((criterion) => (
+                          <option key={criterion.id} value={criterion.id}>
+                            {criterionOptionLabel(criterion)}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
+                  <label className="grid gap-1">
+                    <span className="field-label">요약</span>
+                    <input
+                      className="input"
+                      value={editDraft.shortSummary}
+                      onChange={(event) =>
+                        setEditDraft((current) =>
+                          current ? { ...current, shortSummary: event.target.value } : current
+                        )
+                      }
+                    />
+                  </label>
+                  <label className="grid gap-1">
+                    <span className="field-label">전체 내용</span>
+                    <textarea
+                      className="input min-h-28"
+                      value={editDraft.fullText}
+                      onChange={(event) =>
+                        setEditDraft((current) =>
+                          current ? { ...current, fullText: event.target.value } : current
+                        )
+                      }
+                    />
+                  </label>
+                  <div className="flex flex-wrap justify-end gap-2">
+                    <button
+                      type="button"
+                      className="inline-flex min-h-10 items-center justify-center rounded-control border border-latte bg-white px-4 text-[13px] font-semibold text-cocoa transition hover:bg-cream"
+                      onClick={cancelEditing}
+                    >
+                      취소
+                    </button>
+                    <Button type="button" onClick={() => void saveEditing(response.id)}>
+                      {savingResponseId === response.id ? "저장 중" : "저장"}
+                    </Button>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="grid gap-3 lg:grid-cols-[120px_minmax(180px,260px)_minmax(0,1fr)_auto] lg:items-start">
+                  <span className="font-semibold">{response.date}</span>
+                  <span className="min-w-0 rounded-control bg-blue/10 px-2 py-1 text-left text-sm font-semibold text-blue sm:text-center">
+                    {criterionPathLabel(response.criterionPath)}
+                  </span>
+                  <div className="min-w-0">
+                    <p className="font-semibold">{response.shortSummary ?? "요약 없음"}</p>
+                    {response.fullText ? (
+                      <p className="mt-1 whitespace-pre-wrap break-words text-sm text-muted [overflow-wrap:anywhere]">
+                        {response.fullText}
+                      </p>
+                    ) : null}
+                  </div>
+                  <div className="flex shrink-0 gap-2 lg:justify-end">
+                    <button
+                      type="button"
+                      className="inline-flex min-h-10 items-center justify-center rounded-control border border-latte bg-white px-4 text-[13px] font-semibold text-cocoa transition hover:bg-cream"
+                      onClick={() => startEditing(response)}
+                    >
+                      수정
+                    </button>
+                    <button
+                      type="button"
+                      className="inline-flex min-h-10 items-center justify-center rounded-control border border-latte bg-white px-4 text-[13px] font-semibold text-red transition hover:bg-red/10"
+                      onClick={() => void deleteResponse(response)}
+                    >
+                      {savingResponseId === response.id ? "삭제 중" : "삭제"}
+                    </button>
+                  </div>
+                </div>
+              )}
             </article>
           ))}
           {!isLoading && responses.length === 0 ? (

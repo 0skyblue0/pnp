@@ -306,6 +306,92 @@ describe("response stats route", () => {
     await app.close();
   });
 
+  it("filters detailed responses by the full executive bucket instead of only its top topic", async () => {
+    const prisma = buildPrismaMock();
+    const criteria = [
+      { id: 200, parentId: null, depth: 1, name: "제품", sortOrder: 1 },
+      { id: 210, parentId: 200, depth: 2, name: "제품 문의", sortOrder: 1 },
+      { id: 211, parentId: 210, depth: 3, name: "기타 제품", sortOrder: 1 },
+      { id: 220, parentId: 200, depth: 2, name: "맛", sortOrder: 2 },
+      { id: 221, parentId: 220, depth: 3, name: "식감", sortOrder: 1 },
+      { id: 300, parentId: null, depth: 1, name: "구매·운영", sortOrder: 2 },
+      { id: 310, parentId: 300, depth: 2, name: "품절", sortOrder: 1 },
+      { id: 311, parentId: 310, depth: 3, name: "원하는 제품 품절", sortOrder: 1 }
+    ];
+    const productInquiry = {
+      id: 101n,
+      date: new Date("2026-05-02T00:00:00.000Z"),
+      majorCriterionId: 200,
+      middleCriterionId: 210,
+      minorCriterionId: 211,
+      criterionId: 211,
+      criterion: { id: 211, parentId: 210, depth: 3, name: "기타 제품" },
+      majorCriterion: { id: 200, parentId: null, depth: 1, name: "제품" },
+      middleCriterion: { id: 210, parentId: 200, depth: 2, name: "제품 문의" },
+      minorCriterion: { id: 211, parentId: 210, depth: 3, name: "기타 제품" },
+      shortSummary: "컷팅 문의",
+      fullText: "큰빵 컷팅 문의가 있었습니다.",
+      llmAssisted: true,
+      createdAt: new Date("2026-05-02T09:00:00.000Z")
+    };
+    const textureIssue = {
+      id: 102n,
+      date: new Date("2026-05-03T00:00:00.000Z"),
+      majorCriterionId: 200,
+      middleCriterionId: 220,
+      minorCriterionId: 221,
+      criterionId: 221,
+      criterion: { id: 221, parentId: 220, depth: 3, name: "식감" },
+      majorCriterion: { id: 200, parentId: null, depth: 1, name: "제품" },
+      middleCriterion: { id: 220, parentId: 200, depth: 2, name: "맛" },
+      minorCriterion: { id: 221, parentId: 220, depth: 3, name: "식감" },
+      shortSummary: "식감 불편",
+      fullText: "식감이 딱딱하다는 의견이 있었습니다.",
+      llmAssisted: true,
+      createdAt: new Date("2026-05-03T09:00:00.000Z")
+    };
+    const soldOut = {
+      id: 103n,
+      date: new Date("2026-05-04T00:00:00.000Z"),
+      majorCriterionId: 300,
+      middleCriterionId: 310,
+      minorCriterionId: 311,
+      criterionId: 311,
+      criterion: { id: 311, parentId: 310, depth: 3, name: "원하는 제품 품절" },
+      majorCriterion: { id: 300, parentId: null, depth: 1, name: "구매·운영" },
+      middleCriterion: { id: 310, parentId: 300, depth: 2, name: "품절" },
+      minorCriterion: { id: 311, parentId: 310, depth: 3, name: "원하는 제품 품절" },
+      shortSummary: "품절 아쉬움",
+      fullText: "원하는 제품 품절로 아쉬워하셨습니다.",
+      llmAssisted: true,
+      createdAt: new Date("2026-05-04T09:00:00.000Z")
+    };
+
+    prisma.responseCriterion.findMany.mockResolvedValue(criteria);
+    prisma.customerResponse.findMany
+      .mockResolvedValueOnce([productInquiry, textureIssue, soldOut])
+      .mockResolvedValueOnce([productInquiry, textureIssue]);
+    prisma.customerResponse.count.mockResolvedValue(2);
+
+    const app = Fastify({ logger: false });
+    app.decorate("prisma", prisma as never);
+    await app.register(registerResponseRoutes, { prefix: "/response" });
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/response?from=2026-05-01&to=2026-05-31&insight_bucket=productImprovements"
+    });
+
+    expect(response.statusCode).toBe(200);
+    const listFindManyArgs = prisma.customerResponse.findMany.mock.calls[1]?.[0] as {
+      where?: { id?: { in?: bigint[] } };
+    };
+    expect(listFindManyArgs.where?.id?.in).toEqual([101n, 102n]);
+    expect(response.json<ApiEnvelope<{ total: number }>>().data?.total).toBe(2);
+
+    await app.close();
+  });
+
   it("groups executive insight buckets by report action axes with every top-topic record", async () => {
     const prisma = buildPrismaMock();
     prisma.customerResponse.count.mockResolvedValue(6);

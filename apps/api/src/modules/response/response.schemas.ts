@@ -20,6 +20,9 @@ export const listResponseQuerySchema = z.object({
   from: dateOnlySchema.optional(),
   to: dateOnlySchema.optional(),
   criterion_id: z.coerce.number().int().positive().optional(),
+  insight_bucket: z
+    .enum(["salesStrength", "missedSales", "productImprovements", "visitFlow", "serviceRisk"])
+    .optional(),
   check_needed: z.enum(["true", "false"]).optional().transform((value) => value === "true"),
   size: z.coerce.number().int().positive().max(100).optional()
 });

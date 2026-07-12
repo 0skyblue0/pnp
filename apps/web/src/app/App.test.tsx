@@ -773,10 +773,11 @@ describe("App", () => {
     expect(screen.getAllByText("제품 개선 신호").length).toBeGreaterThan(0);
     expect(screen.getAllByText("방문 흐름 신호").length).toBeGreaterThan(0);
     expect(screen.getAllByText("응대·위험 신호").length).toBeGreaterThan(0);
-    expect(screen.getByText("손님이 직접 한 말")).toBeInTheDocument();
+    expect(screen.queryByText("손님이 직접 한 말")).not.toBeInTheDocument();
+    expect(screen.getByText("현장 기록 예시")).toBeInTheDocument();
     expect(screen.getAllByText(/청주에서 일부러 방문/).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/식감 개선 필요/).length).toBeGreaterThan(0);
-    expect(screen.getByText("바게트가 전보다 딱딱함")).toBeInTheDocument();
+    expect(screen.getAllByText("바게트가 전보다 딱딱함").length).toBeGreaterThan(0);
     expect(screen.getByText("2026-07-11")).toBeInTheDocument();
     expect(screen.getAllByText(/제품 > 맛 > 바게트/).length).toBeGreaterThan(0);
     expect(screen.getAllByText("4건").length).toBeGreaterThan(0);
@@ -799,7 +800,11 @@ describe("App", () => {
       "href",
       "/response?mode=lookup&tab=detail&from=2026-06-14&to=2026-07-13&criterion_id=6"
     );
-    expect(screen.getByRole("link", { name: /바게트 6건 전체 상세 기록 보기/ })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: /제품 개선 신호 9건 전체 상세 기록 보기/ })).toHaveAttribute(
+      "href",
+      "/response?mode=lookup&tab=detail&from=2026-06-14&to=2026-07-13&insight_bucket=productImprovements"
+    );
+    expect(screen.getByRole("link", { name: /대표 주제 바게트 6건만 보기/ })).toHaveAttribute(
       "href",
       "/response?mode=lookup&tab=detail&from=2026-06-14&to=2026-07-13&criterion_id=6"
     );

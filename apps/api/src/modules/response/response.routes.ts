@@ -439,6 +439,20 @@ function responseNeedsCheck(
   );
 }
 
+function criteriaMap(criteria: ResponseCriterionPathItem[]): Map<number, ResponseCriterionPathItem> {
+  return new Map(
+    criteria.map((criterion) => [
+      criterion.id,
+      {
+        id: criterion.id,
+        parentId: criterion.parentId,
+        depth: criterion.depth,
+        name: criterion.name
+      }
+    ])
+  );
+}
+
 function classifyExecutiveBuckets(
   response: ResponseWithRelations,
   path: ResponseCriterionPathItem[]
@@ -1089,14 +1103,54 @@ async function buildCheckNeededFilter(
   return { OR: [...criterionFilters, ...textFilters] };
 }
 
+async function buildInsightBucketFilter(
+  app: FastifyInstance,
+  baseWhere: Prisma.CustomerResponseWhereInput,
+  bucket?: ExecutiveBucketKey
+): Promise<Prisma.CustomerResponseWhereInput> {
+  if (!bucket) {
+    return {};
+  }
+
+  const [criteria, candidates] = await app.prisma.$transaction([
+    app.prisma.responseCriterion.findMany({
+      orderBy: [{ depth: "asc" }, { parentId: "asc" }, { sortOrder: "asc" }, { name: "asc" }]
+    }),
+    app.prisma.customerResponse.findMany({
+      where: baseWhere,
+      include: {
+        criterion: true,
+        majorCriterion: true,
+        middleCriterion: true,
+        minorCriterion: true
+      },
+      orderBy: [{ date: "desc" }, { createdAt: "desc" }],
+      take: 1000
+    })
+  ]);
+
+  const criteriaById = criteriaMap(criteria);
+  const matchingIds = (candidates as ResponseWithRelations[])
+    .filter((response) =>
+      classifyExecutiveBuckets(response, responsePathFromIds(response, criteriaById)).includes(bucket)
+    )
+    .map((response) => response.id);
+
+  return { id: { in: matchingIds } };
+}
+
 export async function registerResponseRoutes(app: FastifyInstance): Promise<void> {
   app.get("/", async (request, reply) => {
     const query = listResponseQuerySchema.parse(request.query);
-    const where = {
+    const baseWhere = {
       ...buildDateWhere(query),
-      ...activeResponseCriterionWhere,
+      ...activeResponseCriterionWhere
+    };
+    const where = {
+      ...baseWhere,
       ...(await buildCriterionFilter(app, query.criterion_id)),
-      ...(await buildCheckNeededFilter(app, query.check_needed))
+      ...(await buildCheckNeededFilter(app, query.check_needed)),
+      ...(await buildInsightBucketFilter(app, baseWhere, query.insight_bucket))
     };
 
     const [items, total] = await app.prisma.$transaction([
@@ -1174,17 +1228,7 @@ export async function registerResponseRoutes(app: FastifyInstance): Promise<void
       ]);
 
     const responseCriteria = criteria as ResponseCriterionPathItem[];
-    const criteriaById = new Map(
-      responseCriteria.map((criterion) => [
-        criterion.id,
-        {
-          id: criterion.id,
-          parentId: criterion.parentId,
-          depth: criterion.depth,
-          name: criterion.name
-        }
-      ])
-    );
+    const criteriaById = criteriaMap(responseCriteria);
 
     return sendOk(reply, {
       from: query.from,

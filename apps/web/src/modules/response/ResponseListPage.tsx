@@ -38,8 +38,17 @@ type FilterState = {
   from: string;
   to: string;
   criterionId: string;
+  insightBucket: string;
   checkNeeded: boolean;
   keyword: string;
+};
+
+const insightBucketLabels: Record<string, string> = {
+  salesStrength: "잘 팔리는 신호",
+  missedSales: "놓친 매출 신호",
+  productImprovements: "제품 개선 신호",
+  visitFlow: "방문 흐름 신호",
+  serviceRisk: "응대·위험 신호"
 };
 
 type ResponseEditDraft = {
@@ -78,6 +87,9 @@ function buildQuery(filters: FilterState): string {
   }
   if (filters.criterionId) {
     params.set("criterion_id", filters.criterionId);
+  }
+  if (filters.insightBucket) {
+    params.set("insight_bucket", filters.insightBucket);
   }
   if (filters.checkNeeded) {
     params.set("check_needed", "true");
@@ -136,6 +148,7 @@ export function ResponseListPage() {
     from: searchParams.get("from") ?? defaultRange.from,
     to: searchParams.get("to") ?? defaultRange.to,
     criterionId: searchParams.get("criterion_id") ?? "",
+    insightBucket: searchParams.get("insight_bucket") ?? "",
     checkNeeded: searchParams.get("check_needed") === "true",
     keyword: ""
   });
@@ -226,7 +239,13 @@ export function ResponseListPage() {
   };
 
   const resetFilters = () => {
-    setFilters({ ...recentThirtyDaysRange(), criterionId: "", checkNeeded: false, keyword: "" });
+    setFilters({
+      ...recentThirtyDaysRange(),
+      criterionId: "",
+      insightBucket: "",
+      checkNeeded: false,
+      keyword: ""
+    });
   };
 
   useEffect(() => {
@@ -453,7 +472,11 @@ export function ResponseListPage() {
               disabled={isLoadingCriteria}
               value={filters.criterionId}
               onChange={(event) =>
-                setFilters((current) => ({ ...current, criterionId: event.target.value }))
+                setFilters((current) => ({
+                  ...current,
+                  criterionId: event.target.value,
+                  insightBucket: ""
+                }))
               }
             >
               <option value="">전체</option>
@@ -497,6 +520,11 @@ export function ResponseListPage() {
           <span className="rounded-full bg-cream px-3 py-1 text-cocoa">
             기준: {selectedCriterion ? selectedCriterionLabel : "전체"}
           </span>
+          {filters.insightBucket ? (
+            <span className="rounded-full bg-blue/10 px-3 py-1 text-blue">
+              신호: {insightBucketLabels[filters.insightBucket] ?? filters.insightBucket}
+            </span>
+          ) : null}
           {filters.checkNeeded ? (
             <span className="rounded-full bg-red/10 px-3 py-1 text-red">확인 필요만</span>
           ) : null}

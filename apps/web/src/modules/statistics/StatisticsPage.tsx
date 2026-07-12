@@ -254,6 +254,18 @@ function detailLink(range: DateRange, criterionId: number): string {
   return `/response?${params.toString()}`;
 }
 
+function bucketDetailLink(range: DateRange, bucketKey: string): string {
+  const params = new URLSearchParams({
+    mode: "lookup",
+    tab: "detail",
+    from: range.from,
+    to: range.to,
+    insight_bucket: bucketKey
+  });
+
+  return `/response?${params.toString()}`;
+}
+
 function checkNeededDetailLink(range: DateRange): string {
   const params = new URLSearchParams({
     mode: "lookup",
@@ -329,10 +341,13 @@ export function StatisticsPage() {
   const displayTotal = stats.total;
   const displayRepeated = stats.insights.repeatedTopics.slice(0, 5);
   const displayBuckets = stats.insights.executiveBuckets ?? [];
-  const sampleQuotes = displayBuckets
+  const recordExamples = displayBuckets
     .flatMap((bucket) =>
       bucket.topics.flatMap((topic) =>
-        topic.sampleSummaries.slice(0, 2).map((sample) => ({
+        (topic.items?.length
+          ? topic.items.slice(0, 2).map((item) => item.summary || item.text)
+          : topic.sampleSummaries.slice(0, 2)
+        ).map((sample) => ({
           bucketTitle: bucket.title,
           criterionId: topic.criterionId,
           path: topic.path,
@@ -561,10 +576,10 @@ export function StatisticsPage() {
         </section>
 
         <section className="dc-card-pad">
-          <div className="dc-eyebrow mb-3">손님이 직접 한 말</div>
+          <div className="dc-eyebrow mb-3">현장 기록 예시</div>
           <div className="grid gap-2">
-            {sampleQuotes.length > 0 ? (
-              sampleQuotes.map((quote, index) => (
+            {recordExamples.length > 0 ? (
+              recordExamples.map((quote, index) => (
                 <Link
                   key={`${quote.criterionId}-${quote.sample}-${index}`}
                   className="block rounded-[10px] border border-[#F1EAE0] bg-white px-3 py-2 hover:bg-cream"
@@ -573,7 +588,7 @@ export function StatisticsPage() {
                   <div className="mb-1 text-[10.5px] font-extrabold text-bread">
                     {quote.bucketTitle}
                   </div>
-                  <p className="text-[13px] font-bold leading-5 text-ink">“{quote.sample}”</p>
+                  <p className="text-[13px] font-bold leading-5 text-ink">{quote.sample}</p>
                   <p className="mt-1 text-[10.5px] font-semibold text-muted">
                     {quote.path.map((item) => item.name).join(" > ")}
                   </p>
@@ -581,7 +596,7 @@ export function StatisticsPage() {
               ))
             ) : (
               <p className="rounded-[10px] bg-cream px-3 py-4 text-sm font-semibold text-muted">
-                손님이 직접 말한 내용이 있는 기록만 여기에 표시됩니다.
+                대표가 확인할 현장 기록이 쌓이면 여기에 표시됩니다.
               </p>
             )}
           </div>
@@ -654,10 +669,17 @@ function ExecutiveBucketCard({
           </div>
           <Link
             className="mt-2 inline-flex text-[11px] font-extrabold text-blue hover:underline"
-            to={detailLink(range, topTopic.criterionId)}
-            aria-label={`${topTopic.label} ${topTopic.count.toLocaleString("ko-KR")}건 전체 상세 기록 보기`}
+            to={bucketDetailLink(range, bucket.key)}
+            aria-label={`${bucket.title} ${bucket.count.toLocaleString("ko-KR")}건 전체 상세 기록 보기`}
           >
-            {topTopic.count.toLocaleString("ko-KR")}건 전체 상세 기록 보기
+            {bucket.count.toLocaleString("ko-KR")}건 전체 상세 기록 보기
+          </Link>
+          <Link
+            className="ml-3 mt-2 inline-flex text-[11px] font-extrabold text-cocoa hover:underline"
+            to={detailLink(range, topTopic.criterionId)}
+            aria-label={`대표 주제 ${topTopic.label} ${topTopic.count.toLocaleString("ko-KR")}건만 보기`}
+          >
+            대표 주제 {topTopic.count.toLocaleString("ko-KR")}건만 보기
           </Link>
         </div>
       ) : (

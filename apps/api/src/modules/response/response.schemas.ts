@@ -6,7 +6,7 @@ export const createResponseSchema = z.object({
   date: dateOnlySchema,
   criterionId: z.number().int().positive(),
   shortSummary: z.string().trim().min(1).max(200),
-  fullText: z.string().trim().min(1, "손님이 한 말을 적어주세요.").max(5000),
+  fullText: z.string().trim().min(1, "실제 기록 내용을 적어주세요.").max(5000),
   llmAssisted: z.boolean().optional()
 });
 
@@ -23,7 +23,10 @@ export const listResponseQuerySchema = z.object({
   insight_bucket: z
     .enum(["salesStrength", "missedSales", "productImprovements", "visitFlow", "serviceRisk"])
     .optional(),
-  check_needed: z.enum(["true", "false"]).optional().transform((value) => value === "true"),
+  check_needed: z
+    .enum(["true", "false"])
+    .optional()
+    .transform((value) => value === "true"),
   size: z.coerce.number().int().positive().max(100).optional()
 });
 

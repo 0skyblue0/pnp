@@ -25,7 +25,7 @@ const tabOptions: Array<{
   label: string;
   icon: typeof BarChart3;
 }> = [
-  { value: "stats", label: "요약 보기", icon: BarChart3 },
+  { value: "stats", label: "대표 요약", icon: BarChart3 },
   { value: "detail", label: "상세 기록", icon: ListFilter }
 ];
 

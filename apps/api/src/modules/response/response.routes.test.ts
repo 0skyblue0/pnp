@@ -516,30 +516,30 @@ describe("response stats route", () => {
     expect(response.statusCode).toBe(200);
     const body = response.json<ApiEnvelope<ResponseStatsBody>>();
     expect(body.data?.insights.headline).toBe(
-      "이번 기간에 가장 뚜렷한 축은 제품 개선 신호와 방문 흐름 신호입니다."
+      "이번 기간은 제품 점검과 방문 흐름을 먼저 봐야 합니다."
     );
     expect(body.data?.insights.executiveBuckets).toEqual([
       expect.objectContaining({
         key: "salesStrength",
-        title: "잘 팔리는 신호",
+        title: "매출 기회",
         count: 0,
         ratio: 0
       }),
       expect.objectContaining({
         key: "missedSales",
-        title: "놓친 매출 신호",
+        title: "놓친 매출",
         count: 0,
         ratio: 0
       }),
       expect.objectContaining({
         key: "productImprovements",
-        title: "제품 개선 신호",
+        title: "제품 점검",
         count: 3,
         ratio: 0.5
       }),
       expect.objectContaining({
         key: "visitFlow",
-        title: "방문 흐름 신호",
+        title: "방문 흐름",
         count: 2,
         ratio: 2 / 6,
         summary: "언제·어떤 손님이 왜 방문하는지 보여주는 흐름입니다.",
@@ -567,7 +567,7 @@ describe("response stats route", () => {
       }),
       expect.objectContaining({
         key: "serviceRisk",
-        title: "응대·위험 신호",
+        title: "즉시 확인",
         count: 1,
         ratio: 1 / 6
       })
@@ -583,7 +583,11 @@ describe("response stats route", () => {
       (bucket) => bucket.key === "serviceRisk"
     );
     expect(visitFlowBucket?.topics.some((topic) => topic.label === "짠맛")).toBe(false);
-    expect(productImprovementBucket?.topics.some((topic) => topic.label === "쌀빵/건강빵 요청" && topic.count === 2)).toBe(true);
+    expect(
+      productImprovementBucket?.topics.some(
+        (topic) => topic.label === "쌀빵/건강빵 요청" && topic.count === 2
+      )
+    ).toBe(true);
     expect(
       serviceRiskBucket?.topics.some(
         (topic) =>
@@ -811,9 +815,7 @@ describe("response stats route", () => {
       { date: "2026-01-02", count: 2 },
       { date: "2026-01-03", count: 4 }
     ]);
-    expect(stats.insights.headline).toBe(
-      "이번 기간에 가장 뚜렷한 축은 제품 개선 신호와 응대·위험 신호입니다."
-    );
+    expect(stats.insights.headline).toBe("이번 기간은 제품 점검과 매출 기회를 먼저 봐야 합니다.");
     expect(stats.insights.repeatedTopics).toEqual(
       expect.arrayContaining([
         expect.objectContaining({

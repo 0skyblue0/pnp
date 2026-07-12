@@ -600,20 +600,20 @@ describe("App", () => {
                 { date: "2026-07-12", count: 9 }
               ],
               insights: {
-                headline: "이번 기간에 가장 뚜렷한 축은 제품 개선 신호와 응대·위험 신호입니다.",
+                headline: "이번 기간은 제품 점검과 즉시 확인을 먼저 봐야 합니다.",
                 checkNeededCount: 4,
                 executiveBuckets: [
                   {
                     key: "salesStrength",
-                    title: "잘 팔리는 신호",
+                    title: "매출 기회",
                     count: 0,
                     ratio: 0,
-                    summary: "반복 구매, 시식 후 구매, 대량 구매처럼 매출로 이어지는 신호입니다.",
+                    summary: "시식 후 구매, 재구매, 대량 구매처럼 더 팔 수 있는 기회입니다.",
                     topics: []
                   },
                   {
                     key: "missedSales",
-                    title: "놓친 매출 신호",
+                    title: "놓친 매출",
                     count: 0,
                     ratio: 0,
                     summary: "품절, 재고 부족, 찾는 제품 부재처럼 팔 수 있었지만 놓친 수요입니다.",
@@ -621,10 +621,10 @@ describe("App", () => {
                   },
                   {
                     key: "productImprovements",
-                    title: "제품 개선 신호",
+                    title: "제품 점검",
                     count: 9,
                     ratio: 0.5625,
-                    summary: "맛, 식감, 품질, 보관, 컷팅, 포장처럼 제품을 다듬을 단서입니다.",
+                    summary: "맛, 식감, 품질, 보관, 컷팅처럼 제품 기준을 확인할 단서입니다.",
                     topics: [
                       {
                         criterionId: 6,
@@ -656,7 +656,7 @@ describe("App", () => {
                   },
                   {
                     key: "visitFlow",
-                    title: "방문 흐름 신호",
+                    title: "방문 흐름",
                     count: 2,
                     ratio: 0.125,
                     summary: "언제·어떤 손님이 왜 방문하는지 보여주는 흐름입니다.",
@@ -684,10 +684,10 @@ describe("App", () => {
                   },
                   {
                     key: "serviceRisk",
-                    title: "응대·위험 신호",
+                    title: "즉시 확인",
                     count: 4,
                     ratio: 0.25,
-                    summary: "컴플레인, 환불, 위생, 응대 불만처럼 바로 확인해야 할 위험 신호입니다.",
+                    summary: "컴플레인, 환불, 위생, 응대 불만처럼 오늘 바로 확인할 항목입니다.",
                     topics: [
                       {
                         criterionId: 7,
@@ -755,7 +755,7 @@ describe("App", () => {
     expect(within(navigation).getByRole("link", { name: "손님 반응" })).toHaveClass(
       ACTIVE_NAV_CLASS
     );
-    expect(screen.getByRole("tab", { name: "요약 보기" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("tab", { name: "대표 요약" })).toHaveAttribute("aria-selected", "true");
     expect(screen.getByRole("tab", { name: "상세 기록" })).toHaveAttribute(
       "aria-selected",
       "false"
@@ -763,18 +763,18 @@ describe("App", () => {
 
     expect(await screen.findByRole("heading", { name: "대표 리포트" })).toBeInTheDocument();
     expect(
-      screen.getAllByText("이번 기간에 가장 뚜렷한 축은 제품 개선 신호와 응대·위험 신호입니다.").length
+      screen.getAllByText("이번 기간은 제품 점검과 즉시 확인을 먼저 봐야 합니다.").length
     ).toBeGreaterThan(0);
-    expect(screen.getAllByText("잘 팔리는 신호").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("매출 기회").length).toBeGreaterThan(0);
     expect(
-      screen.getByText("반복 구매, 시식 후 구매, 대량 구매처럼 매출로 이어지는 신호입니다.")
+      screen.getByText("시식 후 구매, 재구매, 대량 구매처럼 더 팔 수 있는 기회입니다.")
     ).toBeInTheDocument();
-    expect(screen.getAllByText("놓친 매출 신호").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("제품 개선 신호").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("방문 흐름 신호").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("응대·위험 신호").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("놓친 매출").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("제품 점검").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("방문 흐름").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("즉시 확인").length).toBeGreaterThan(0);
     expect(screen.queryByText("손님이 직접 한 말")).not.toBeInTheDocument();
-    expect(screen.getByText("현장 기록 예시")).toBeInTheDocument();
+    expect(screen.getByText("주요 반응 근거")).toBeInTheDocument();
     expect(screen.getAllByText(/청주에서 일부러 방문/).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/식감 개선 필요/).length).toBeGreaterThan(0);
     expect(screen.getAllByText("바게트가 전보다 딱딱함").length).toBeGreaterThan(0);
@@ -794,13 +794,15 @@ describe("App", () => {
     expect(screen.queryByText(/날짜별로 등록된 손님 반응 건수/)).not.toBeInTheDocument();
     expect(screen.queryByText("5월 보고")).not.toBeInTheDocument();
     expect(screen.queryByText("추천 기능")).not.toBeInTheDocument();
-    expect(screen.queryByText("숫자는 줄이고, 대표가 확인할 반복 신호만 남겼습니다.")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("숫자는 줄이고, 대표가 확인할 반복 신호만 남겼습니다.")
+    ).not.toBeInTheDocument();
     const topicLink = screen.getAllByRole("link", { name: "제품 > 맛 > 바게트 기록 보기" })[0];
     expect(topicLink).toHaveAttribute(
       "href",
       "/response?mode=lookup&tab=detail&from=2026-06-14&to=2026-07-13&criterion_id=6"
     );
-    expect(screen.getByRole("link", { name: /제품 개선 신호 9건 전체 상세 기록 보기/ })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: /제품 점검 9건 이 신호 전체 보기/ })).toHaveAttribute(
       "href",
       "/response?mode=lookup&tab=detail&from=2026-06-14&to=2026-07-13&insight_bucket=productImprovements"
     );
@@ -808,7 +810,9 @@ describe("App", () => {
       "href",
       "/response?mode=lookup&tab=detail&from=2026-06-14&to=2026-07-13&criterion_id=6"
     );
-    expect(screen.getByRole("link", { name: "확인 필요 반응 4건 상세 기록 보기" })).toHaveAttribute(
+    expect(
+      screen.getAllByRole("link", { name: "확인 필요 반응 4건 상세 기록 보기" })[0]
+    ).toHaveAttribute(
       "href",
       "/response?mode=lookup&tab=detail&from=2026-06-14&to=2026-07-13&check_needed=true"
     );
@@ -943,7 +947,9 @@ describe("App", () => {
       </MemoryRouter>
     );
 
-    expect((await screen.findAllByText("갓 나온 크로와상 시식 반응 좋음")).length).toBeGreaterThan(0);
+    expect((await screen.findAllByText("갓 나온 크로와상 시식 반응 좋음")).length).toBeGreaterThan(
+      0
+    );
     fireEvent.click(screen.getByRole("button", { name: "수정" }));
     const summaryInput = screen.getAllByDisplayValue("갓 나온 크로와상 시식 반응 좋음")[0];
     if (!summaryInput) {
@@ -1527,13 +1533,13 @@ describe("App", () => {
     fireEvent.click(screen.getByText("날짜"));
     expect(showPicker).toHaveBeenCalled();
 
-    fireEvent.change(await screen.findByLabelText("손님 반응 내용"), {
+    fireEvent.change(await screen.findByLabelText("실제 기록 내용"), {
       target: { value: "바게트가 딱딱하다는 불만이 있었다." }
     });
     fireEvent.click(screen.getByRole("button", { name: "AI 분류하기" }));
 
     expect(await screen.findByText("AI 추천 적용됨: 제품 > 식감 > 딱딱함")).toBeInTheDocument();
-    expect(screen.getByLabelText("요약")).toHaveValue("바게트 식감 딱딱함 반응");
+    expect(screen.getByLabelText("한 줄 요약")).toHaveValue("바게트 식감 딱딱함 반응");
     expect(screen.getByText("선택 기준: AI 추천 · 제품 > 식감 > 딱딱함")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "서비스·응대" }));
@@ -1548,8 +1554,8 @@ describe("App", () => {
       fullText: "바게트가 딱딱하다는 불만이 있었다.",
       llmAssisted: true
     });
-    expect(screen.getByLabelText("요약")).toHaveValue("");
-    expect(screen.getByLabelText("손님 반응 내용")).toHaveValue("");
+    expect(screen.getByLabelText("한 줄 요약")).toHaveValue("");
+    expect(screen.getByLabelText("실제 기록 내용")).toHaveValue("");
     expect(screen.getByText("선택 기준: 미선택")).toBeInTheDocument();
   });
 
@@ -1607,7 +1613,7 @@ describe("App", () => {
       </ToastProvider>
     );
 
-    fireEvent.change(await screen.findByLabelText("손님 반응 내용"), {
+    fireEvent.change(await screen.findByLabelText("실제 기록 내용"), {
       target: { value: "청주에서 방문한 손님 계셨습니다." }
     });
     fireEvent.click(screen.getByRole("button", { name: "AI 분류하기" }));
@@ -1622,7 +1628,7 @@ describe("App", () => {
       ).length
     ).toBeGreaterThan(0);
     expect(screen.getByText("선택 기준: 미선택")).toBeInTheDocument();
-    expect(screen.getByLabelText("요약")).toHaveValue("");
+    expect(screen.getByLabelText("한 줄 요약")).toHaveValue("");
     expect(screen.queryByText(/AI 추천 적용됨/)).not.toBeInTheDocument();
   });
 
@@ -1657,18 +1663,20 @@ describe("App", () => {
       </ToastProvider>
     );
 
-    expect(await screen.findByText("1. 손님이 한 말 입력")).toBeVisible();
+    expect(await screen.findByText("1. 실제 기록 입력")).toBeVisible();
     expect(
-      screen.getByText("불만뿐 아니라 칭찬, 문의, 품절, 장거리 방문, 제품 제안도 남겨주세요.")
+      screen.getByText("손님이 한 말이면 그대로, 직원이 관찰한 내용이면 있었던 일을 적어주세요.")
     ).toBeVisible();
     expect(screen.getByRole("button", { name: "청주에서 일부러 방문했다고 하심" })).toBeVisible();
     expect(screen.getByLabelText("날짜")).toBeVisible();
 
     fireEvent.click(screen.getByRole("button", { name: "제품" }));
-    fireEvent.change(screen.getByLabelText("요약"), { target: { value: "요약만 입력" } });
+    fireEvent.change(screen.getByLabelText("한 줄 요약"), {
+      target: { value: "한 줄 요약만 입력" }
+    });
     fireEvent.click(screen.getByRole("button", { name: "저장" }));
 
-    expect(await screen.findByText("손님이 한 말을 적어주세요.")).toBeInTheDocument();
+    expect(await screen.findByText("실제 기록 내용을 적어주세요.")).toBeInTheDocument();
   });
 
   it("shows detailed response lookup tabs, hides source metadata, and supports AI reclassification while editing", async () => {
@@ -1716,7 +1724,7 @@ describe("App", () => {
                 { id: 1, parentId: null, depth: 1, name: "제품" },
                 { id: 2, parentId: 1, depth: 2, name: "식감" }
               ],
-              shortSummary: "AI가 다시 요약한 반응",
+              shortSummary: "AI가 다시 한 줄 요약한 반응",
               reason: "AI 재분류"
             },
             error: null
@@ -1739,7 +1747,7 @@ describe("App", () => {
                 { id: 1, parentId: null, depth: 1, name: "제품" },
                 { id: 2, parentId: 1, depth: 2, name: "식감" }
               ],
-              shortSummary: "AI가 다시 요약한 반응",
+              shortSummary: "AI가 다시 한 줄 요약한 반응",
               fullText: "원문",
               llmAssisted: true,
               createdAt: "2026-07-12T00:00:00.000Z"
@@ -1766,7 +1774,8 @@ describe("App", () => {
                   { id: 2, parentId: 1, depth: 2, name: "식감" }
                 ],
                 shortSummary: "직원이 직접 분류한 반응",
-                fullText: "[일일업무보고서 서비스내역 및 손님 특이사항]\n출처: 일일업무보고서 6월.xlsx / 30일\n\n원문",
+                fullText:
+                  "[일일업무보고서 서비스내역 및 손님 특이사항]\n출처: 일일업무보고서 6월.xlsx / 30일\n\n원문",
                 llmAssisted: false,
                 createdAt: "2026-07-12T00:00:00.000Z"
               }
@@ -1789,7 +1798,7 @@ describe("App", () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByRole("tab", { name: "요약 보기" })).toBeVisible();
+    expect(screen.getByRole("tab", { name: "대표 요약" })).toBeVisible();
     expect(screen.getByRole("tab", { name: "상세 기록" })).toHaveAttribute("aria-selected", "true");
     expect(await screen.findByLabelText("기준")).not.toHaveTextContent("비활성");
     expect(screen.queryByLabelText("과거 기준 포함")).not.toBeInTheDocument();
@@ -1800,10 +1809,12 @@ describe("App", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "수정" }));
     fireEvent.click(screen.getByRole("button", { name: "AI 분류하기" }));
-    expect(await screen.findByDisplayValue("AI가 다시 요약한 반응")).toBeInTheDocument();
+    expect(await screen.findByDisplayValue("AI가 다시 한 줄 요약한 반응")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "저장" }));
 
-    await waitFor(() => expect(screen.getByText("AI가 다시 요약한 반응")).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByText("AI가 다시 한 줄 요약한 반응")).toBeInTheDocument()
+    );
     expect(screen.getByText("AI 분류")).toBeInTheDocument();
     expect(requests.some((request) => request.url.endsWith("/response/suggest"))).toBe(true);
     expect(

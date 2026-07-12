@@ -141,28 +141,28 @@ const executiveBucketConfigs: Array<{
 }> = [
   {
     key: "salesStrength",
-    title: "잘 팔리는 신호",
-    summary: "반복 구매, 시식 후 구매, 대량 구매처럼 매출로 이어지는 신호입니다."
+    title: "매출 기회",
+    summary: "시식 후 구매, 재구매, 대량 구매처럼 더 팔 수 있는 기회입니다."
   },
   {
     key: "missedSales",
-    title: "놓친 매출 신호",
+    title: "놓친 매출",
     summary: "품절, 재고 부족, 찾는 제품 부재처럼 팔 수 있었지만 놓친 수요입니다."
   },
   {
     key: "productImprovements",
-    title: "제품 개선 신호",
-    summary: "맛, 식감, 품질, 보관, 컷팅, 포장처럼 제품을 다듬을 단서입니다."
+    title: "제품 점검",
+    summary: "맛, 식감, 품질, 보관, 컷팅처럼 제품 기준을 확인할 단서입니다."
   },
   {
     key: "visitFlow",
-    title: "방문 흐름 신호",
+    title: "방문 흐름",
     summary: "언제·어떤 손님이 왜 방문하는지 보여주는 흐름입니다."
   },
   {
     key: "serviceRisk",
-    title: "응대·위험 신호",
-    summary: "컴플레인, 환불, 위생, 응대 불만처럼 바로 확인해야 할 위험 신호입니다."
+    title: "즉시 확인",
+    summary: "컴플레인, 환불, 위생, 응대 불만처럼 오늘 바로 확인할 항목입니다."
   }
 ];
 
@@ -391,10 +391,12 @@ function isLikelyCustomerVoice(value: string): boolean {
   }
 
   if (operationalReportWords.some((word) => compact.includes(word))) {
-    return customerVoiceWords.some((word) => compact.includes(word)) &&
+    return (
+      customerVoiceWords.some((word) => compact.includes(word)) &&
       ["문의", "요청", "원하", "말씀", "평", "칭찬", "아쉬워", "희망", "구매의사"].some((word) =>
         compact.includes(word)
-      );
+      )
+    );
   }
 
   return customerVoiceWords.some((word) => compact.includes(word));
@@ -439,7 +441,9 @@ function responseNeedsCheck(
   );
 }
 
-function criteriaMap(criteria: ResponseCriterionPathItem[]): Map<number, ResponseCriterionPathItem> {
+function criteriaMap(
+  criteria: ResponseCriterionPathItem[]
+): Map<number, ResponseCriterionPathItem> {
   return new Map(
     criteria.map((criterion) => [
       criterion.id,
@@ -679,7 +683,9 @@ function executiveHeadline(total: number, buckets: ExecutiveBucket[], fallback: 
     return fallback;
   }
 
-  return `이번 기간에 가장 뚜렷한 축은 ${joinExecutiveTitles(topBuckets)}입니다.`;
+  const joinedTitle = joinExecutiveTitles(topBuckets);
+  const objectParticle = hasFinalConsonant(joinedTitle) ? "을" : "를";
+  return `이번 기간은 ${joinedTitle}${objectParticle} 먼저 봐야 합니다.`;
 }
 
 function buildResponseInsights(
@@ -748,9 +754,7 @@ function buildResponseInsights(
       ...(checkNeededCount > 0
         ? [`확인 필요 반응 ${checkNeededCount.toLocaleString("ko-KR")}건`]
         : []),
-      ...(topTopic
-        ? [`최다 반복: ${topTopic.path.map((item) => item.name).join(" > ")}`]
-        : [])
+      ...(topTopic ? [`최다 반복: ${topTopic.path.map((item) => item.name).join(" > ")}`] : [])
     ]
   };
 }
@@ -1132,7 +1136,9 @@ async function buildInsightBucketFilter(
   const criteriaById = criteriaMap(criteria);
   const matchingIds = (candidates as ResponseWithRelations[])
     .filter((response) =>
-      classifyExecutiveBuckets(response, responsePathFromIds(response, criteriaById)).includes(bucket)
+      classifyExecutiveBuckets(response, responsePathFromIds(response, criteriaById)).includes(
+        bucket
+      )
     )
     .map((response) => response.id);
 

@@ -341,6 +341,7 @@ export function StatisticsPage() {
   const displayTotal = stats.total;
   const displayRepeated = stats.insights.repeatedTopics.slice(0, 5);
   const displayBuckets = stats.insights.executiveBuckets ?? [];
+  const checkNeededCount = stats.insights.checkNeededCount ?? 0;
   const recordExamples = displayBuckets
     .flatMap((bucket) =>
       bucket.topics.flatMap((topic) =>
@@ -500,10 +501,17 @@ export function StatisticsPage() {
             <p className="mt-2 text-[15px] font-extrabold leading-7 text-ink">
               {stats.insights.headline}
             </p>
-            {(stats.insights.checkNeededCount ?? 0) > 0 && stats.insights.keyNotes[0] ? (
-              <p className="mt-1 text-xs font-semibold leading-5 text-muted">
-                {stats.insights.keyNotes[0]}
-              </p>
+            <p className="mt-1 text-xs font-semibold leading-5 text-muted">
+              매출 기회, 놓친 매출, 제품 점검, 즉시 확인할 문제를 먼저 판단합니다.
+            </p>
+            {checkNeededCount > 0 && stats.insights.keyNotes[0] ? (
+              <Link
+                className="mt-3 inline-flex rounded-full bg-red/10 px-3 py-1 text-xs font-extrabold text-red hover:bg-red/15"
+                to={checkNeededDetailLink(range)}
+                aria-label={`확인 필요 반응 ${checkNeededCount.toLocaleString("ko-KR")}건 상세 기록 보기`}
+              >
+                즉시 확인 {checkNeededCount.toLocaleString("ko-KR")}건
+              </Link>
             ) : null}
           </div>
           <div className="rounded-full bg-cream px-3 py-1 text-xs font-bold text-cocoa">
@@ -576,7 +584,10 @@ export function StatisticsPage() {
         </section>
 
         <section className="dc-card-pad">
-          <div className="dc-eyebrow mb-3">현장 기록 예시</div>
+          <div className="dc-eyebrow mb-1">주요 반응 근거</div>
+          <p className="mb-3 text-[11.5px] font-semibold text-muted">
+            숫자로 잡힌 신호가 어떤 기록에서 나온 것인지 확인합니다.
+          </p>
           <div className="grid gap-2">
             {recordExamples.length > 0 ? (
               recordExamples.map((quote, index) => (
@@ -650,29 +661,39 @@ function ExecutiveBucketCard({
           </div>
           <div className="mt-0.5 text-[12.5px] font-bold text-ink">{topTopic.label}</div>
           <div className="mt-2 grid max-h-44 gap-1 overflow-y-auto pr-1">
-            {(topTopic.items?.length ? topTopic.items : topTopic.sampleSummaries.map((sample) => ({
-              id: sample,
-              date: "",
-              summary: sample,
-              text: sample
-            }))).map((item) => (
-              <div key={`${topTopic.criterionId}-${item.id}`} className="rounded-[8px] bg-white/70 px-2 py-1.5">
-                {item.date ? (
-                  <div className="text-[10px] font-extrabold text-bread">{item.date}</div>
-                ) : null}
-                <div className="text-[11px] font-bold leading-4 text-ink">{item.summary}</div>
-                {item.text && item.text !== item.summary ? (
-                  <div className="mt-0.5 text-[10.5px] font-semibold leading-4 text-muted">{item.text}</div>
-                ) : null}
-              </div>
-            ))}
+            {(topTopic.items?.length
+              ? topTopic.items
+              : topTopic.sampleSummaries.map((sample) => ({
+                  id: sample,
+                  date: "",
+                  summary: sample,
+                  text: sample
+                }))
+            )
+              .slice(0, 2)
+              .map((item) => (
+                <div
+                  key={`${topTopic.criterionId}-${item.id}`}
+                  className="rounded-[8px] bg-white/70 px-2 py-1.5"
+                >
+                  {item.date ? (
+                    <div className="text-[10px] font-extrabold text-bread">{item.date}</div>
+                  ) : null}
+                  <div className="text-[11px] font-bold leading-4 text-ink">{item.summary}</div>
+                  {item.text && item.text !== item.summary ? (
+                    <div className="mt-0.5 text-[10.5px] font-semibold leading-4 text-muted">
+                      {item.text}
+                    </div>
+                  ) : null}
+                </div>
+              ))}
           </div>
           <Link
             className="mt-2 inline-flex text-[11px] font-extrabold text-blue hover:underline"
             to={bucketDetailLink(range, bucket.key)}
-            aria-label={`${bucket.title} ${bucket.count.toLocaleString("ko-KR")}건 전체 상세 기록 보기`}
+            aria-label={`${bucket.title} ${bucket.count.toLocaleString("ko-KR")}건 이 신호 전체 보기`}
           >
-            {bucket.count.toLocaleString("ko-KR")}건 전체 상세 기록 보기
+            {bucket.count.toLocaleString("ko-KR")}건 이 신호 전체 보기
           </Link>
           <Link
             className="ml-3 mt-2 inline-flex text-[11px] font-extrabold text-cocoa hover:underline"

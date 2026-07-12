@@ -244,19 +244,19 @@ export function ResponseEntryPage({ embedded = false }: { embedded?: boolean } =
             <p className="dc-eyebrow">새 반응 입력</p>
             <h2 className="sr-only">손님 반응 입력</h2>
             <p className="mt-1 text-sm font-semibold text-muted">
-              칭찬, 불만, 문의처럼 나중에 매장 개선에 쓸 손님 말을 한 줄로 남깁니다.
+              손님 말과 직원 관찰을 실제 기록으로 남겨 대표 요약에 반영합니다.
             </p>
           </div>
         </div>
 
         <div className="grid gap-5">
           <div className="grid gap-2 rounded-control border border-latte bg-cream/50 p-3 text-sm text-cocoa sm:grid-cols-3">
-            <span className="font-bold">1. 손님이 한 말 입력</span>
+            <span className="font-bold">1. 실제 기록 입력</span>
             <span className="font-bold">2. AI 분류 후 직원 확인</span>
             <span className="font-bold">3. 맞으면 저장</span>
           </div>
           <p className="rounded-control border border-latte bg-white px-3 py-2 text-sm font-semibold text-muted">
-            불만뿐 아니라 칭찬, 문의, 품절, 장거리 방문, 제품 제안도 남겨주세요.
+            손님이 한 말이면 그대로, 직원이 관찰한 내용이면 있었던 일을 적어주세요.
           </p>
           {saveMessage ? (
             <div className="rounded-control border border-green/20 bg-green/10 px-3 py-2 text-sm font-semibold text-green">
@@ -352,7 +352,7 @@ export function ResponseEntryPage({ embedded = false }: { embedded?: boolean } =
           </div>
 
           <label className="grid gap-2">
-            <span className="field-label">요약</span>
+            <span className="field-label">한 줄 요약</span>
             <input
               className="input"
               placeholder="고객 반응을 한 줄로 요약"
@@ -383,7 +383,7 @@ export function ResponseEntryPage({ embedded = false }: { embedded?: boolean } =
           </div>
 
           <label className="grid gap-2">
-            <span className="field-label">손님 반응 내용</span>
+            <span className="field-label">실제 기록 내용</span>
             <textarea
               className="input min-h-32 resize-y"
               placeholder="예: 청주에서 방문한 손님 계셨습니다. / 바게트가 딱딱하다고 하셨습니다."

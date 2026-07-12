@@ -194,7 +194,9 @@ export function ResponseListPage() {
     setIsLoadingCriteria(true);
 
     try {
-      const envelope = await apiGet<ListEnvelope<ResponseCriterionDto>>("/response-criteria?active=true");
+      const envelope = await apiGet<ListEnvelope<ResponseCriterionDto>>(
+        "/response-criteria?active=true"
+      );
 
       if (envelope.error) {
         setError(envelope.error.message);
@@ -279,7 +281,7 @@ export function ResponseListPage() {
     }
 
     if (!editDraft.date || !editDraft.criterionId || editDraft.shortSummary.trim().length === 0) {
-      setError("날짜, 기준, 요약을 확인하세요.");
+      setError("날짜, 기준, 한 줄 요약을 확인하세요.");
       return;
     }
 
@@ -323,7 +325,7 @@ export function ResponseListPage() {
 
     const fullText = editDraft.fullText.trim();
     if (!fullText) {
-      setError("AI 분류할 손님 반응 내용을 입력하세요.");
+      setError("AI 분류할 실제 기록 내용을 입력하세요.");
       return;
     }
 
@@ -331,9 +333,12 @@ export function ResponseListPage() {
     setError(null);
 
     try {
-      const envelope = await apiPost<ResponseSuggestionDto, { fullText: string }>("/response/suggest", {
-        fullText
-      });
+      const envelope = await apiPost<ResponseSuggestionDto, { fullText: string }>(
+        "/response/suggest",
+        {
+          fullText
+        }
+      );
 
       if (envelope.error) {
         setError(envelope.error.message);
@@ -587,7 +592,7 @@ export function ResponseListPage() {
                     </label>
                   </div>
                   <label className="grid gap-1">
-                    <span className="field-label">요약</span>
+                    <span className="field-label">한 줄 요약</span>
                     <input
                       className="input"
                       value={editDraft.shortSummary}
@@ -599,7 +604,7 @@ export function ResponseListPage() {
                     />
                   </label>
                   <label className="grid gap-1">
-                    <span className="field-label">전체 내용</span>
+                    <span className="field-label">실제 기록 내용</span>
                     <textarea
                       className="input min-h-28"
                       value={editDraft.fullText}

@@ -610,7 +610,7 @@ export function ReservationPage() {
                   );
                 })}
               </div>
-              <div className="sr-only grid grid-cols-2 gap-[6px]">
+              <div className="grid grid-cols-2 gap-[6px]">
                 <select
                   aria-label="픽업 시"
                   className="w-full rounded-[8px] border border-latte px-[11px] py-[8px] text-[13px] outline-none focus:border-bread"

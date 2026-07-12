@@ -390,11 +390,16 @@ describe("App", () => {
     expect(within(modal).queryByRole("button", { name: "19:30" })).not.toBeInTheDocument();
 
     const hourSelect = within(modal).getByLabelText("픽업 시");
+    const minuteSelect = within(modal).getByLabelText("픽업 분");
+    expect(hourSelect.closest("div")).not.toHaveClass("sr-only");
+    expect(minuteSelect.closest("div")).not.toHaveClass("sr-only");
     expect(within(hourSelect).queryByRole("option", { name: "08시" })).not.toBeInTheDocument();
     expect(within(hourSelect).getByRole("option", { name: "10시" })).toBeInTheDocument();
     expect(within(hourSelect).getByRole("option", { name: "19시" })).toBeInTheDocument();
     expect(within(hourSelect).queryByRole("option", { name: "20시" })).not.toBeInTheDocument();
-    expect(within(within(modal).getByLabelText("픽업 분")).getByRole("option", { name: "10분" })).toBeInTheDocument();
+    expect(within(minuteSelect).getByRole("option", { name: "00분" })).toBeInTheDocument();
+    expect(within(minuteSelect).getByRole("option", { name: "10분" })).toBeInTheDocument();
+    expect(within(minuteSelect).getByRole("option", { name: "50분" })).toBeInTheDocument();
   });
 
   it("renders statistics inside the integrated lookup screen", async () => {

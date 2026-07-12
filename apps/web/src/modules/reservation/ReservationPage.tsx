@@ -669,7 +669,7 @@ export function ReservationPage() {
                         value={item.productName}
                         onChange={(event) => updateReservationItem(item.id, { productName: event.target.value })}
                       >
-                        <option value="">제품 선택</option>
+                        <option value="">예: 깜빠뉴</option>
                         {rowProductOptions.map((productName) => (
                           <option key={productName} value={productName}>
                             {productName}

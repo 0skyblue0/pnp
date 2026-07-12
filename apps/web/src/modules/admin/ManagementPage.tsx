@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { apiDelete, apiGet, apiPatch, apiPost } from "../../shared/api/client.js";
 import type { ListEnvelope } from "../../shared/api/types.js";
+import { productLineup } from "../../shared/productLineup.js";
 import { Button } from "../../shared/ui/Button.js";
 
 type ProductDto = {
@@ -164,6 +165,10 @@ const adminTabs: Array<{ key: AdminTab; label: string }> = [
   { key: "schedule", label: "연간 스케줄 관리" }
 ];
 
+const productLineupOrder = new Map<string, number>(
+  productLineup.map((name, index) => [name, index])
+);
+
 const scheduleToneLabels: Record<ScheduleTone, string> = {
   notice: "공지",
   launch: "출시",
@@ -218,6 +223,20 @@ function monthlyTargetsFromForm(form: GoalNoticeForm): MonthlyTargets {
   return Object.fromEntries(
     monthKeys.map((month) => [month, numericInput(form.monthlyTargets[month])])
   ) as MonthlyTargets;
+}
+
+function sortProducts(products: ProductDto[]): ProductDto[] {
+  return [...products].sort((left, right) => {
+    const leftOrder = productLineupOrder.get(left.name) ?? Number.MAX_SAFE_INTEGER;
+    const rightOrder = productLineupOrder.get(right.name) ?? Number.MAX_SAFE_INTEGER;
+    if (leftOrder !== rightOrder) {
+      return leftOrder - rightOrder;
+    }
+    if (left.isActive !== right.isActive) {
+      return left.isActive ? -1 : 1;
+    }
+    return left.name.localeCompare(right.name, "ko-KR");
+  });
 }
 
 function criteriaByParent(criteria: ResponseCriterionDto[], parentId: number | null) {
@@ -506,17 +525,25 @@ export function ManagementPage() {
     setMessage(null);
     setError(null);
 
+    const productName = productForm.name.trim();
+    const category = productForm.category.trim();
+
+    if (productName.length === 0) {
+      setError("제품명을 입력하세요.");
+      return;
+    }
+
     const createBody = {
-      name: productForm.name,
-      category: productForm.category || undefined,
+      name: productName,
+      category: category || undefined,
       isSeasonal: productForm.isSeasonal,
       seasonStart: productForm.seasonStart || undefined,
       seasonEnd: productForm.seasonEnd || undefined,
       isActive: productForm.isActive
     };
     const updateBody = {
-      name: productForm.name,
-      category: productForm.category || null,
+      name: productName,
+      category: category || null,
       isSeasonal: productForm.isSeasonal,
       seasonStart: productForm.seasonStart || null,
       seasonEnd: productForm.seasonEnd || null,
@@ -874,7 +901,7 @@ export function ManagementPage() {
     selectedMiddleId === null ? [] : criteriaByParent(responseCriteria, selectedMiddleId);
   const selectedMajor = majorCriteria.find((criterion) => criterion.id === selectedMajorId);
   const selectedMiddle = middleCriteria.find((criterion) => criterion.id === selectedMiddleId);
-  const visibleProducts = products.slice(0, 4);
+  const sortedProducts = sortProducts(products);
   const editingCriterion = responseCriteria.find(
     (criterion) => criterion.id === editingCriterionId
   );
@@ -973,36 +1000,186 @@ export function ManagementPage() {
 
         <div className="mt-[14px]">
           {activeAdminTab === "product" ? (
-            <div className="rounded-[14px] border border-latte bg-white px-[22px] pb-[6px] pt-2">
-              <div className="grid grid-cols-[1.4fr_1fr_1fr_1.6fr_0.8fr] gap-2 border-b border-[#EFE8DC] px-1 py-[11px] text-[11px] font-semibold text-muted">
-                <div>제품명</div><div>카테고리</div><div>시즌</div><div>기간</div><div>상태</div>
-              </div>
-              {visibleProducts.map((product) => (
-                <div
-                  key={product.id}
-                  className="grid grid-cols-[1.4fr_1fr_1fr_1.6fr_0.8fr] items-center gap-2 border-b border-[#F5F0E7] px-1 py-[11px] text-[13px] text-ink last:border-b-0"
+            <div className="rounded-[14px] border border-latte bg-white px-5 py-[18px]">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h3 className="text-[15px] font-bold text-ink">제품명 등록 및 수정</h3>
+                  <p className="mt-1 text-[12.5px] text-muted">
+                    일일 운영과 예약 입력에 보이는 제품명을 추가·수정·삭제합니다. 쓰지 않는 제품은 비활성 처리하세요.
+                  </p>
+                </div>
+                <button
+                  className="rounded-[9px] bg-bread px-4 py-2 text-[12.5px] font-bold text-white"
+                  type="button"
+                  onClick={openNewProductForm}
                 >
-                  <div className="font-semibold">{product.name}</div>
-                  <div>{product.category ?? "-"}</div>
-                  <div>{product.isSeasonal ? "시즌" : "상시"}</div>
-                  <div className="text-[12px] text-muted">
-                    {product.seasonStart || product.seasonEnd
-                      ? `${product.seasonStart ?? "-"} ~ ${product.seasonEnd ?? "-"}`
-                      : "-"}
+                  제품 추가
+                </button>
+              </div>
+
+              {isProductFormOpen ? (
+                <div className="mt-4 rounded-[12px] border border-latte bg-cream/50 p-4">
+                  <div className="mb-3 flex items-center justify-between gap-3">
+                    <h4 className="text-sm font-bold text-ink">
+                      {editingProductId === null ? "제품 추가" : "제품 수정"}
+                    </h4>
+                    <button
+                      className="inline-flex min-h-9 items-center justify-center rounded-control border border-latte bg-white px-3 font-bold text-cocoa hover:bg-cream"
+                      type="button"
+                      aria-label="제품 입력 닫기"
+                      onClick={closeProductForm}
+                    >
+                      <X className="h-4 w-4" aria-hidden="true" />
+                    </button>
                   </div>
-                  <div>
-                    <span className={[
-                      "rounded-full px-[10px] py-[3px] text-[11px] font-bold",
-                      product.isActive ? "bg-green/10 text-green" : "bg-stone-100 text-muted"
-                    ].join(" ")}>
-                      {product.isActive ? "활성" : "비활성"}
-                    </span>
+                  <div className="grid gap-3 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_9rem]">
+                    <label className="grid gap-2">
+                      <span className="field-label">제품명</span>
+                      <input
+                        className="input"
+                        aria-label="제품명"
+                        placeholder="예: 바게트"
+                        value={productForm.name}
+                        onChange={(event) =>
+                          setProductForm((current) => ({ ...current, name: event.target.value }))
+                        }
+                      />
+                    </label>
+                    <label className="grid gap-2">
+                      <span className="field-label">카테고리</span>
+                      <input
+                        className="input"
+                        aria-label="카테고리"
+                        placeholder="예: 상시 / 시즌 / 샌드위치"
+                        value={productForm.category}
+                        onChange={(event) =>
+                          setProductForm((current) => ({ ...current, category: event.target.value }))
+                        }
+                      />
+                    </label>
+                    <label className="grid gap-2">
+                      <span className="field-label">상태</span>
+                      <select
+                        className="input"
+                        aria-label="상태"
+                        value={productForm.isActive ? "active" : "inactive"}
+                        onChange={(event) =>
+                          setProductForm((current) => ({
+                            ...current,
+                            isActive: event.target.value === "active"
+                          }))
+                        }
+                      >
+                        <option value="active">활성</option>
+                        <option value="inactive">비활성</option>
+                      </select>
+                    </label>
+                  </div>
+                  <div className="mt-3 grid gap-3 lg:grid-cols-[1fr_1fr_auto]">
+                    <label className="grid gap-2">
+                      <span className="field-label">시즌 시작</span>
+                      <input
+                        className="input"
+                        aria-label="시즌 시작"
+                        type="date"
+                        value={productForm.seasonStart}
+                        onChange={(event) =>
+                          setProductForm((current) => ({ ...current, seasonStart: event.target.value }))
+                        }
+                      />
+                    </label>
+                    <label className="grid gap-2">
+                      <span className="field-label">시즌 종료</span>
+                      <input
+                        className="input"
+                        aria-label="시즌 종료"
+                        type="date"
+                        value={productForm.seasonEnd}
+                        onChange={(event) =>
+                          setProductForm((current) => ({ ...current, seasonEnd: event.target.value }))
+                        }
+                      />
+                    </label>
+                    <label className="mt-7 inline-flex min-h-11 items-center gap-3 rounded-control border border-latte bg-white px-3 font-bold text-cocoa">
+                      <input
+                        className="h-5 w-5 accent-stone-900"
+                        type="checkbox"
+                        checked={productForm.isSeasonal}
+                        onChange={(event) =>
+                          setProductForm((current) => ({
+                            ...current,
+                            isSeasonal: event.target.checked
+                          }))
+                        }
+                      />
+                      시즌 제품
+                    </label>
+                  </div>
+                  <div className="mt-3 flex justify-end gap-2">
+                    <button
+                      className="rounded-control border border-stone-300 bg-white px-4 py-2 font-bold text-cocoa"
+                      type="button"
+                      onClick={closeProductForm}
+                    >
+                      취소
+                    </button>
+                    <button
+                      className="rounded-control bg-bread px-4 py-2 font-bold text-white"
+                      type="button"
+                      onClick={() => void saveProduct()}
+                    >
+                      제품 저장
+                    </button>
                   </div>
                 </div>
-              ))}
-              {!isLoading && products.length === 0 ? (
-                <div className="px-3 py-8 text-center text-sm font-medium text-muted">등록 제품 없음</div>
               ) : null}
+
+              <div className="mt-4 rounded-[12px] border border-latte bg-white px-4 py-2">
+                <div className="grid grid-cols-[minmax(7rem,1.4fr)_minmax(5rem,0.8fr)_minmax(4rem,0.6fr)_minmax(8rem,1fr)_8rem] gap-2 border-b border-[#EFE8DC] py-2 text-[11px] font-semibold text-muted">
+                  <div>제품명</div><div>카테고리</div><div>시즌</div><div>기간</div><div>수정·삭제</div>
+                </div>
+                {sortedProducts.map((product) => (
+                  <div
+                    key={product.id}
+                    className="grid grid-cols-[minmax(7rem,1.4fr)_minmax(5rem,0.8fr)_minmax(4rem,0.6fr)_minmax(8rem,1fr)_8rem] items-center gap-2 border-b border-[#F5F0E7] py-3 text-[13px] text-ink last:border-b-0"
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate font-semibold">{product.name}</p>
+                      <span className={statusBadge(product.isActive)}>
+                        {product.isActive ? "활성" : "비활성"}
+                      </span>
+                    </div>
+                    <div className="text-muted">{product.category ?? "-"}</div>
+                    <div>{product.isSeasonal ? "시즌" : "상시"}</div>
+                    <div className="text-[12px] text-muted">
+                      {product.seasonStart || product.seasonEnd
+                        ? `${product.seasonStart ?? "-"} ~ ${product.seasonEnd ?? "-"}`
+                        : "-"}
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      <button
+                        className="rounded-[8px] border border-latte px-2 py-1 text-xs font-bold text-cocoa"
+                        type="button"
+                        aria-label={`${product.name} 수정`}
+                        onClick={() => openProductEdit(product)}
+                      >
+                        수정
+                      </button>
+                      <button
+                        className="rounded-[8px] border border-red/30 bg-white px-2 py-1 text-xs font-bold text-red"
+                        type="button"
+                        aria-label={`${product.name} 삭제`}
+                        onClick={() => void deleteProduct(product)}
+                      >
+                        삭제
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                {!isLoading && sortedProducts.length === 0 ? (
+                  <div className="py-8 text-center text-sm text-muted">등록 제품 없음</div>
+                ) : null}
+              </div>
             </div>
           ) : null}
 
@@ -1499,7 +1676,7 @@ export function ManagementPage() {
         ) : null}
       </section>
 
-      <section className="sr-only order-2">
+      <section className="hidden order-2" aria-hidden="true">
         <div className="panel-heading">
           <div>
             <p className="text-sm text-muted">제품 마스터</p>

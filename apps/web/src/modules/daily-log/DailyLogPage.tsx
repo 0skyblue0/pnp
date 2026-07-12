@@ -709,9 +709,9 @@ export function DailyLogPage() {
   }
 
   return (
-    <div className="mx-auto grid max-w-none gap-[14px]">
-      <section ref={entryPanelRef} className="min-w-0">
-        <div className="mb-4 flex items-center justify-between gap-3">
+    <div className="mx-auto grid max-w-none grid-cols-[minmax(0,1fr)] gap-[14px]">
+      <section ref={entryPanelRef} className="min-w-0 w-full">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="section-title">일일 운영 기록</h2>
             <h2 className="sr-only">매장 운영일지</h2>
@@ -801,7 +801,13 @@ export function DailyLogPage() {
         ) : null}
       </section>
 
-      <section className={viewMode === "entry" ? "grid gap-[14px]" : "grid gap-[14px]"}>
+      <section
+        className={
+          viewMode === "entry"
+            ? "grid min-w-0 grid-cols-[minmax(0,1fr)] gap-[14px]"
+            : "grid min-w-0 grid-cols-[minmax(0,1fr)] gap-[14px]"
+        }
+      >
         {viewMode === "entry" ? (
           <>
             <div className="sr-only" role="tablist" aria-label="일일 운영 입력 분류">
@@ -1454,7 +1460,7 @@ function BasicSection({
           onChange={(value) => updateDraft("date", value)}
         />
       </div>
-      <div className="grid grid-cols-1 gap-[14px] md:grid-cols-3">
+      <div className="grid min-w-0 grid-cols-1 gap-[14px] md:grid-cols-3">
         <label className="grid gap-[5px]">
           <span className="text-[11px] text-muted">작성자 *</span>
           <input
@@ -1467,7 +1473,7 @@ function BasicSection({
         </label>
         <div className="grid min-w-0 gap-[5px]">
           <div className="text-[11px] text-muted">외부 온도(℃) / 습도(%)</div>
-          <div className="flex gap-[6px]">
+          <div className="flex min-w-0 gap-[6px]">
             <UnitInput
               aria-label="외부온도"
               wrapperClassName="w-0 flex-1"
@@ -1490,7 +1496,7 @@ function BasicSection({
         </div>
         <div className="grid min-w-0 gap-[5px]">
           <div className="text-[11px] text-muted">내부 온도(℃) / 습도(%)</div>
-          <div className="flex gap-[6px]">
+          <div className="flex min-w-0 gap-[6px]">
             <UnitInput
               aria-label="내부온도"
               wrapperClassName="w-0 flex-1"
@@ -1513,7 +1519,7 @@ function BasicSection({
         </div>
       </div>
       <div className="mt-[14px] text-[11px] text-muted">날씨</div>
-      <div className="mt-[6px] flex gap-[8px]">
+      <div className="mt-[6px] flex flex-wrap gap-[8px]">
         {weatherOptions.map((weather) => (
           <button
             key={weather}
@@ -1571,9 +1577,7 @@ function SalesSection({
             className="h-[32px] w-full rounded-[7px] border border-latte px-[8px] text-right text-[12.5px] outline-none focus:border-bread"
             unit="원"
             value={
-              draft.posSalesAmount && draft.posSalesAmount !== "0"
-                ? draft.posSalesAmount
-                : "0"
+              draft.posSalesAmount && draft.posSalesAmount !== "0" ? draft.posSalesAmount : "0"
             }
             onFocus={(event) => event.currentTarget.select()}
             onChange={(event) =>
@@ -1599,9 +1603,7 @@ function SalesSection({
         </span>
         <div className="mt-[4px] flex justify-between border-t border-[#F1EAE0] py-[6px] text-[12.5px]">
           <span className="text-cocoa/90">POS 외 매출 합계</span>
-          <span className="font-semibold text-ink">
-            {formatCurrency(channelSalesAmount)}
-          </span>
+          <span className="font-semibold text-ink">{formatCurrency(channelSalesAmount)}</span>
         </div>
         <div className="mt-[2px] flex justify-between py-[8px]">
           <span className="text-[13px] font-bold text-ink">총 매출액</span>
@@ -1653,93 +1655,95 @@ function ProductsSection({
 
   return (
     <div>
-      <div className="max-h-[420px] overflow-y-auto rounded-[10px] border border-latte bg-white pr-1">
+      <div className="max-h-[420px] overflow-auto rounded-[10px] border border-latte bg-white pr-1">
         <div className="sticky top-0 z-10 grid grid-cols-[1.1fr_0.8fr_0.98fr_0.98fr_0.8fr_0.8fr] gap-[8px] border-b border-[#EFE8DC] bg-white px-[8px] py-[9px] text-[11px] font-semibold text-muted">
-        <div>제품명</div>
-        <div>생산량(개)</div>
-        <div>손실량(개)</div>
-        <div>시식량(개)</div>
-        <div>재고(남음, 개)</div>
-        <div>판매량(개)</div>
-      </div>
-      {rows.map((row) => (
-        <div
-          key={row.productName}
-          className="grid grid-cols-[1.1fr_0.8fr_0.98fr_0.98fr_0.8fr_0.8fr] items-center gap-[8px] border-b border-[#F5F0E7] px-[8px] py-[8px] last:border-b-0"
-        >
-          <div className="text-[13px] font-semibold text-ink">{row.productName}</div>
-          <input
-            className="h-[30px] min-w-0 w-full rounded-[7px] border border-latte px-[8px] text-[12.5px] outline-none"
-            inputMode="numeric"
-            value={row.producedQty}
-            onFocus={(event) => event.currentTarget.select()}
-            onChange={(event) => updateRow(row.productName, "producedQty", event.target.value)}
-          />
-          <div className="flex items-center gap-[3px]">
-            <button
-              className="flex h-[26px] w-[20px] shrink-0 items-center justify-center rounded-[6px] bg-cream text-[13px] font-bold text-cocoa"
-              type="button"
-              onClick={() => adjustQuantity(row.productName, "lossQty", -1)}
-            >
-              −
-            </button>
-            <input
-              className="h-[30px] min-w-0 flex-1 rounded-[7px] border border-latte px-[2px] text-center text-[12.5px] outline-none"
-              inputMode="numeric"
-              value={row.lossQty}
-              onFocus={(event) => event.currentTarget.select()}
-              onChange={(event) => updateRow(row.productName, "lossQty", event.target.value)}
-            />
-            <button
-              className="flex h-[26px] w-[20px] shrink-0 items-center justify-center rounded-[6px] bg-cream text-[13px] font-bold text-cocoa"
-              type="button"
-              onClick={() => adjustQuantity(row.productName, "lossQty", 1)}
-            >
-              +
-            </button>
-          </div>
-          <div className="flex items-center gap-[3px]">
-            <button
-              className="flex h-[26px] w-[20px] shrink-0 items-center justify-center rounded-[6px] bg-cream text-[13px] font-bold text-cocoa"
-              type="button"
-              onClick={() => adjustQuantity(row.productName, "tastingQty", -1)}
-            >
-              −
-            </button>
-            <input
-              className="h-[30px] min-w-0 flex-1 rounded-[7px] border border-latte px-[2px] text-center text-[12.5px] outline-none"
-              inputMode="numeric"
-              value={row.tastingQty}
-              onFocus={(event) => event.currentTarget.select()}
-              onChange={(event) => updateRow(row.productName, "tastingQty", event.target.value)}
-            />
-            <button
-              className="flex h-[26px] w-[20px] shrink-0 items-center justify-center rounded-[6px] bg-cream text-[13px] font-bold text-cocoa"
-              type="button"
-              onClick={() => adjustQuantity(row.productName, "tastingQty", 1)}
-            >
-              +
-            </button>
-          </div>
-          <input
-            className="h-[30px] min-w-0 w-full rounded-[7px] border border-latte px-[8px] text-[12.5px] outline-none"
-            inputMode="numeric"
-            value={row.stockQty}
-            onFocus={(event) => event.currentTarget.select()}
-            onChange={(event) => updateRow(row.productName, "stockQty", event.target.value)}
-          />
-          <div className="text-[13px] font-bold text-bread">
-            {row.manualSold ? row.soldQty : calculatedSold(row)}개
-          </div>
+          <div>제품명</div>
+          <div>생산량(개)</div>
+          <div>손실량(개)</div>
+          <div>시식량(개)</div>
+          <div>재고(남음, 개)</div>
+          <div>판매량(개)</div>
         </div>
-      ))}
+        {rows.map((row) => (
+          <div
+            key={row.productName}
+            className="grid grid-cols-[1.1fr_0.8fr_0.98fr_0.98fr_0.8fr_0.8fr] items-center gap-[8px] border-b border-[#F5F0E7] px-[8px] py-[8px] last:border-b-0"
+          >
+            <div className="text-[13px] font-semibold text-ink">{row.productName}</div>
+            <input
+              className="h-[30px] min-w-0 w-full rounded-[7px] border border-latte px-[8px] text-[12.5px] outline-none"
+              inputMode="numeric"
+              value={row.producedQty}
+              onFocus={(event) => event.currentTarget.select()}
+              onChange={(event) => updateRow(row.productName, "producedQty", event.target.value)}
+            />
+            <div className="flex items-center gap-[3px]">
+              <button
+                className="flex h-[26px] w-[20px] shrink-0 items-center justify-center rounded-[6px] bg-cream text-[13px] font-bold text-cocoa"
+                type="button"
+                onClick={() => adjustQuantity(row.productName, "lossQty", -1)}
+              >
+                −
+              </button>
+              <input
+                className="h-[30px] min-w-0 flex-1 rounded-[7px] border border-latte px-[2px] text-center text-[12.5px] outline-none"
+                inputMode="numeric"
+                value={row.lossQty}
+                onFocus={(event) => event.currentTarget.select()}
+                onChange={(event) => updateRow(row.productName, "lossQty", event.target.value)}
+              />
+              <button
+                className="flex h-[26px] w-[20px] shrink-0 items-center justify-center rounded-[6px] bg-cream text-[13px] font-bold text-cocoa"
+                type="button"
+                onClick={() => adjustQuantity(row.productName, "lossQty", 1)}
+              >
+                +
+              </button>
+            </div>
+            <div className="flex items-center gap-[3px]">
+              <button
+                className="flex h-[26px] w-[20px] shrink-0 items-center justify-center rounded-[6px] bg-cream text-[13px] font-bold text-cocoa"
+                type="button"
+                onClick={() => adjustQuantity(row.productName, "tastingQty", -1)}
+              >
+                −
+              </button>
+              <input
+                className="h-[30px] min-w-0 flex-1 rounded-[7px] border border-latte px-[2px] text-center text-[12.5px] outline-none"
+                inputMode="numeric"
+                value={row.tastingQty}
+                onFocus={(event) => event.currentTarget.select()}
+                onChange={(event) => updateRow(row.productName, "tastingQty", event.target.value)}
+              />
+              <button
+                className="flex h-[26px] w-[20px] shrink-0 items-center justify-center rounded-[6px] bg-cream text-[13px] font-bold text-cocoa"
+                type="button"
+                onClick={() => adjustQuantity(row.productName, "tastingQty", 1)}
+              >
+                +
+              </button>
+            </div>
+            <input
+              className="h-[30px] min-w-0 w-full rounded-[7px] border border-latte px-[8px] text-[12.5px] outline-none"
+              inputMode="numeric"
+              value={row.stockQty}
+              onFocus={(event) => event.currentTarget.select()}
+              onChange={(event) => updateRow(row.productName, "stockQty", event.target.value)}
+            />
+            <div className="text-[13px] font-bold text-bread">
+              {row.manualSold ? row.soldQty : calculatedSold(row)}개
+            </div>
+          </div>
+        ))}
       </div>
       <div className="flex justify-end gap-[24px] pt-[10px] text-[12.5px] text-muted">
         <div>
-          총 생산량 <span className="font-bold text-ink">{totals.produced.toLocaleString("ko-KR")}개</span>
+          총 생산량{" "}
+          <span className="font-bold text-ink">{totals.produced.toLocaleString("ko-KR")}개</span>
         </div>
         <div>
-          총 판매량 <span className="font-bold text-bread">{totals.sold.toLocaleString("ko-KR")}개</span>
+          총 판매량{" "}
+          <span className="font-bold text-bread">{totals.sold.toLocaleString("ko-KR")}개</span>
         </div>
       </div>
       <div className="sr-only">

@@ -71,7 +71,7 @@ export function AppLayout() {
           </NavLink>
 
           <nav
-            className="flex min-w-0 flex-1 gap-1 overflow-x-auto lg:justify-center"
+            className="flex min-w-0 flex-1 flex-wrap gap-1 lg:flex-nowrap lg:justify-center lg:overflow-x-auto"
             aria-label="주요 메뉴"
           >
             {navItems.map((item) => (
@@ -81,7 +81,7 @@ export function AppLayout() {
                 end={false}
                 className={({ isActive }) =>
                   [
-                    "relative shrink-0 rounded-control px-4 py-2 text-[13px] font-semibold transition",
+                    "relative shrink-0 rounded-control px-3 py-2 text-[13px] font-semibold transition sm:px-4",
                     isActive
                       ? "from-cocoa bg-[#fff8ef] text-cocoa shadow-[inset_0_0_0_1px_rgba(255,255,255,0.45)]"
                       : "text-[#f3dfce] hover:bg-white/10 hover:text-white"

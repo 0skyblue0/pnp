@@ -57,7 +57,7 @@ type ProductDto = {
 const modalQuickTimes = Array.from({ length: 10 }, (_, index) => `${String(index + 10).padStart(2, "0")}:00`);
 const pickupHours = Array.from({ length: 10 }, (_, index) => String(index + 10).padStart(2, "0"));
 const pickupMinutes = ["00", "10", "20", "30", "40", "50"];
-const halfCuttableProducts = new Set(["바게트", "깜빠뉴", "호밀빵", "식빵", "식 빵"]);
+const halfCuttableProducts = new Set(["바게트", "화바게트", "깜빠뉴", "호밀빵", "식빵", "식 빵"]);
 const sliceableProducts = new Set(["식빵", "식 빵"]);
 const productLineupOrder = new Map<string, number>(
   productLineup.map((name, index) => [name, index])
@@ -261,6 +261,7 @@ export function ReservationPage() {
   const [formErrors, setFormErrors] = useState<string[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<ReservationForm>(() => emptyReservationForm());
+  const [selectedQuickDateDays, setSelectedQuickDateDays] = useState<number | null>(null);
   const [productOptions, setProductOptions] = useState<string[]>(() => [...productLineup]);
 
   const sortedReservations = useMemo(
@@ -329,6 +330,7 @@ export function ReservationPage() {
     const target = new Date();
     target.setDate(target.getDate() + daysFromToday);
     const nextDate = formatDateOnly(target);
+    setSelectedQuickDateDays(daysFromToday);
     setForm((current) => ({
       ...current,
       pickupAt: combineDateTime(nextDate, timePart(current.pickupAt))
@@ -340,6 +342,7 @@ export function ReservationPage() {
   }
 
   function setPickupDate(nextDate: string) {
+    setSelectedQuickDateDays(null);
     setForm((current) => ({ ...current, pickupAt: combineDateTime(nextDate, timePart(current.pickupAt)) }));
   }
 
@@ -447,6 +450,7 @@ export function ReservationPage() {
     setMessage(editingId ? `예약 수정 #${envelope.data.id}` : `예약 저장 #${envelope.data.id}`);
     setFormErrors([]);
     setEditingId(null);
+    setSelectedQuickDateDays(null);
     setReservationQuery("");
     const nextParams = new URLSearchParams();
     nextParams.set("date", savedPickupDate);
@@ -461,6 +465,7 @@ export function ReservationPage() {
     nextParams.delete("form");
     setSearchParams(nextParams, { replace: true });
     setEditingId(reservation.id);
+    setSelectedQuickDateDays(null);
     setMessage(`${reservation.customerName || "선택한 손님"} 예약을 수정합니다. 날짜·시간을 바꾸면 미루기로 처리됩니다.`);
     setError(null);
     setFormErrors([]);
@@ -485,6 +490,7 @@ export function ReservationPage() {
 
   function cancelEdit() {
     setEditingId(null);
+    setSelectedQuickDateDays(null);
     setMessage(null);
     setFormErrors([]);
     const nextParams = new URLSearchParams();
@@ -498,6 +504,7 @@ export function ReservationPage() {
     nextParams.set("form", "new");
     setSearchParams(nextParams, { replace: true });
     setEditingId(null);
+    setSelectedQuickDateDays(null);
     setMessage(null);
     setError(null);
     setFormErrors([]);
@@ -615,9 +622,7 @@ export function ReservationPage() {
                   ["내일", 1],
                   ["모레", 2]
                 ].map(([label, daysFromToday]) => {
-                  const target = new Date();
-                  target.setDate(target.getDate() + Number(daysFromToday));
-                  const isSelected = datePart(form.pickupAt) === formatDateOnly(target);
+                  const isSelected = selectedQuickDateDays === Number(daysFromToday);
                   return (
                     <button
                       key={label}

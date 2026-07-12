@@ -361,6 +361,16 @@ describe("App", () => {
     expect(within(modal).getByRole("button", { name: "반컷팅" })).toBeInTheDocument();
     expect(within(modal).queryByRole("button", { name: "슬라이스" })).not.toBeInTheDocument();
 
+    fireEvent.change(firstProductSelect, { target: { value: "화바게트" } });
+    expect(within(modal).getByText("컷팅 옵션")).toBeInTheDocument();
+    expect(within(modal).getByRole("button", { name: "없음" })).toBeInTheDocument();
+    expect(within(modal).getByRole("button", { name: "반컷팅" })).toBeInTheDocument();
+    expect(within(modal).queryByRole("button", { name: "슬라이스" })).not.toBeInTheDocument();
+
+    fireEvent.change(firstProductSelect, { target: { value: "화바게트(H)" } });
+    expect(within(modal).queryByText("컷팅 옵션")).not.toBeInTheDocument();
+    expect(within(modal).queryByRole("button", { name: "반컷팅" })).not.toBeInTheDocument();
+
     fireEvent.change(firstProductSelect, { target: { value: "식 빵" } });
     expect(within(modal).getByRole("button", { name: "반컷팅" })).toBeInTheDocument();
     expect(within(modal).getByRole("button", { name: "슬라이스" })).toBeInTheDocument();
@@ -377,9 +387,19 @@ describe("App", () => {
     expect(within(modal).getByText("비닐봉투")).toBeInTheDocument();
     expect(within(modal).getByRole("button", { name: "취소" })).toBeInTheDocument();
     expect(within(modal).getByRole("button", { name: "등록" })).toBeInTheDocument();
-    expect(within(modal).getByRole("button", { name: "오늘" })).toBeInTheDocument();
-    expect(within(modal).getByRole("button", { name: "내일" })).toBeInTheDocument();
-    expect(within(modal).getByRole("button", { name: "모레" })).toBeInTheDocument();
+    const todayButton = within(modal).getByRole("button", { name: "오늘" });
+    const tomorrowButton = within(modal).getByRole("button", { name: "내일" });
+    const dayAfterTomorrowButton = within(modal).getByRole("button", { name: "모레" });
+    expect(todayButton).toBeInTheDocument();
+    expect(tomorrowButton).toBeInTheDocument();
+    expect(dayAfterTomorrowButton).toBeInTheDocument();
+    expect(todayButton).not.toHaveClass("bg-bread");
+    expect(tomorrowButton).not.toHaveClass("bg-bread");
+    expect(dayAfterTomorrowButton).not.toHaveClass("bg-bread");
+    fireEvent.click(tomorrowButton);
+    expect(tomorrowButton).toHaveClass("bg-bread");
+    expect(todayButton).not.toHaveClass("bg-bread");
+    expect(dayAfterTomorrowButton).not.toHaveClass("bg-bread");
     expect(within(modal).getByLabelText("픽업 날짜")).toHaveAttribute("type", "date");
     expect(within(modal).getByLabelText("픽업 날짜")).not.toHaveClass("sr-only");
 

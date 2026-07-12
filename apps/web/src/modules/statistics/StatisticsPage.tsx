@@ -311,14 +311,6 @@ export function StatisticsPage() {
   const maxMajor = Math.max(...displayMajor.map((item) => item.count), 1);
   const middleA11y = stats.middle.slice(0, 8);
   const minorA11y = stats.minor.slice(0, 8);
-  const dailyTrend = stats.daily.slice(-31).map((item) => {
-    const [, month = "0", day = "0"] = item.date.split("-");
-    return {
-      ...item,
-      label: `${Number(month)}/${Number(day)}`
-    };
-  });
-  const maxDaily = Math.max(...dailyTrend.map((item) => item.count), 1);
   const selectedMonthLabel = monthLabel(range);
   const periodLabel =
     selectedMonthLabel ??
@@ -472,25 +464,30 @@ export function StatisticsPage() {
         </section>
 
         <section className="dc-card-pad">
-          <div className="dc-eyebrow mb-[6px]">선택 기간 일별 추이</div>
-          <p className="mb-[12px] text-[11.5px] font-semibold leading-5 text-muted">
-            조회 기간 안에서 날짜별로 등록된 손님 반응 건수를 보여줍니다. 막대가 높을수록 그날 기록된 반응이 많습니다.
-          </p>
-          <div className="flex h-[88px] items-end gap-[4px] overflow-hidden">
-            {dailyTrend.length > 0 ? dailyTrend.map((item) => (
-              <div key={item.date} className="flex h-full min-w-0 flex-1 flex-col items-center justify-end gap-[6px]">
-                <div className="text-[11px] font-bold text-ink">{item.count}</div>
-                <div
-                  className="w-full max-w-[16px] rounded-t-[5px] bg-bread"
-                  style={{ height: `${Math.max(4, Math.round((item.count / maxDaily) * 100))}%` }}
-                />
-                <div className="truncate text-[9px] text-muted">{item.label}</div>
+          <div className="dc-eyebrow mb-[14px]">월별 핵심 보기</div>
+          <div className="grid gap-3">
+            <div>
+              <div className="mb-1 flex justify-between text-[12px] font-semibold text-ink">
+                <span>가장 많은 대분류</span>
+                <span>{displayMajor[0]?.label ?? "없음"}</span>
               </div>
-            )) : (
-              <div className="grid h-full flex-1 place-items-center rounded-[10px] bg-cream text-xs font-semibold text-muted">
-                날짜별 반응 없음
+              <p className="text-[11.5px] font-semibold leading-5 text-muted">
+                {displayMajor[0]
+                  ? `${displayMajor[0].count.toLocaleString("ko-KR")}건 · 전체 ${formatPercent(displayMajor[0].count, displayTotal)}`
+                  : "선택 기간에 등록된 반응이 없습니다."}
+              </p>
+            </div>
+            <div>
+              <div className="mb-1 flex justify-between text-[12px] font-semibold text-ink">
+                <span>가장 반복된 주제</span>
+                <span>{displayRepeated[0]?.label ?? "없음"}</span>
               </div>
-            )}
+              <p className="text-[11.5px] font-semibold leading-5 text-muted">
+                {displayRepeated[0]
+                  ? `${displayRepeated[0].count.toLocaleString("ko-KR")}건 · 클릭하면 상세 내용을 볼 수 있습니다.`
+                  : "반복 주제가 쌓이면 여기에 표시됩니다."}
+              </p>
+            </div>
           </div>
         </section>
       </div>

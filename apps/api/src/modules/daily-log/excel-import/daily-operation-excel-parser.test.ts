@@ -77,7 +77,7 @@ function buildWorkbook(path: string) {
 
   setCell(rows, 56, 0, "4. 서비스내역 및\n   손님 특이사항");
   setCell(rows, 56, 2, "호밀빵 판매: 4개, (H) 4개/ 호밀쇼콜라오렌지 판매: 3개");
-  setCell(rows, 57, 2, "주차지원 요청이 많았습니다.");
+  setCell(rows, 57, 2, "주차지원 요청이 많았습니다./ 샌드위치 수요가 높았습니다.\n비가 와서 배달 주문이 적었습니다.");
   setCell(rows, 60, 0, "5. 제품의견 / 손실");
   setCell(rows, 60, 2, "오픈(김도현) : 반죽힘이 강했습니다.");
   setCell(rows, 64, 0, "6. 매장\n   관리");
@@ -157,10 +157,22 @@ describe("parseDailyOperationWorkbook", () => {
         shortSummary: "주차지원 요청이 많았습니다.",
         fullText:
           "[일일업무보고서 서비스내역 및 손님 특이사항]\n출처: 일일업무보고서_5월.xlsx / 1일\n\n주차지원 요청이 많았습니다."
+      },
+      {
+        date: "2026-05-01",
+        shortSummary: "샌드위치 수요가 높았습니다.",
+        fullText:
+          "[일일업무보고서 서비스내역 및 손님 특이사항]\n출처: 일일업무보고서_5월.xlsx / 1일\n\n샌드위치 수요가 높았습니다."
+      },
+      {
+        date: "2026-05-01",
+        shortSummary: "비가 와서 배달 주문이 적었습니다.",
+        fullText:
+          "[일일업무보고서 서비스내역 및 손님 특이사항]\n출처: 일일업무보고서_5월.xlsx / 1일\n\n비가 와서 배달 주문이 적었습니다."
       }
     ]);
     expect(record.draft.rawSections?.sections.serviceAndCustomerNotes.text).toBe(
-      "호밀빵 판매: 4개, (H) 4개/ 호밀쇼콜라오렌지 판매: 3개\n주차지원 요청이 많았습니다."
+      "호밀빵 판매: 4개, (H) 4개/ 호밀쇼콜라오렌지 판매: 3개\n주차지원 요청이 많았습니다./ 샌드위치 수요가 높았습니다.\n비가 와서 배달 주문이 적었습니다."
     );
     expect(record.draft.rawSections?.sections.facilityCheck.text).toContain("06:00");
     expect(record.productRows).toEqual(

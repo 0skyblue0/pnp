@@ -651,9 +651,10 @@ describe("App", () => {
     expect(screen.getByText("월별 빠른 조회")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "2026년 7월" })).toHaveAttribute("aria-pressed", "false");
     expect(screen.getByRole("button", { name: "2026년 6월" })).toBeInTheDocument();
-    expect(screen.getByText("선택 기간 일별 추이")).toBeInTheDocument();
-    expect(screen.getByText(/날짜별로 등록된 손님 반응 건수/)).toBeInTheDocument();
-    expect(screen.getByText("7/12")).toBeInTheDocument();
+    expect(screen.getByText("월별 핵심 보기")).toBeInTheDocument();
+    expect(screen.getByText("가장 많은 대분류")).toBeInTheDocument();
+    expect(screen.queryByText("선택 기간 일별 추이")).not.toBeInTheDocument();
+    expect(screen.queryByText(/날짜별로 등록된 손님 반응 건수/)).not.toBeInTheDocument();
     expect(screen.queryByText("5월 보고")).not.toBeInTheDocument();
     expect(screen.queryByText("추천 기능")).not.toBeInTheDocument();
     const topicLink = screen.getAllByRole("link", { name: "제품 > 맛 > 바게트 기록 보기" })[0];

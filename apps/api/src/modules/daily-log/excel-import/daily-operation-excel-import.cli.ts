@@ -15,6 +15,8 @@ type ResponseCriterionPathIds = {
   minorCriterionId: number | null;
 };
 
+type ResponseCriterionPathMap = Map<number, ResponseCriterionPathIds>;
+
 const importedDailyServiceResponsePrefix = "[일일업무보고서 서비스내역 및 손님 특이사항]";
 
 function usage(): string {
@@ -118,17 +120,24 @@ async function main() {
   }
 }
 
-async function resolveImportedResponseCriterionPathIds(prisma: PrismaClient): Promise<ResponseCriterionPathIds> {
+async function resolveImportedResponseCriterionPathIds(prisma: PrismaClient): Promise<ResponseCriterionPathMap> {
   const criteria = await prisma.responseCriterion.findMany({
-    where: { id: { in: [2502, 2501, 2004] }, isActive: true },
+    where: {
+      id: {
+        in: [
+          2004, 2120, 2144, 2150, 2201, 2300, 2330, 2350, 2351, 2352, 2354, 2355, 2356, 2360, 2361, 2410,
+          2430, 2440, 2450, 2452, 2460, 2461, 2470, 2480, 2501, 2502
+        ]
+      },
+      isActive: true
+    },
     include: { parent: { include: { parent: true } } },
     orderBy: [{ id: "asc" }]
   });
-  const criterion = criteria.find((item) => item.id === 2502) ?? criteria.find((item) => item.id === 2501) ?? criteria[0];
-  if (!criterion) {
+  if (criteria.length === 0) {
     throw new Error("손님반응 적재에 사용할 활성 분류 기준을 찾지 못했습니다.");
   }
-  return criterionPathIds(criterion);
+  return new Map(criteria.map((criterion) => [criterion.id, criterionPathIds(criterion)]));
 }
 
 function criterionPathIds(criterion: ResponseCriterionWithParents): ResponseCriterionPathIds {
@@ -168,7 +177,7 @@ async function upsertImportedCustomerResponses(
   prisma: PrismaClient,
   date: Date,
   rows: CustomerResponseRow[],
-  pathIds: ResponseCriterionPathIds
+  pathIdsByCriterionId: ResponseCriterionPathMap
 ) {
   await prisma.customerResponse.deleteMany({
     where: {
@@ -182,17 +191,61 @@ async function upsertImportedCustomerResponses(
   }
 
   await prisma.customerResponse.createMany({
-    data: rows.map((row) => ({
-      date,
-      criterionId: pathIds.criterionId,
-      majorCriterionId: pathIds.majorCriterionId,
-      middleCriterionId: pathIds.middleCriterionId,
-      minorCriterionId: pathIds.minorCriterionId,
-      shortSummary: row.shortSummary,
-      fullText: row.fullText,
-      llmAssisted: false
-    }))
+    data: rows.map((row) => {
+      const pathIds = resolveImportedRowPathIds(row.shortSummary, pathIdsByCriterionId);
+      return {
+        date,
+        criterionId: pathIds.criterionId,
+        majorCriterionId: pathIds.majorCriterionId,
+        middleCriterionId: pathIds.middleCriterionId,
+        minorCriterionId: pathIds.minorCriterionId,
+        shortSummary: row.shortSummary,
+        fullText: row.fullText,
+        llmAssisted: false
+      };
+    })
   });
+}
+
+function resolveImportedRowPathIds(
+  text: string,
+  pathIdsByCriterionId: ResponseCriterionPathMap
+): ResponseCriterionPathIds {
+  const criterionId = classifyImportedCustomerResponse(text);
+  const fallback = pathIdsByCriterionId.get(2502) ?? pathIdsByCriterionId.get(2501) ?? pathIdsByCriterionId.get(2004) ?? Array.from(pathIdsByCriterionId.values())[0];
+  const pathIds = pathIdsByCriterionId.get(criterionId) ?? fallback;
+  if (!pathIds) {
+    throw new Error("손님반응 적재에 사용할 분류 기준을 찾지 못했습니다.");
+  }
+  return pathIds;
+}
+
+function classifyImportedCustomerResponse(text: string): number {
+  if (/(배달.*많|쿠팡.*많)/u.test(text)) return 2361;
+  if (/(배달.*없|배달.*적|배달 주문이 거의|배달 주문건이 적)/u.test(text)) return 2360;
+  if (/(객단가.*낮|객단가도.*낮)/u.test(text)) return 2355;
+  if (/(객단가.*높)/u.test(text)) return 2356;
+  if (/(품절|빵이 없어서|구매하지못|구매하지 못|공백시간|일찍.*소진|이르게 품절)/u.test(text)) return 2300;
+  if (/(일찍 마감|마감 되|솔드아웃|거의 소진)/u.test(text)) return 2300;
+  if (/(예약|픽업)/u.test(text)) return 2330;
+  if (/(샌드위치.*수요|샌드위치.*구매|샌드위치.*인기|바질치킨)/u.test(text)) return 2351;
+  if (/(대량|[0-9]+개씩|여러.*구매)/u.test(text)) return 2354;
+  if (/(수요가 높|찾으시는 손님|찾는 손님|많이 구매|대부분.*구매|구매해가|잘 나갔|꾸준하게|꾸준히|고르게 판매|판매 완료|판매 많|빠르게 판매|매출.*높)/u.test(text)) return 2350;
+  if (/(쌀빵|건강빵|통밀|통곡물|잡곡|신제품|계절.*문의|더 많이 만들어)/u.test(text)) return 2150;
+  if (/(시식.*좋|시식 후 구매|구매로 이어|극찬|맛있|맛좋|맛 좋|긍정|만족|칭찬|좋아한다고|최고로)/u.test(text)) return 2430;
+  if (/(시식 많이|반응 좋)/u.test(text)) return 2430;
+  if (/(선물)/u.test(text)) return 2440;
+  if (/(짜다는|짰)/u.test(text)) return 2120;
+  if (/(친절|설명|안내 도와)/u.test(text)) return 2201;
+  if (/(주차)/u.test(text)) return 2480;
+  if (/(청주|영종도|목동|멀리|지방|여행)/u.test(text)) return 2410;
+  if (/(가족)/u.test(text)) return 2460;
+  if (/(어린이|아이)/u.test(text)) return 2461;
+  if (/(비가|우천|더운|날씨|흐리)/u.test(text)) return 2470;
+  if (/(점심시간대.*방문 많|방문 몰렸|손님 방문 많)/u.test(text)) return 2452;
+  if (/(유동인구|방문.*저조|방문수.*저조|한가|뜸하다|4시 이후|오전.*저조)/u.test(text)) return 2450;
+  if (/(컷팅 문의|비닐.*문의|쇼핑백|봉투 문의|상품권|크림이나 잼|모양이 다른|보관.*문의|요청)/u.test(text)) return 2144;
+  return 2502;
 }
 
 main().catch((error: unknown) => {

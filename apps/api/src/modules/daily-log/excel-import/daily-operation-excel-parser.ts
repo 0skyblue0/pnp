@@ -249,14 +249,18 @@ function buildCustomerResponseRows(input: {
   if (!serviceText) {
     return [];
   }
-  const firstLine = serviceText.split("\n").find((line) => line.trim().length > 0)?.trim() ?? "일일업무보고서 손님 특이사항";
-  return [
-    {
-      date: input.date,
-      shortSummary: firstLine.slice(0, 200),
-      fullText: `[일일업무보고서 서비스내역 및 손님 특이사항]\n출처: ${input.fileName} / ${input.sheetName}\n\n${serviceText}`
-    }
-  ];
+  return splitCustomerResponseNotes(serviceText).map((note) => ({
+    date: input.date,
+    shortSummary: note.slice(0, 200),
+    fullText: `[일일업무보고서 서비스내역 및 손님 특이사항]\n출처: ${input.fileName} / ${input.sheetName}\n\n${note}`
+  }));
+}
+
+function splitCustomerResponseNotes(serviceText: string): string[] {
+  return serviceText
+    .split(/\s*(?:\/|\n)+\s*/u)
+    .map((note) => note.trim())
+    .filter((note) => note.length > 0);
 }
 
 function normalizeServiceNoteLine(line: string): string {

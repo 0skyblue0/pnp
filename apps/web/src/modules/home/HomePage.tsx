@@ -138,7 +138,10 @@ function numeric(value: string | number | null | undefined): number {
 }
 
 function dailyOperationSales(record: DailyOperationRecordDto): number {
-  return numeric(record.draft.posSalesAmount) + record.channelRows.reduce((total, row) => total + numeric(row.amount), 0);
+  return (
+    numeric(record.draft.posSalesAmount) +
+    record.channelRows.reduce((total, row) => total + numeric(row.amount), 0)
+  );
 }
 
 function monthRangeFor(date: string): { from: string; to: string } {
@@ -161,7 +164,9 @@ function percentLabel(value: number, target: number | null): string {
 
 function currentSalesGoal(notices: AnnualGoalNotice[], date: string): AnnualGoalNotice | null {
   const year = Number(date.slice(0, 4));
-  return notices.find((notice) => notice.category === "sales" && notice.targetYear === year) ?? null;
+  return (
+    notices.find((notice) => notice.category === "sales" && notice.targetYear === year) ?? null
+  );
 }
 
 function currentMonthTarget(notice: AnnualGoalNotice | null, date: string): number | null {
@@ -193,7 +198,9 @@ export function HomePage() {
   const [pendingReservationCount, setPendingReservationCount] = useState(0);
   const [todayResponseCount, setTodayResponseCount] = useState(0);
   const [currentMonthSales, setCurrentMonthSales] = useState(0);
-  const [dailyOperationSaved, setDailyOperationSaved] = useState(() => hasSavedDailyOperation(date));
+  const [dailyOperationSaved, setDailyOperationSaved] = useState(() =>
+    hasSavedDailyOperation(date)
+  );
   const [error, setError] = useState<string | null>(null);
 
   const currentYear = date.slice(0, 4);
@@ -207,9 +214,10 @@ export function HomePage() {
   const allGoalNotices = storedGoalNotices;
   const salesGoalNotice = currentSalesGoal(allGoalNotices, date);
   const monthlySalesTarget = currentMonthTarget(salesGoalNotice, date);
-  const monthlySalesAchievementPercent = monthlySalesTarget && monthlySalesTarget > 0
-    ? Math.min(Math.round((currentMonthSales / monthlySalesTarget) * 100), 100)
-    : 0;
+  const monthlySalesAchievementPercent =
+    monthlySalesTarget && monthlySalesTarget > 0
+      ? Math.min(Math.round((currentMonthSales / monthlySalesTarget) * 100), 100)
+      : 0;
   const remainingMonthlySalesTarget = Math.max((monthlySalesTarget ?? 0) - currentMonthSales, 0);
   const operationNotice = allGoalNotices.find((notice) => notice.category === "operation") ?? null;
   const staffNotice = allGoalNotices.find((notice) => notice.category === "staff") ?? null;
@@ -266,14 +274,15 @@ export function HomePage() {
     setDailyOperationSaved(hasSavedDailyOperation(date));
     try {
       const monthRange = monthRangeFor(date);
-      const [reservationEnvelope, responseEnvelope, todayDailyEnvelope, monthDailyEnvelope] = await Promise.all([
-        apiGet<ListEnvelope<ReservationDto>>(`/reservation?from=${date}&to=${date}`),
-        apiGet<ListEnvelope<ResponseDto>>(`/response?from=${date}&to=${date}`),
-        apiGet<ListEnvelope<DailyOperationRecordDto>>(`/daily-operation?from=${date}&to=${date}`),
-        apiGet<ListEnvelope<DailyOperationRecordDto>>(
-          `/daily-operation?from=${monthRange.from}&to=${monthRange.to}`
-        )
-      ]);
+      const [reservationEnvelope, responseEnvelope, todayDailyEnvelope, monthDailyEnvelope] =
+        await Promise.all([
+          apiGet<ListEnvelope<ReservationDto>>(`/reservation?from=${date}&to=${date}`),
+          apiGet<ListEnvelope<ResponseDto>>(`/response?from=${date}&to=${date}`),
+          apiGet<ListEnvelope<DailyOperationRecordDto>>(`/daily-operation?from=${date}&to=${date}`),
+          apiGet<ListEnvelope<DailyOperationRecordDto>>(
+            `/daily-operation?from=${monthRange.from}&to=${monthRange.to}`
+          )
+        ]);
 
       if (!reservationEnvelope.error) {
         const reservations = reservationEnvelope.data.items;
@@ -286,11 +295,16 @@ export function HomePage() {
         setTodayResponseCount(responseEnvelope.data.items.length);
       }
       if (!todayDailyEnvelope.error) {
-        setDailyOperationSaved(todayDailyEnvelope.data.items.length > 0 || hasSavedDailyOperation(date));
+        setDailyOperationSaved(
+          todayDailyEnvelope.data.items.length > 0 || hasSavedDailyOperation(date)
+        );
       }
       if (!monthDailyEnvelope.error) {
         setCurrentMonthSales(
-          monthDailyEnvelope.data.items.reduce((total, record) => total + dailyOperationSales(record), 0)
+          monthDailyEnvelope.data.items.reduce(
+            (total, record) => total + dailyOperationSales(record),
+            0
+          )
         );
       }
     } catch {
@@ -351,6 +365,32 @@ export function HomePage() {
 
   return (
     <div className="mx-auto grid max-w-none gap-4">
+      <section className="overflow-hidden rounded-panel border border-[#d8c5ad] bg-[#f7f0e6] shadow-panel">
+        <div className="grid min-h-[128px] gap-4 p-5 md:grid-cols-[1fr_15rem] md:items-stretch">
+          <div className="flex flex-col justify-center">
+            <p className="text-[11px] font-extrabold uppercase tracking-[0.22em] text-cocoa">
+              Paul &amp; Paulina · Daily Bread
+            </p>
+            <h1 className="mt-2 font-serif text-[25px] font-bold leading-tight text-ink md:text-[30px]">
+              빵과 손님을 대하는 기준을 매일 기록합니다.
+            </h1>
+            <p className="mt-2 max-w-2xl text-sm font-semibold leading-6 text-muted">
+              오래된 나무 간판, 벽돌, 흰 외벽의 차분한 매장 분위기를 운영 화면 안에서도 이어갑니다.
+            </p>
+          </div>
+          <div className="pnp-brick-wash relative hidden overflow-hidden rounded-[12px] border border-[#dfcfba] md:block">
+            <div className="absolute inset-x-4 top-5 rounded-[6px] bg-[#6b3f27] px-4 py-3 text-center shadow-elegant">
+              <p className="pnp-logo-type text-[21px] font-semibold text-[#fff8ef]">
+                Paul &amp; Paulina
+              </p>
+              <p className="mt-1 text-[9px] font-semibold uppercase tracking-[0.22em] text-[#ead6c2]">
+                Daily Bread
+              </p>
+            </div>
+            <div className="absolute bottom-4 left-5 right-5 h-10 rounded-t-[18px] border border-[#7c6657]/40 bg-white/45" />
+          </div>
+        </div>
+      </section>
       {error ? (
         <div className="rounded-control border border-red/20 bg-red/10 px-3 py-2 text-sm font-semibold text-red">
           {error}
@@ -375,15 +415,21 @@ export function HomePage() {
             <span className="block text-[11.5px] font-medium text-muted">오늘 예약 현황</span>
             <span className="mt-2 flex items-end gap-5">
               <span className="grid gap-0.5">
-                <span className="text-[19px] font-extrabold leading-none text-ink">{todayReservationCount}</span>
+                <span className="text-[19px] font-extrabold leading-none text-ink">
+                  {todayReservationCount}
+                </span>
                 <span className="text-[10.5px] font-medium text-muted">전체</span>
               </span>
               <span className="grid gap-0.5">
-                <span className="text-[19px] font-extrabold leading-none text-[#C7851E]">{pendingReservationCount}</span>
+                <span className="text-[19px] font-extrabold leading-none text-[#C7851E]">
+                  {pendingReservationCount}
+                </span>
                 <span className="text-[10.5px] font-medium text-muted">대기</span>
               </span>
               <span className="grid gap-0.5">
-                <span className="text-[19px] font-extrabold leading-none text-green">{completedReservationCount}</span>
+                <span className="text-[19px] font-extrabold leading-none text-green">
+                  {completedReservationCount}
+                </span>
                 <span className="text-[10.5px] font-medium text-muted">픽업완료</span>
               </span>
             </span>
@@ -394,7 +440,9 @@ export function HomePage() {
             className="min-h-[92px] rounded-panel border border-latte bg-white px-[18px] py-4 shadow-none transition hover:border-bread"
           >
             <span className="block text-[11.5px] font-medium text-muted">손님 반응 기록</span>
-            <span className="mt-2 block text-[21px] font-extrabold leading-tight text-ink">{todayResponseCount}건</span>
+            <span className="mt-2 block text-[21px] font-extrabold leading-tight text-ink">
+              {todayResponseCount}건
+            </span>
           </Link>
         </div>
       </section>
@@ -403,19 +451,30 @@ export function HomePage() {
         <button
           className="rounded-panel border border-latte bg-white px-5 py-[18px] text-left transition hover:border-bread"
           type="button"
-          onClick={() => salesGoalNotice ? setDetailGoalNoticeKey(goalNoticeKey(salesGoalNotice)) : undefined}
+          onClick={() =>
+            salesGoalNotice ? setDetailGoalNoticeKey(goalNoticeKey(salesGoalNotice)) : undefined
+          }
         >
           <p className="text-[11.5px] text-muted">매출 목표</p>
           <p className="mt-2 text-base font-bold text-ink">
-            {monthlySalesTarget !== null ? `${Number(date.slice(5, 7))}월 ${formatCurrency(monthlySalesTarget)}` : "올해 매출 목표 미등록"}
+            {monthlySalesTarget !== null
+              ? `${Number(date.slice(5, 7))}월 ${formatCurrency(monthlySalesTarget)}`
+              : "올해 매출 목표 미등록"}
           </p>
           {salesGoalNotice?.targetTotal ? (
-            <p className="mt-1 text-xs font-semibold text-cocoa">연간 총합 {formatCurrency(salesGoalNotice.targetTotal)}</p>
+            <p className="mt-1 text-xs font-semibold text-cocoa">
+              연간 총합 {formatCurrency(salesGoalNotice.targetTotal)}
+            </p>
           ) : null}
-          <div className="mt-3" aria-label={`이번 달 매출 달성률 ${percentLabel(currentMonthSales, monthlySalesTarget)}`}>
+          <div
+            className="mt-3"
+            aria-label={`이번 달 매출 달성률 ${percentLabel(currentMonthSales, monthlySalesTarget)}`}
+          >
             <div className="mb-1.5 flex items-center justify-between text-[10.5px] font-bold text-muted">
               <span>달성률</span>
-              <span className="text-bread">{percentLabel(currentMonthSales, monthlySalesTarget)}</span>
+              <span className="text-bread">
+                {percentLabel(currentMonthSales, monthlySalesTarget)}
+              </span>
             </div>
             <div className="h-2.5 overflow-hidden rounded-full bg-cream ring-1 ring-latte">
               <div
@@ -427,35 +486,53 @@ export function HomePage() {
           <div className="mt-3 grid grid-cols-3 gap-2 rounded-control bg-cream/55 px-3 py-2 text-center">
             <div>
               <p className="text-[10.5px] font-bold text-muted">이번 달 달성률</p>
-              <p className="mt-0.5 text-sm font-extrabold text-bread">{percentLabel(currentMonthSales, monthlySalesTarget)}</p>
+              <p className="mt-0.5 text-sm font-extrabold text-bread">
+                {percentLabel(currentMonthSales, monthlySalesTarget)}
+              </p>
             </div>
             <div>
               <p className="text-[10.5px] font-bold text-muted">현재 누적</p>
-              <p className="mt-0.5 text-sm font-extrabold text-ink">{formatCurrency(currentMonthSales)}</p>
+              <p className="mt-0.5 text-sm font-extrabold text-ink">
+                {formatCurrency(currentMonthSales)}
+              </p>
             </div>
             <div>
               <p className="text-[10.5px] font-bold text-muted">남은 목표</p>
-              <p className="mt-0.5 text-sm font-extrabold text-cocoa">{formatCurrency(remainingMonthlySalesTarget)}</p>
+              <p className="mt-0.5 text-sm font-extrabold text-cocoa">
+                {formatCurrency(remainingMonthlySalesTarget)}
+              </p>
             </div>
           </div>
         </button>
         <button
           className="rounded-panel border border-latte bg-white px-5 py-[18px] text-left transition hover:border-bread"
           type="button"
-          onClick={() => operationNotice ? setDetailGoalNoticeKey(goalNoticeKey(operationNotice)) : undefined}
+          onClick={() =>
+            operationNotice ? setDetailGoalNoticeKey(goalNoticeKey(operationNotice)) : undefined
+          }
         >
           <p className="text-[11.5px] text-muted">운영 목표</p>
-          <p className="mt-2 text-base font-bold text-ink">{operationNotice?.title ?? "운영 목표 미등록"}</p>
-          <p className="mt-1 line-clamp-2 text-[13px] leading-6 text-cocoa">{operationNotice?.value ?? "관리 탭에서 운영 목표를 입력해 주세요."}</p>
+          <p className="mt-2 text-base font-bold text-ink">
+            {operationNotice?.title ?? "운영 목표 미등록"}
+          </p>
+          <p className="mt-1 line-clamp-2 text-[13px] leading-6 text-cocoa">
+            {operationNotice?.value ?? "관리 탭에서 운영 목표를 입력해 주세요."}
+          </p>
         </button>
         <button
           className="rounded-panel border border-latte bg-white px-5 py-[18px] text-left transition hover:border-bread"
           type="button"
-          onClick={() => staffNotice ? setDetailGoalNoticeKey(goalNoticeKey(staffNotice)) : undefined}
+          onClick={() =>
+            staffNotice ? setDetailGoalNoticeKey(goalNoticeKey(staffNotice)) : undefined
+          }
         >
           <p className="text-[11.5px] text-muted">직원 공지</p>
-          <p className="mt-2 text-base font-bold text-ink">{staffNotice?.title ?? "직원 공지 미등록"}</p>
-          <p className="mt-1 line-clamp-2 text-[13px] leading-6 text-cocoa">{staffNotice?.value ?? "관리 탭에서 직원 공지를 입력해 주세요."}</p>
+          <p className="mt-2 text-base font-bold text-ink">
+            {staffNotice?.title ?? "직원 공지 미등록"}
+          </p>
+          <p className="mt-1 line-clamp-2 text-[13px] leading-6 text-cocoa">
+            {staffNotice?.value ?? "관리 탭에서 직원 공지를 입력해 주세요."}
+          </p>
         </button>
       </section>
       {renderGoalNoticeDetail()}
@@ -516,8 +593,6 @@ export function HomePage() {
           </div>
         </div>
       </section>
-
     </div>
   );
 }
-

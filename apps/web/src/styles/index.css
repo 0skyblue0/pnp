@@ -23,7 +23,9 @@ body {
   margin: 0;
   min-width: 320px;
   overflow-x: hidden;
-  background: #ede7df;
+  background:
+    radial-gradient(circle at 14% 8%, rgba(255, 255, 255, 0.72) 0 9rem, transparent 18rem),
+    linear-gradient(135deg, rgba(122, 74, 42, 0.06) 0 1px, transparent 1px 18px), #ede7df;
 }
 
 #root {
@@ -68,7 +70,7 @@ body {
 
 @layer components {
   .panel {
-    @apply min-w-0 rounded-panel border border-latte bg-white p-4 shadow-none lg:p-5;
+    @apply min-w-0 rounded-panel border border-latte bg-white/95 p-4 shadow-none lg:p-5;
   }
 
   .panel-heading {
@@ -88,11 +90,11 @@ body {
   }
 
   .dc-card {
-    @apply rounded-panel border border-latte bg-white shadow-none;
+    @apply rounded-panel border border-latte bg-white/95 shadow-none;
   }
 
   .dc-card-pad {
-    @apply rounded-panel border border-latte bg-white px-5 py-4 shadow-none;
+    @apply rounded-panel border border-latte bg-white/95 px-5 py-4 shadow-none;
   }
 
   .dc-eyebrow {
@@ -109,6 +111,50 @@ body {
 
   .dc-action {
     @apply rounded-[9px] bg-bread px-4 py-2 text-[13px] font-semibold text-white transition hover:bg-cocoa;
+  }
+
+  .pnp-page-shell {
+    background:
+      radial-gradient(circle at 12% 0%, rgba(255, 255, 255, 0.78) 0 12rem, transparent 27rem),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.5), rgba(237, 231, 223, 0.16) 16rem), #ede7df;
+  }
+
+  .pnp-topbar {
+    background:
+      linear-gradient(
+        90deg,
+        rgba(43, 38, 33, 0.86),
+        rgba(92, 58, 36, 0.82) 38%,
+        rgba(138, 88, 50, 0.78)
+      ),
+      linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0 1px, transparent 1px 14px), #5c3926;
+    box-shadow:
+      inset 0 -1px 0 rgba(255, 255, 255, 0.12),
+      0 8px 26px rgba(43, 38, 34, 0.14);
+  }
+
+  .pnp-logo-mark {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0)), #784629;
+    box-shadow:
+      inset 0 0 0 1px rgba(255, 255, 255, 0.26),
+      0 0 0 1px rgba(43, 38, 34, 0.24);
+  }
+
+  .pnp-logo-type {
+    font-family: Georgia, "Times New Roman", "Noto Serif KR", serif;
+    letter-spacing: 0.01em;
+    text-shadow: 0 1px 0 rgba(0, 0, 0, 0.28);
+  }
+
+  .pnp-brand-rule {
+    background: linear-gradient(90deg, transparent, rgba(255, 246, 231, 0.78), transparent);
+  }
+
+  .pnp-brick-wash {
+    background:
+      linear-gradient(rgba(255, 255, 255, 0.58), rgba(255, 255, 255, 0.58)),
+      linear-gradient(90deg, rgba(128, 73, 48, 0.11) 0 1px, transparent 1px 56px),
+      linear-gradient(0deg, rgba(128, 73, 48, 0.09) 0 1px, transparent 1px 28px), #f7f3ec;
   }
 }
 

@@ -585,6 +585,11 @@ describe("App", () => {
                   ratio: 0.1875
                 }
               ],
+              daily: [
+                { date: "2026-07-10", count: 2 },
+                { date: "2026-07-11", count: 5 },
+                { date: "2026-07-12", count: 9 }
+              ],
               insights: {
                 headline: "16건 중 제품 비중이 가장 큽니다.",
                 keyNotes: [
@@ -643,11 +648,18 @@ describe("App", () => {
     expect(screen.getByText("12건 · 75%")).toBeInTheDocument();
     expect(screen.getAllByText("맛").length).toBeGreaterThan(0);
     expect(screen.getByText("9건 · 75%")).toBeInTheDocument();
+    expect(screen.getByText("최근 3일 추이")).toBeInTheDocument();
+    expect(screen.getByText("7/12")).toBeInTheDocument();
+    expect(screen.queryByText("5월 보고")).not.toBeInTheDocument();
     expect(screen.queryByText("추천 기능")).not.toBeInTheDocument();
-    const topicLink = screen.getByRole("link", { name: "제품 > 맛 > 바게트 기록 보기" });
+    const topicLink = screen.getAllByRole("link", { name: "제품 > 맛 > 바게트 기록 보기" })[0];
     expect(topicLink).toHaveAttribute(
       "href",
-      "/response?mode=lookup&tab=detail&from=2026-05-01&to=2026-05-31&criterion_id=6"
+      "/response?mode=lookup&tab=detail&from=2026-06-13&to=2026-07-12&criterion_id=6"
+    );
+    expect(screen.getByRole("link", { name: "제품 전체 기록 보기" })).toHaveAttribute(
+      "href",
+      "/response?mode=lookup&tab=detail&from=2026-06-13&to=2026-07-12&criterion_id=1"
     );
     expect(screen.queryByRole("button", { name: "원형" })).not.toBeInTheDocument();
   });

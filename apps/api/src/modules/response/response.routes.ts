@@ -70,6 +70,10 @@ type MinorGroup = CriterionGroup & {
   minorCriterionId: number | null;
 };
 
+type DailyGroup = CriterionGroup & {
+  date: Date;
+};
+
 type ResponseInsightTopic = {
   criterionId: number;
   label: string;
@@ -266,6 +270,8 @@ const hermesSystemPrompt = [
   "오직 제공된 등록 기준 목록 안에서만 criterionId를 하나 고릅니다.",
   "대분류는 제품, 서비스·응대, 구매·운영, 손님경험, 기타 중 하나입니다.",
   "불만/칭찬 감정보다 실제 원인을 먼저 고릅니다: 제품 맛·식감·제안은 제품, 응대는 서비스·응대, 품절·수요·객단가·배달·예약은 구매·운영, 유동인구·시간대·가족단위·날씨·장거리·주차는 손님경험입니다.",
+  "기타는 최후의 선택지입니다. 제품/서비스·응대/구매·운영/손님경험 중 하나로 해석 가능한 단서가 조금이라도 있으면 기타를 고르지 않습니다.",
+  "기타는 등록 기준 어디에도 맞지 않는 잡담, 판독 불가, 업무와 무관한 내용에만 사용합니다.",
   "예: '청주에서 방문한 손님 계셨습니다.'처럼 먼 지역 방문이 언급되면 손님경험 > 장거리 방문 > 장거리손님을 우선 검토합니다.",
   "예: '비가 와서 배달 주문이 거의 없었습니다.'는 단맛이 아니라 구매·운영 > 배달·플랫폼 > 배달 주문 적음입니다.",
   "예: '유동인구가 낮았습니다.'는 기타가 아니라 손님경험 > 방문 시간대 > 유동인구 낮음입니다.",
@@ -338,7 +344,8 @@ function buildHermesUserPrompt(input: SuggestResponseInput, criteria: SuggestCri
         id: criterion.id,
         parentId: criterion.parentId,
         depth: criterion.depth,
-        name: criterion.name
+        name: criterion.name,
+        useOnlyIfNoOperationalMatch: criterion.name === "기타"
       })),
       customerResponseText: masked
     },
@@ -580,7 +587,7 @@ export async function registerResponseRoutes(app: FastifyInstance): Promise<void
     const query = statsResponseQuerySchema.parse(request.query);
     const where = { ...buildDateWhere(query), ...activeResponseCriterionWhere };
 
-    const [total, majorGroups, middleGroups, minorGroups, criteria, responses] = await app.prisma.$transaction(
+    const [total, majorGroups, middleGroups, minorGroups, dailyGroups, criteria, responses] = await app.prisma.$transaction(
       [
         app.prisma.customerResponse.count({ where }),
         app.prisma.customerResponse.groupBy({
@@ -605,6 +612,12 @@ export async function registerResponseRoutes(app: FastifyInstance): Promise<void
           ],
           _count: { _all: true }
         }),
+        app.prisma.customerResponse.groupBy({
+          by: ["date"],
+          where,
+          orderBy: { date: "asc" },
+          _count: { _all: true }
+        }),
         app.prisma.responseCriterion.findMany({
           orderBy: [{ depth: "asc" }, { parentId: "asc" }, { sortOrder: "asc" }, { name: "asc" }]
         }),
@@ -622,8 +635,9 @@ export async function registerResponseRoutes(app: FastifyInstance): Promise<void
       ]
     );
 
+    const responseCriteria = criteria as ResponseCriterionPathItem[];
     const criteriaById = new Map(
-      criteria.map((criterion) => [
+      responseCriteria.map((criterion) => [
         criterion.id,
         {
           id: criterion.id,
@@ -653,6 +667,10 @@ export async function registerResponseRoutes(app: FastifyInstance): Promise<void
         ...toCriterionStat(criteriaById.get(group.minorCriterionId ?? 0), group._count._all, total),
         majorCriterionId: group.majorCriterionId,
         middleCriterionId: group.middleCriterionId
+      })),
+      daily: (dailyGroups as DailyGroup[]).map((group) => ({
+        date: formatDateOnly(group.date),
+        count: group._count._all
       })),
       insights: buildResponseInsights(
         total,

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 
 import { apiGet } from "../../shared/api/client.js";
 import { todayInStoreTime } from "../../shared/time/storeTime.js";
@@ -21,6 +22,7 @@ type ResponseStatsDto = {
   major: CriterionStatsDto[];
   middle: CriterionStatsDto[];
   minor: CriterionStatsDto[];
+  daily?: Array<{ date: string; count: number }>;
   insights?: ResponseInsightsDto;
 };
 
@@ -59,6 +61,7 @@ type NormalizedStats = {
   major: MajorStats[];
   middle: MiddleStats[];
   minor: MinorStats[];
+  daily: Array<{ date: string; count: number }>;
   insights: ResponseInsightsDto;
 };
 
@@ -67,13 +70,12 @@ type DateRange = {
   to: string;
 };
 
-const importedResponseReportRange: DateRange = { from: "2026-05-01", to: "2026-05-31" };
-
 const emptyStats: NormalizedStats = {
   total: 0,
   major: [],
   middle: [],
   minor: [],
+  daily: [],
   insights: {
     headline: "조회 기간에 등록된 손님 반응이 없습니다.",
     repeatedTopics: [],
@@ -197,6 +199,7 @@ function normalizeStats(data: ResponseStatsDto): NormalizedStats {
     major: normalizeMajor(data.major ?? []),
     middle: normalizeMiddle(data.middle ?? []),
     minor: normalizeMinor(data.minor ?? []),
+    daily: (data.daily ?? []).map((item) => ({ date: item.date, count: Number(item.count) || 0 })),
     insights: data.insights ?? emptyStats.insights
   };
 }
@@ -290,20 +293,16 @@ export function StatisticsPage() {
   const maxMajor = Math.max(...displayMajor.map((item) => item.count), 1);
   const middleA11y = stats.middle.slice(0, 8);
   const minorA11y = stats.minor.slice(0, 8);
-  const weekTrend = [
-    { day: "6/27", count: 3 },
-    { day: "6/28", count: 5 },
-    { day: "6/29", count: 2 },
-    { day: "6/30", count: 4 },
-    { day: "7/1", count: 6 },
-    { day: "7/2", count: 4 },
-    { day: "7/3", count: 2 }
-  ];
-  const maxWeek = Math.max(...weekTrend.map((item) => item.count), 1);
+  const dailyTrend = stats.daily.slice(-14).map((item) => {
+    const [, month = "0", day = "0"] = item.date.split("-");
+    return {
+      ...item,
+      label: `${Number(month)}/${Number(day)}`
+    };
+  });
+  const maxDaily = Math.max(...dailyTrend.map((item) => item.count), 1);
   const periodLabel =
-    range.from === importedResponseReportRange.from && range.to === importedResponseReportRange.to
-      ? "5월 보고"
-      : range.from === recentThirtyDays(today).from && range.to === recentThirtyDays(today).to
+    range.from === recentThirtyDays(today).from && range.to === recentThirtyDays(today).to
         ? "최근 30일"
         : `${range.from.replaceAll("-", ".")} ~ ${range.to.replaceAll("-", ".")}`;
   const periodOptions: Array<{ label: string; range: DateRange }> = [
@@ -311,8 +310,7 @@ export function StatisticsPage() {
     { label: "지난달", range: monthRange(today, -1) },
     { label: "이번주", range: weekRange(today, 0) },
     { label: "지난주", range: weekRange(today, -1) },
-    { label: "최근 30일", range: recentThirtyDays(today) },
-    { label: "5월 보고", range: importedResponseReportRange }
+    { label: "최근 30일", range: recentThirtyDays(today) }
   ];
 
   return (
@@ -321,9 +319,9 @@ export function StatisticsPage() {
         <h2>주요 사항</h2>
         <p>{stats.insights.headline}</p>
         {stats.insights.repeatedTopics.map((topic) => (
-          <a key={topic.criterionId} href={detailLink(importedResponseReportRange, topic.criterionId)}>
+          <Link key={topic.criterionId} to={detailLink(range, topic.criterionId)}>
             {topic.path.map((item) => item.name).join(" > ")} 기록 보기
-          </a>
+          </Link>
         ))}
         {middleA11y.map((item) => (
           <p key={`middle-${item.id}`}><span>{item.label}</span> {item.count.toLocaleString("ko-KR")}건 · {formatPercent(item.count, stats.major.find((major) => major.id === item.majorCriterionId)?.count ?? stats.total)}</p>
@@ -421,28 +419,32 @@ export function StatisticsPage() {
         </section>
 
         <section className="dc-card-pad">
-          <div className="dc-eyebrow mb-[14px]">최근 7일 추이</div>
+          <div className="dc-eyebrow mb-[14px]">최근 {dailyTrend.length}일 추이</div>
           <div className="flex h-[88px] items-end gap-[10px]">
-            {weekTrend.map((item) => (
-              <div key={item.day} className="flex h-full flex-1 flex-col items-center justify-end gap-[6px]">
+            {dailyTrend.length > 0 ? dailyTrend.map((item) => (
+              <div key={item.date} className="flex h-full flex-1 flex-col items-center justify-end gap-[6px]">
                 <div className="text-[11px] font-bold text-ink">{item.count}</div>
                 <div
                   className="w-full max-w-[26px] rounded-t-[5px] bg-bread"
-                  style={{ height: `${Math.max(4, Math.round((item.count / maxWeek) * 100))}%` }}
+                  style={{ height: `${Math.max(4, Math.round((item.count / maxDaily) * 100))}%` }}
                 />
-                <div className="text-[10px] text-muted">{item.day}</div>
+                <div className="text-[10px] text-muted">{item.label}</div>
               </div>
-            ))}
+            )) : (
+              <div className="grid h-full flex-1 place-items-center rounded-[10px] bg-cream text-xs font-semibold text-muted">
+                날짜별 반응 없음
+              </div>
+            )}
           </div>
         </section>
       </div>
 
       <div className="grid gap-[14px] lg:grid-cols-2">
         <section className="dc-card-pad">
-          <div className="dc-eyebrow mb-[14px]">대분류별 통계 (클릭 시 하단 기록 필터링)</div>
+          <div className="dc-eyebrow mb-[14px]">대분류별 통계</div>
           <div className="grid gap-2">
             {displayMajor.map((item, index) => (
-              <div key={item.id} className="rounded-[8px] px-2 py-1.5">
+              <Link key={item.id} className="block rounded-[8px] px-2 py-1.5 hover:bg-cream" to={detailLink(range, item.id)} aria-label={`${item.label} 전체 기록 보기`}>
                 <div className="mb-[5px] flex justify-between">
                   <span className="text-[12.5px] font-semibold text-ink">{item.label}</span>
                   <span className="text-[11.5px] text-muted">{item.count}건</span>
@@ -453,15 +455,15 @@ export function StatisticsPage() {
                     style={{ width: `${Math.max(4, Math.round((item.count / maxMajor) * 100))}%`, backgroundColor: colors[index % colors.length] }}
                   />
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
         </section>
 
         <section className="dc-card-pad">
-          <div className="dc-eyebrow mb-3">반복 주제 (클릭 시 하단 기록 필터링)</div>
+          <div className="dc-eyebrow mb-3">반복 주제</div>
           {displayRepeated.map((topic, index) => (
-            <div key={topic.criterionId} className="flex items-start gap-[10px] border-b border-[#F1EAE0] py-[9px] last:border-b-0">
+            <Link key={topic.criterionId} className="flex items-start gap-[10px] border-b border-[#F1EAE0] py-[9px] hover:bg-cream last:border-b-0" to={detailLink(range, topic.criterionId)} aria-label={`${topic.path.map((item) => item.name).join(" > ")} 기록 보기`}>
               <span className="mt-1.5 h-[7px] w-[7px] shrink-0 rounded-full" style={{ backgroundColor: colors[index % colors.length] }} />
               <div className="flex-1">
                 <div className="text-[12.5px] font-semibold text-ink">
@@ -469,21 +471,21 @@ export function StatisticsPage() {
                 </div>
                 <div className="mt-0.5 text-[11.5px] text-muted">예시: “{topic.sampleSummaries[0] ?? "기록 없음"}”</div>
               </div>
-            </div>
+            </Link>
           ))}
         </section>
       </div>
 
       <section className="dc-card-pad">
-        <div className="dc-eyebrow mb-3">상세 기록</div>
+        <div className="dc-eyebrow mb-3">상세 내용 바로 열기</div>
         {displayRepeated.map((topic) => (
-          <div key={`detail-${topic.criterionId}`} className="border-b border-[#F1EAE0] py-[10px] last:border-b-0">
+          <Link key={`detail-${topic.criterionId}`} className="block border-b border-[#F1EAE0] py-[10px] hover:bg-cream last:border-b-0" to={detailLink(range, topic.criterionId)}>
             <div className="mb-1 flex justify-between">
               <span className="text-[11px] text-muted">{range.to.slice(5).replace("-", ".")} · {topic.path.map((item) => item.name).join(" > ")}</span>
-              <span className="rounded-full bg-[#F4E3D8] px-2 py-0.5 text-[10px] font-semibold text-cocoa">AI 분류</span>
+              <span className="rounded-full bg-[#F4E3D8] px-2 py-0.5 text-[10px] font-semibold text-cocoa">전체 보기</span>
             </div>
             <div className="text-[13px] text-ink">{topic.sampleSummaries[0] ?? topic.label}</div>
-          </div>
+          </Link>
         ))}
       </section>
     </div>

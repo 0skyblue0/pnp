@@ -33,6 +33,10 @@ type ResponseStatsBody = {
   major: CriterionStats[];
   middle: MiddleStats[];
   minor: MinorStats[];
+  daily: Array<{
+    date: string;
+    count: number;
+  }>;
   insights: {
     headline: string;
     repeatedTopics: Array<{
@@ -102,6 +106,7 @@ describe("response suggestion route", () => {
       expect(requestBody.temperature).toBe(0);
       expect(requestBody.messages[0]?.content).toContain("고객 반응 분류 전용 프로필");
       expect(requestBody.messages[0]?.content).toContain("제품, 서비스·응대, 구매·운영, 손님경험, 기타");
+      expect(requestBody.messages[0]?.content).toContain("기타는 최후의 선택지");
       expect(requestBody.messages.at(-1)?.content).toContain("[PHONE]");
       expect(requestBody.messages.at(-1)?.content).not.toContain("010-1234-5678");
 
@@ -245,6 +250,10 @@ describe("response stats route", () => {
         { majorCriterionId: 1, middleCriterionId: 3, minorCriterionId: 6, _count: { _all: 2 } },
         { majorCriterionId: 1, middleCriterionId: 3, minorCriterionId: 7, _count: { _all: 1 } },
         { majorCriterionId: 2, middleCriterionId: 5, minorCriterionId: 8, _count: { _all: 2 } }
+      ])
+      .mockResolvedValueOnce([
+        { date: new Date("2026-01-02T00:00:00.000Z"), _count: { _all: 2 } },
+        { date: new Date("2026-01-03T00:00:00.000Z"), _count: { _all: 4 } }
       ]);
     prisma.responseCriterion.findMany.mockResolvedValue([
       { id: 1, parentId: null, depth: 1, name: "제품", sortOrder: 1 },
@@ -350,6 +359,10 @@ describe("response stats route", () => {
         ratio: 1 / 3
       }
     ]);
+    expect(stats.daily).toEqual([
+      { date: "2026-01-02", count: 2 },
+      { date: "2026-01-03", count: 4 }
+    ]);
     expect(stats.insights.headline).toBe("6건 중 제품 비중이 가장 큽니다.");
     expect(stats.insights.repeatedTopics).toEqual(
       expect.arrayContaining([
@@ -379,7 +392,7 @@ describe("response stats route", () => {
         majorCriterion: { is: { isActive: true } }
       }
     });
-    expect(prisma.customerResponse.groupBy).toHaveBeenCalledTimes(3);
+    expect(prisma.customerResponse.groupBy).toHaveBeenCalledTimes(4);
     expect(prisma.customerResponse.findMany).toHaveBeenCalledWith(expect.objectContaining({ take: 300 }));
     for (const [query] of prisma.customerResponse.groupBy.mock.calls) {
       expect(query).not.toHaveProperty("take");

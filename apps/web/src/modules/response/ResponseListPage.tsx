@@ -4,6 +4,7 @@ import { Link, useSearchParams } from "react-router-dom";
 
 import { apiGet } from "../../shared/api/client.js";
 import type { ListEnvelope } from "../../shared/api/types.js";
+import { todayInStoreTime } from "../../shared/time/storeTime.js";
 import { Button } from "../../shared/ui/Button.js";
 import {
   criteriaByParent,
@@ -25,7 +26,12 @@ type ResponseDto = {
   createdAt: string;
 };
 
-const importedResponseRange = { from: "2026-05-01", to: "2026-05-31" };
+function recentThirtyDaysRange(): { from: string; to: string } {
+  const to = new Date(todayInStoreTime());
+  const from = new Date(to);
+  from.setDate(to.getDate() - 29);
+  return { from: from.toISOString().slice(0, 10), to: to.toISOString().slice(0, 10) };
+}
 
 type FilterState = {
   from: string;
@@ -65,9 +71,10 @@ function criterionOptionLabel(criterion: ResponseCriterionDto): string {
 
 export function ResponseListPage() {
   const [searchParams] = useSearchParams();
+  const defaultRange = recentThirtyDaysRange();
   const [filters, setFilters] = useState<FilterState>({
-    from: searchParams.get("from") ?? importedResponseRange.from,
-    to: searchParams.get("to") ?? importedResponseRange.to,
+    from: searchParams.get("from") ?? defaultRange.from,
+    to: searchParams.get("to") ?? defaultRange.to,
     criterionId: searchParams.get("criterion_id") ?? ""
   });
   const [criteria, setCriteria] = useState<ResponseCriterionDto[]>([]);

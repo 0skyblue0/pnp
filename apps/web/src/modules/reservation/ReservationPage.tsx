@@ -656,17 +656,17 @@ export function ReservationPage() {
                   return (
                   <div
                     key={item.id}
-                    className="grid min-w-0 grid-cols-[minmax(0,1fr)_5.5rem_7rem_3.25rem] items-end gap-2 rounded-[10px] border border-latte bg-white px-3 py-2"
+                    className="grid min-w-0 grid-cols-[minmax(0,1fr)_5.5rem_3.25rem] items-end gap-2 rounded-[10px] border border-latte bg-white px-3 py-2"
                   >
                     <label className="grid min-w-0 gap-1">
                       <span className="text-[10.5px] font-semibold text-muted">제품명</span>
                       <select
                         aria-label={`제품명 ${index + 1}`}
-                        className="min-w-0 rounded-[8px] border border-latte px-[11px] py-[8px] text-[13px] outline-none focus:border-bread"
+                        className="min-w-0 rounded-[8px] border border-latte bg-cream px-[11px] py-[8px] text-[13px] font-semibold text-cocoa outline-none transition focus:border-bread focus:bg-white"
                         value={item.productName}
                         onChange={(event) => updateReservationItem(item.id, { productName: event.target.value })}
                       >
-                        <option value="">예: 깜빠뉴</option>
+                        <option value="">제품 선택</option>
                         {rowProductOptions.map((productName) => (
                           <option key={productName} value={productName}>
                             {productName}
@@ -689,24 +689,6 @@ export function ReservationPage() {
                         <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[11px] font-bold text-muted">개</span>
                       </span>
                     </label>
-                    <label className="grid min-w-0 gap-1">
-                      <span className="text-[10.5px] font-semibold text-muted">컷팅 옵션</span>
-                      <select
-                        aria-label={`컷팅 옵션 ${index + 1}`}
-                        className="min-w-0 rounded-[8px] border border-latte px-[9px] py-[8px] text-[13px] outline-none focus:border-bread"
-                        disabled={rowCuttingOptions.length === 1}
-                        value={normalizedCuttingOption(item.productName, item.cuttingOption)}
-                        onChange={(event) =>
-                          updateReservationItem(item.id, { cuttingOption: event.target.value as CuttingOption })
-                        }
-                      >
-                        {rowCuttingOptions.map((option) => (
-                          <option key={option.value} value={option.value}>
-                            {option.label}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
                     <button
                       type="button"
                       className="rounded-[8px] border border-latte bg-cream px-1.5 py-[8px] text-[12px] font-bold text-cocoa transition hover:bg-red/10 hover:text-red disabled:cursor-not-allowed disabled:opacity-45"
@@ -715,6 +697,29 @@ export function ReservationPage() {
                     >
                       삭제
                     </button>
+                    {rowCuttingOptions.length > 1 ? (
+                      <div className="col-span-full grid gap-1 pt-1">
+                        <div className="text-[10.5px] font-semibold text-muted">컷팅 옵션</div>
+                        <div className="flex gap-[6px]">
+                          {rowCuttingOptions.map((option) => {
+                            const isSelected = normalizedCuttingOption(item.productName, item.cuttingOption) === option.value;
+                            return (
+                              <button
+                                key={option.value}
+                                type="button"
+                                className={[
+                                  "flex-1 rounded-[8px] py-[5px] text-center text-[12px] font-semibold transition",
+                                  isSelected ? "bg-bread text-white" : "bg-cream text-cocoa hover:bg-[#EFE6DA]"
+                                ].join(" ")}
+                                onClick={() => updateReservationItem(item.id, { cuttingOption: option.value })}
+                              >
+                                {option.label}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ) : null}
                   </div>
                   );
                 })}

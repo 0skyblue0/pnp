@@ -912,6 +912,7 @@ export function ManagementPage() {
   const selectedMajor = majorCriteria.find((criterion) => criterion.id === selectedMajorId);
   const selectedMiddle = middleCriteria.find((criterion) => criterion.id === selectedMiddleId);
   const sortedProducts = sortProducts(products);
+  const visibleProducts = sortedProducts.filter((product) => product.isActive);
   const editingCriterion = responseCriteria.find(
     (criterion) => criterion.id === editingCriterionId
   );
@@ -1015,7 +1016,7 @@ export function ManagementPage() {
                 <div>
                   <h3 className="text-[15px] font-bold text-ink">제품명 등록 및 수정</h3>
                   <p className="mt-1 text-[12.5px] text-muted">
-                    일일 운영과 예약 입력에 보이는 제품명을 추가·수정·삭제합니다. 쓰지 않는 제품은 비활성 처리하세요.
+                    일일 운영과 예약 입력에 보이는 제품명을 추가·수정·삭제합니다. 비활성 제품은 목록에서 숨겨 깔끔하게 유지합니다.
                   </p>
                 </div>
                 <button
@@ -1148,7 +1149,7 @@ export function ManagementPage() {
                 <div className="grid grid-cols-[minmax(7rem,1.4fr)_minmax(5rem,0.8fr)_minmax(4rem,0.6fr)_minmax(8rem,1fr)_8rem] gap-2 border-b border-[#EFE8DC] py-2 text-[11px] font-semibold text-muted">
                   <div>제품명</div><div>카테고리</div><div>시즌</div><div>기간</div><div>수정·삭제</div>
                 </div>
-                {sortedProducts.map((product) => (
+                {visibleProducts.map((product) => (
                   <div
                     key={product.id}
                     className="grid grid-cols-[minmax(7rem,1.4fr)_minmax(5rem,0.8fr)_minmax(4rem,0.6fr)_minmax(8rem,1fr)_8rem] items-center gap-2 border-b border-[#F5F0E7] py-3 text-[13px] text-ink last:border-b-0"
@@ -1186,7 +1187,7 @@ export function ManagementPage() {
                     </div>
                   </div>
                 ))}
-                {!isLoading && sortedProducts.length === 0 ? (
+                {!isLoading && visibleProducts.length === 0 ? (
                   <div className="py-8 text-center text-sm text-muted">등록 제품 없음</div>
                 ) : null}
               </div>

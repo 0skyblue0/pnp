@@ -1608,7 +1608,8 @@ function ProductsSection({
 
   return (
     <div>
-      <div className="grid grid-cols-[1.1fr_0.8fr_0.98fr_0.98fr_0.8fr_0.8fr] gap-[8px] border-b border-[#EFE8DC] px-[4px] pb-[9px] text-[11px] font-semibold text-muted">
+      <div className="max-h-[420px] overflow-y-auto rounded-[10px] border border-latte bg-white pr-1">
+        <div className="sticky top-0 z-10 grid grid-cols-[1.1fr_0.8fr_0.98fr_0.98fr_0.8fr_0.8fr] gap-[8px] border-b border-[#EFE8DC] bg-white px-[8px] py-[9px] text-[11px] font-semibold text-muted">
         <div>제품명</div>
         <div>생산량</div>
         <div>손실량</div>
@@ -1619,7 +1620,7 @@ function ProductsSection({
       {rows.map((row) => (
         <div
           key={row.productName}
-          className="grid grid-cols-[1.1fr_0.8fr_0.98fr_0.98fr_0.8fr_0.8fr] items-center gap-[8px] border-b border-[#F5F0E7] px-[4px] py-[8px]"
+          className="grid grid-cols-[1.1fr_0.8fr_0.98fr_0.98fr_0.8fr_0.8fr] items-center gap-[8px] border-b border-[#F5F0E7] px-[8px] py-[8px] last:border-b-0"
         >
           <div className="text-[13px] font-semibold text-ink">{row.productName}</div>
           <input
@@ -1687,6 +1688,7 @@ function ProductsSection({
           </div>
         </div>
       ))}
+      </div>
       <div className="flex justify-end gap-[24px] pt-[10px] text-[12.5px] text-muted">
         <div>
           총 생산량 <span className="font-bold text-ink">{totals.produced}</span>

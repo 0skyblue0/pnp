@@ -670,6 +670,105 @@ describe("response stats route", () => {
     await app.close();
   });
 
+  it("keeps positive service and neutral operation notes out of the attention signal bucket", async () => {
+    const prisma = buildPrismaMock();
+    prisma.customerResponse.count.mockResolvedValue(5);
+    prisma.customerResponse.groupBy
+      .mockResolvedValueOnce([
+        { majorCriterionId: 2001, _count: { _all: 2 } },
+        { majorCriterionId: 2000, _count: { _all: 2 } },
+        { majorCriterionId: 2002, _count: { _all: 1 } }
+      ])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([]);
+    prisma.responseCriterion.findMany.mockResolvedValue([
+      { id: 2001, parentId: null, depth: 1, name: "서비스·응대", sortOrder: 1 },
+      { id: 2020, parentId: 2001, depth: 2, name: "친절", sortOrder: 1 },
+      { id: 2120, parentId: 2020, depth: 3, name: "직원 친절", sortOrder: 1 },
+      { id: 2022, parentId: 2001, depth: 2, name: "계산", sortOrder: 2 },
+      { id: 2000, parentId: null, depth: 1, name: "제품", sortOrder: 2 },
+      { id: 2013, parentId: 2000, depth: 2, name: "포장", sortOrder: 1 },
+      { id: 2130, parentId: 2013, depth: 3, name: "포장 불편", sortOrder: 1 },
+      { id: 2002, parentId: null, depth: 1, name: "구매·운영", sortOrder: 3 },
+      { id: 2030, parentId: 2002, depth: 2, name: "대기", sortOrder: 1 },
+      { id: 2131, parentId: 2030, depth: 3, name: "줄 혼잡", sortOrder: 1 }
+    ]);
+    prisma.customerResponse.findMany.mockResolvedValue([
+      {
+        majorCriterionId: 2001,
+        middleCriterionId: 2020,
+        minorCriterionId: 2120,
+        shortSummary: "첫방문 손님에게 시식을 적극 도와드림",
+        fullText: "첫방문 손님분들께서 먼저 말씀해주셔서 시식 많이 도와드렸습니다.",
+        id: 1n,
+        date: new Date("2026-06-22T00:00:00.000Z")
+      },
+      {
+        majorCriterionId: 2001,
+        middleCriterionId: 2022,
+        minorCriterionId: null,
+        shortSummary: "상품권 3만원 사용 손님",
+        fullText: "상품권 3만원 사용 손님 있었습니다.",
+        id: 2n,
+        date: new Date("2026-06-14T00:00:00.000Z")
+      },
+      {
+        majorCriterionId: 2000,
+        middleCriterionId: 2013,
+        minorCriterionId: 2130,
+        shortSummary: "종이 쇼핑백으로 변경 요청",
+        fullText: "비닐 쇼핑백에서 종이 쇼핑백으로 바꿨으면 하는 손님 의견이 있었습니다.",
+        id: 3n,
+        date: new Date("2026-06-25T00:00:00.000Z")
+      },
+      {
+        majorCriterionId: 2002,
+        middleCriterionId: 2030,
+        minorCriterionId: 2131,
+        shortSummary: "오픈 전부터 대기 후 줄 서서 구매",
+        fullText: "오픈 전부터 대기하여 오픈 시작하자마자 줄 서서 구매해가셨습니다.",
+        id: 4n,
+        date: new Date("2026-06-27T00:00:00.000Z")
+      },
+      {
+        majorCriterionId: 2002,
+        middleCriterionId: 2030,
+        minorCriterionId: 2131,
+        shortSummary: "대기시간 불만",
+        fullText: "줄이 너무 길어서 불편했어요.",
+        id: 5n,
+        date: new Date("2026-06-28T00:00:00.000Z")
+      }
+    ]);
+
+    const app = Fastify({ logger: false });
+    app.decorate("prisma", prisma as never);
+    await app.register(registerResponseRoutes, { prefix: "/response" });
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/response/stats?from=2026-06-01&to=2026-06-30"
+    });
+
+    expect(response.statusCode).toBe(200);
+    const body = response.json<ApiEnvelope<ResponseStatsBody>>();
+    const serviceRiskBucket = body.data?.insights.executiveBuckets.find(
+      (bucket) => bucket.key === "serviceRisk"
+    );
+    expect(serviceRiskBucket?.count).toBe(1);
+    expect(serviceRiskBucket?.topics).toEqual([
+      expect.objectContaining({
+        label: "줄 혼잡",
+        count: 1,
+        sampleSummaries: ["줄이 너무 길어서 불편했어요."]
+      })
+    ]);
+    expect(body.data?.insights.checkNeededCount).toBe(1);
+
+    await app.close();
+  });
+
   it("returns major, middle, and minor aggregate stats without the list API limit", async () => {
     const prisma = buildPrismaMock();
     prisma.customerResponse.count.mockResolvedValue(6);

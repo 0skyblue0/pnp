@@ -774,10 +774,10 @@ describe("App", () => {
     expect(screen.getAllByText("방문 흐름").length).toBeGreaterThan(0);
     expect(screen.getAllByText("주의 신호").length).toBeGreaterThan(0);
     expect(screen.queryByText("손님이 직접 한 말")).not.toBeInTheDocument();
-    expect(screen.getByText("주요 반응 근거")).toBeInTheDocument();
-    expect(screen.getAllByText(/청주에서 일부러 방문/).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/식감 개선 필요/).length).toBeGreaterThan(0);
-    expect(screen.getAllByText("바게트가 전보다 딱딱함").length).toBeGreaterThan(0);
+    expect(screen.queryByText("주요 반응 근거")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("실제 기록 예시는 아래 주요 반응 근거에서 확인합니다.")
+    ).not.toBeInTheDocument();
     expect(screen.getAllByText(/제품 > 맛 > 바게트/).length).toBeGreaterThan(0);
     expect(screen.getAllByText("4건").length).toBeGreaterThan(0);
     expect(screen.queryByText("월별 빠른 조회")).not.toBeInTheDocument();

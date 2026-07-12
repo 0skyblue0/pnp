@@ -117,8 +117,6 @@ const checkNeededCriterionNames = new Set([
   "응대 불만",
   "설명 부족",
   "결제 문제",
-  "대기시간 김",
-  "줄 혼잡",
   "가격 부담",
   "청결",
   "덜 구워짐",
@@ -128,11 +126,21 @@ const checkNeededCriterionNames = new Set([
   "딱딱함",
   "질김",
   "눅눅함",
-  "포장 불편",
   "분류 보류"
 ]);
 
-const checkNeededWords = ["컴플레인", "환불", "불만", "문제", "보상", "위생", "이물", "변질"];
+const checkNeededWords = [
+  "컴플레인",
+  "환불",
+  "불만",
+  "불편",
+  "문제",
+  "보상",
+  "위생",
+  "이물",
+  "변질",
+  "너무 길"
+];
 
 const executiveBucketConfigs: Array<{
   key: ExecutiveBucketKey;
@@ -174,14 +182,6 @@ const negativeSignalCriterionNames = new Set([
   "눅눅함",
   "짠맛",
   "포장 불편",
-  "불친절",
-  "응대 불만",
-  "설명 부족",
-  "결제 문제",
-  "대기시간 김",
-  "줄 혼잡",
-  "가격 부담",
-  "동선 불편",
   "분류 보류"
 ]);
 
@@ -218,23 +218,6 @@ const productNeedWords = [
   "건강빵",
   "호밀",
   "예약"
-];
-
-const operationImprovementWords = [
-  "대기",
-  "줄",
-  "응대",
-  "불친절",
-  "설명",
-  "청결",
-  "위생",
-  "포장",
-  "가격",
-  "딱딱",
-  "질김",
-  "눅눅",
-  "덜 구워",
-  "탐"
 ];
 
 const activeResponseCriterionWhere: Prisma.CustomerResponseWhereInput = {
@@ -478,21 +461,7 @@ function classifyExecutiveBuckets(
     combinedText.includes("빵이 없") ||
     combinedText.includes("구매하지 못");
 
-  const hasServiceRiskSignal =
-    pathNames.includes("서비스·응대") ||
-    pathNames.includes("불친절") ||
-    pathNames.includes("응대 불만") ||
-    pathNames.includes("설명 부족") ||
-    pathNames.includes("결제 문제") ||
-    pathNames.includes("대기") ||
-    pathNames.includes("대기시간 김") ||
-    pathNames.includes("줄 혼잡") ||
-    combinedText.includes("컴플레인") ||
-    combinedText.includes("환불") ||
-    combinedText.includes("보상") ||
-    combinedText.includes("위생") ||
-    combinedText.includes("이물") ||
-    combinedText.includes("벌레");
+  const needsImmediateCheck = responseNeedsCheck(response, path);
 
   const hasProductImprovementSignal =
     pathNames.some((name) => negativeSignalCriterionNames.has(name)) ||
@@ -507,8 +476,8 @@ function classifyExecutiveBuckets(
     combinedText.includes("보관") ||
     combinedText.includes("알러지") ||
     combinedText.includes("알레르") ||
-    hasAnyWord(combinedText, negativeSignalWords) ||
-    hasAnyWord(combinedText, productNeedWords);
+    (pathNames.includes("제품") &&
+      (hasAnyWord(combinedText, negativeSignalWords) || hasAnyWord(combinedText, productNeedWords)));
 
   const hasVisitFlowSignal =
     pathNames.includes("손님경험") ||
@@ -546,7 +515,7 @@ function classifyExecutiveBuckets(
     combinedText.includes("맛있") ||
     combinedText.includes("칭찬");
 
-  if (hasPositiveSignal && !hasMissedSalesSignal && !hasServiceRiskSignal) {
+  if (hasPositiveSignal && !hasMissedSalesSignal && !needsImmediateCheck) {
     buckets.add("salesStrength");
   }
 
@@ -554,7 +523,7 @@ function classifyExecutiveBuckets(
     buckets.add("missedSales");
   }
 
-  if (hasProductImprovementSignal && !hasMissedSalesSignal && !hasServiceRiskSignal) {
+  if (hasProductImprovementSignal && !hasMissedSalesSignal) {
     buckets.add("productImprovements");
   }
 
@@ -562,11 +531,7 @@ function classifyExecutiveBuckets(
     buckets.add("visitFlow");
   }
 
-  if (
-    responseNeedsCheck(response, path) ||
-    hasServiceRiskSignal ||
-    hasAnyWord(combinedText, operationImprovementWords)
-  ) {
+  if (needsImmediateCheck) {
     buckets.add("serviceRisk");
   }
 

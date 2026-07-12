@@ -81,9 +81,20 @@ type ResponseInsightTopic = {
   count: number;
   ratio: number;
   sampleSummaries: string[];
+  items: Array<{
+    id: string;
+    date: string;
+    summary: string;
+    text: string;
+  }>;
 };
 
-type ExecutiveBucketKey = "brandStrength" | "productNeeds" | "operationImprovements";
+type ExecutiveBucketKey =
+  | "salesStrength"
+  | "missedSales"
+  | "productImprovements"
+  | "visitFlow"
+  | "serviceRisk";
 
 type ExecutiveBucket = {
   key: ExecutiveBucketKey;
@@ -129,35 +140,30 @@ const executiveBucketConfigs: Array<{
   summary: string;
 }> = [
   {
-    key: "brandStrength",
-    title: "긍정·방문 신호",
-    summary: "칭찬, 재방문, 일부러 찾아온 이유처럼 긍정으로 확인된 반응입니다."
+    key: "salesStrength",
+    title: "잘 팔리는 신호",
+    summary: "반복 구매, 시식 후 구매, 대량 구매처럼 매출로 이어지는 신호입니다."
   },
   {
-    key: "productNeeds",
-    title: "제품·메뉴 신호",
-    summary: "제품 문의, 품절, 구매 수요처럼 메뉴와 상품에서 반복된 반응입니다."
+    key: "missedSales",
+    title: "놓친 매출 신호",
+    summary: "품절, 재고 부족, 찾는 제품 부재처럼 팔 수 있었지만 놓친 수요입니다."
   },
   {
-    key: "operationImprovements",
-    title: "불편·개선 신호",
-    summary: "맛·품질 혹평, 포장, 대기, 응대처럼 불편으로 확인된 반응입니다."
+    key: "productImprovements",
+    title: "제품 개선 신호",
+    summary: "맛, 식감, 품질, 보관, 컷팅, 포장처럼 제품을 다듬을 단서입니다."
+  },
+  {
+    key: "visitFlow",
+    title: "방문 흐름 신호",
+    summary: "언제·어떤 손님이 왜 방문하는지 보여주는 흐름입니다."
+  },
+  {
+    key: "serviceRisk",
+    title: "응대·위험 신호",
+    summary: "컴플레인, 환불, 위생, 응대 불만처럼 바로 확인해야 할 위험 신호입니다."
   }
-];
-
-const brandStrengthWords = [
-  "장거리",
-  "일부러",
-  "추천",
-  "입소문",
-  "인스타",
-  "재방문",
-  "단골",
-  "선물",
-  "칭찬",
-  "친절",
-  "맛있",
-  "좋아"
 ];
 
 const negativeSignalCriterionNames = new Set([
@@ -364,6 +370,7 @@ const customerVoiceWords = [
   "칭찬",
   "반응",
   "아쉬워",
+  "불편",
   "희망",
   "구매의사"
 ];
@@ -405,6 +412,16 @@ function responseSample(response: ResponseWithRelations): string | null {
   return value.slice(0, 120);
 }
 
+function responseTopicItem(response: ResponseWithRelations) {
+  const text = cleanResponseText(response.fullText) || cleanResponseText(response.shortSummary);
+  return {
+    id: response.id?.toString() ?? "",
+    date: response.date ? formatDateOnly(response.date) : "",
+    summary: cleanResponseText(response.shortSummary) || "요약 없음",
+    text: text.slice(0, 160)
+  };
+}
+
 function hasAnyWord(value: string, words: string[]): boolean {
   return words.some((word) => value.includes(word));
 }
@@ -434,46 +451,105 @@ function classifyExecutiveBuckets(
     return [];
   }
 
-  const hasNegativeSignal =
-    pathNames.some((name) => negativeSignalCriterionNames.has(name)) ||
-    hasAnyWord(combinedText, negativeSignalWords);
+  const hasMissedSalesSignal =
+    pathNames.includes("품절") ||
+    pathNames.includes("원하는 제품 품절") ||
+    pathNames.includes("재입고 문의") ||
+    combinedText.includes("품절") ||
+    combinedText.includes("재고가 없") ||
+    combinedText.includes("빵이 없") ||
+    combinedText.includes("구매하지 못");
 
-  const hasPositiveSignal =
+  const hasServiceRiskSignal =
+    pathNames.includes("서비스·응대") ||
+    pathNames.includes("불친절") ||
+    pathNames.includes("응대 불만") ||
+    pathNames.includes("설명 부족") ||
+    pathNames.includes("결제 문제") ||
+    pathNames.includes("대기") ||
+    pathNames.includes("대기시간 김") ||
+    pathNames.includes("줄 혼잡") ||
+    combinedText.includes("컴플레인") ||
+    combinedText.includes("환불") ||
+    combinedText.includes("보상") ||
+    combinedText.includes("위생") ||
+    combinedText.includes("이물") ||
+    combinedText.includes("벌레");
+
+  const hasProductImprovementSignal =
+    pathNames.some((name) => negativeSignalCriterionNames.has(name)) ||
+    pathNames.includes("제품") ||
+    pathNames.includes("품질") ||
+    pathNames.includes("식감") ||
+    pathNames.includes("맛") ||
+    pathNames.includes("포장") ||
+    pathNames.includes("제품 문의") ||
+    pathNames.includes("제품 제안") ||
+    combinedText.includes("컷팅") ||
+    combinedText.includes("보관") ||
+    combinedText.includes("알러지") ||
+    combinedText.includes("알레르") ||
+    hasAnyWord(combinedText, negativeSignalWords) ||
+    hasAnyWord(combinedText, productNeedWords);
+
+  const hasVisitFlowSignal =
+    pathNames.includes("손님경험") ||
     pathNames.includes("방문 이유") ||
     pathNames.includes("장거리 방문") ||
     pathNames.includes("단골") ||
-    pathNames.includes("긍정 반응") ||
     pathNames.includes("선물·특별 목적") ||
-    pathNames.includes("일부러 방문") ||
-    pathNames.includes("SNS 보고 방문") ||
-    pathNames.includes("지인 추천") ||
+    pathNames.includes("방문 시간대") ||
+    pathNames.includes("방문객 특성") ||
+    pathNames.includes("날씨 영향") ||
+    pathNames.includes("주차·접근") ||
     pathNames.includes("장거리손님") ||
-    pathNames.includes("재방문 의사") ||
+    pathNames.includes("유동인구 낮음") ||
+    combinedText.includes("방문") ||
+    combinedText.includes("유동인구") ||
+    combinedText.includes("손님 꾸준") ||
+    combinedText.includes("시간대");
+
+  const hasPositiveSignal =
     pathNames.includes("맛있음") ||
     pathNames.includes("만족") ||
     pathNames.includes("직원 칭찬") ||
-    pathNames.includes("선물용") ||
-    hasAnyWord(combinedText, brandStrengthWords);
+    pathNames.includes("구매·수요") ||
+    pathNames.includes("특정 제품 수요 높음") ||
+    pathNames.includes("샌드위치 수요") ||
+    pathNames.includes("큰 빵 수요") ||
+    pathNames.includes("대량 구매") ||
+    pathNames.includes("객단가 높음") ||
+    combinedText.includes("구매로 이어") ||
+    combinedText.includes("판매완료") ||
+    combinedText.includes("재구매") ||
+    combinedText.includes("대량") ||
+    combinedText.includes("잘 팔") ||
+    combinedText.includes("수요") ||
+    combinedText.includes("맛있") ||
+    combinedText.includes("칭찬");
 
-  if (hasPositiveSignal && !hasNegativeSignal) {
-    buckets.add("brandStrength");
+  if (hasPositiveSignal && !hasMissedSalesSignal && !hasServiceRiskSignal) {
+    buckets.add("salesStrength");
   }
 
-  if (
-    pathNames.includes("제품") ||
-    pathNames.includes("제품 제안") ||
-    pathNames.includes("품절") ||
-    hasAnyWord(combinedText, productNeedWords)
-  ) {
-    buckets.add("productNeeds");
+  if (hasMissedSalesSignal) {
+    buckets.add("missedSales");
+  }
+
+  if (hasProductImprovementSignal && !hasMissedSalesSignal && !hasServiceRiskSignal) {
+    buckets.add("productImprovements");
+  }
+
+  if (hasVisitFlowSignal) {
+    buckets.add("visitFlow");
   }
 
   if (
     responseNeedsCheck(response, path) ||
-    hasNegativeSignal ||
+    hasServiceRiskSignal ||
     hasAnyWord(combinedText, operationImprovementWords)
   ) {
-    buckets.add("operationImprovements");
+    buckets.add("serviceRisk");
   }
 
   return Array.from(buckets);
@@ -499,6 +575,7 @@ function buildExecutiveBuckets(
     const criterion = criteriaById.get(criterionId);
     const topicPath = criterion ? buildPathFromCriteria(criteriaById, criterion) : path;
     const sample = responseSample(response);
+    const item = responseTopicItem(response);
 
     for (const bucket of buckets) {
       bucketResponses.get(bucket)?.add(response);
@@ -509,7 +586,10 @@ function buildExecutiveBuckets(
         existingTopic.count += 1;
         existingTopic.ratio = ratio(existingTopic.count, total);
         if (sample && !existingTopic.sampleSummaries.includes(sample)) {
-          existingTopic.sampleSummaries = [...existingTopic.sampleSummaries, sample].slice(0, 3);
+          existingTopic.sampleSummaries = [...existingTopic.sampleSummaries, sample];
+        }
+        if (!existingTopic.items.some((existingItem) => existingItem.id === item.id)) {
+          existingTopic.items = [...existingTopic.items, item];
         }
       } else if (topicMap) {
         topicMap.set(criterionId, {
@@ -518,7 +598,8 @@ function buildExecutiveBuckets(
           path: topicPath,
           count: 1,
           ratio: ratio(1, total),
-          sampleSummaries: sample ? [sample] : []
+          sampleSummaries: sample ? [sample] : [],
+          items: [item]
         });
       }
     }
@@ -595,13 +676,19 @@ function buildResponseInsights(
   responses: ResponseWithRelations[]
 ) {
   const summariesByCriterionId = new Map<number, string[]>();
+  const itemsByCriterionId = new Map<number, ReturnType<typeof responseTopicItem>[]>();
   for (const response of responses) {
     const criterionId = responseCriterionId(response);
     const summaries = summariesByCriterionId.get(criterionId) ?? [];
+    const items = itemsByCriterionId.get(criterionId) ?? [];
     if (response.shortSummary && !summaries.includes(response.shortSummary)) {
       summaries.push(response.shortSummary);
     }
+    if (!items.some((item) => item.id === (response.id?.toString() ?? ""))) {
+      items.push(responseTopicItem(response));
+    }
     summariesByCriterionId.set(criterionId, summaries.slice(0, 3));
+    itemsByCriterionId.set(criterionId, items);
   }
 
   const repeatedTopics: ResponseInsightTopic[] = minorGroups
@@ -614,7 +701,8 @@ function buildResponseInsights(
         path: criterion ? buildPathFromCriteria(criteriaById, criterion) : [],
         count: group._count._all,
         ratio: ratio(group._count._all, total),
-        sampleSummaries: summariesByCriterionId.get(group.minorCriterionId ?? 0) ?? []
+        sampleSummaries: summariesByCriterionId.get(group.minorCriterionId ?? 0) ?? [],
+        items: itemsByCriterionId.get(group.minorCriterionId ?? 0) ?? []
       };
     })
     .filter((topic) => topic.criterionId > 0 && topic.count > 0)

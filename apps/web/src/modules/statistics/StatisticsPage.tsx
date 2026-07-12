@@ -33,6 +33,7 @@ type ResponseInsightTopicDto = {
   count: number;
   ratio: number;
   sampleSummaries: string[];
+  items?: Array<{ id: string; date: string; summary: string; text: string }>;
 };
 
 type ResponseExecutiveBucketDto = {
@@ -327,7 +328,7 @@ export function StatisticsPage() {
 
   const displayTotal = stats.total;
   const displayRepeated = stats.insights.repeatedTopics.slice(0, 5);
-  const displayBuckets = (stats.insights.executiveBuckets ?? []).slice(0, 3);
+  const displayBuckets = stats.insights.executiveBuckets ?? [];
   const sampleQuotes = displayBuckets
     .flatMap((bucket) =>
       bucket.topics.flatMap((topic) =>
@@ -496,7 +497,7 @@ export function StatisticsPage() {
         </div>
       </section>
 
-      <div className="grid gap-3 lg:grid-cols-3">
+      <div className="grid gap-3 lg:grid-cols-2 xl:grid-cols-5">
         {displayBuckets.map((bucket) => (
           <ExecutiveBucketCard
             key={bucket.key}
@@ -628,20 +629,37 @@ function ExecutiveBucketCard({
         />
       </div>
       {topTopic ? (
-        <Link
-          className="mt-3 block rounded-[10px] bg-cream px-3 py-2 hover:bg-[#F4E3D8]"
-          to={detailLink(range, topTopic.criterionId)}
-        >
+        <div className="mt-3 rounded-[10px] bg-cream px-3 py-2">
           <div className="text-[11px] font-extrabold text-cocoa">
             대표 주제 · {topTopic.count.toLocaleString("ko-KR")}건
           </div>
           <div className="mt-0.5 text-[12.5px] font-bold text-ink">{topTopic.label}</div>
-          {topTopic.sampleSummaries[0] ? (
-            <div className="mt-1 text-[11px] font-semibold leading-4 text-muted">
-              “{topTopic.sampleSummaries[0]}”
-            </div>
-          ) : null}
-        </Link>
+          <div className="mt-2 grid max-h-44 gap-1 overflow-y-auto pr-1">
+            {(topTopic.items?.length ? topTopic.items : topTopic.sampleSummaries.map((sample) => ({
+              id: sample,
+              date: "",
+              summary: sample,
+              text: sample
+            }))).map((item) => (
+              <div key={`${topTopic.criterionId}-${item.id}`} className="rounded-[8px] bg-white/70 px-2 py-1.5">
+                {item.date ? (
+                  <div className="text-[10px] font-extrabold text-bread">{item.date}</div>
+                ) : null}
+                <div className="text-[11px] font-bold leading-4 text-ink">{item.summary}</div>
+                {item.text && item.text !== item.summary ? (
+                  <div className="mt-0.5 text-[10.5px] font-semibold leading-4 text-muted">{item.text}</div>
+                ) : null}
+              </div>
+            ))}
+          </div>
+          <Link
+            className="mt-2 inline-flex text-[11px] font-extrabold text-blue hover:underline"
+            to={detailLink(range, topTopic.criterionId)}
+            aria-label={`${topTopic.label} ${topTopic.count.toLocaleString("ko-KR")}건 전체 상세 기록 보기`}
+          >
+            {topTopic.count.toLocaleString("ko-KR")}건 전체 상세 기록 보기
+          </Link>
+        </div>
       ) : (
         <div className="mt-3 rounded-[10px] bg-cream px-3 py-2 text-[11.5px] font-semibold text-muted">
           아직 대표 주제가 없습니다.

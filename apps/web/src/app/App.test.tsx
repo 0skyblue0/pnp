@@ -600,35 +600,31 @@ describe("App", () => {
                 { date: "2026-07-12", count: 9 }
               ],
               insights: {
-                headline: "이번 기간에 가장 뚜렷한 축은 제품·메뉴 신호와 불편·개선 신호입니다.",
+                headline: "이번 기간에 가장 뚜렷한 축은 제품 개선 신호와 응대·위험 신호입니다.",
                 checkNeededCount: 4,
                 executiveBuckets: [
                   {
-                    key: "brandStrength",
-                    title: "긍정·방문 신호",
-                    count: 2,
-                    ratio: 0.125,
-                    summary: "칭찬, 재방문, 일부러 찾아온 이유처럼 긍정으로 확인된 반응입니다.",
-                    topics: [
-                      {
-                        criterionId: 9,
-                        label: "장거리손님",
-                        path: [
-                          { id: 8, name: "손님경험" },
-                          { id: 9, name: "장거리손님" }
-                        ],
-                        count: 2,
-                        ratio: 0.125,
-                        sampleSummaries: ["청주에서 일부러 방문"]
-                      }
-                    ]
+                    key: "salesStrength",
+                    title: "잘 팔리는 신호",
+                    count: 0,
+                    ratio: 0,
+                    summary: "반복 구매, 시식 후 구매, 대량 구매처럼 매출로 이어지는 신호입니다.",
+                    topics: []
                   },
                   {
-                    key: "productNeeds",
-                    title: "제품·메뉴 신호",
+                    key: "missedSales",
+                    title: "놓친 매출 신호",
+                    count: 0,
+                    ratio: 0,
+                    summary: "품절, 재고 부족, 찾는 제품 부재처럼 팔 수 있었지만 놓친 수요입니다.",
+                    topics: []
+                  },
+                  {
+                    key: "productImprovements",
+                    title: "제품 개선 신호",
                     count: 9,
                     ratio: 0.5625,
-                    summary: "제품 문의, 품절, 구매 수요처럼 메뉴와 상품에서 반복된 반응입니다.",
+                    summary: "맛, 식감, 품질, 보관, 컷팅, 포장처럼 제품을 다듬을 단서입니다.",
                     topics: [
                       {
                         criterionId: 6,
@@ -640,16 +636,58 @@ describe("App", () => {
                         ],
                         count: 6,
                         ratio: 0.375,
-                        sampleSummaries: ["바게트 맛 불만 반복"]
+                        sampleSummaries: ["바게트 맛 불만 반복", "바게트가 전보다 딱딱함"],
+                        items: [
+                          {
+                            id: "201",
+                            date: "2026-07-10",
+                            summary: "바게트 맛 불만 반복",
+                            text: "바게트 맛 불만 반복"
+                          },
+                          {
+                            id: "202",
+                            date: "2026-07-11",
+                            summary: "바게트가 전보다 딱딱함",
+                            text: "바게트가 전보다 딱딱하다는 손님 의견"
+                          }
+                        ]
                       }
                     ]
                   },
                   {
-                    key: "operationImprovements",
-                    title: "불편·개선 신호",
+                    key: "visitFlow",
+                    title: "방문 흐름 신호",
+                    count: 2,
+                    ratio: 0.125,
+                    summary: "언제·어떤 손님이 왜 방문하는지 보여주는 흐름입니다.",
+                    topics: [
+                      {
+                        criterionId: 9,
+                        label: "장거리손님",
+                        path: [
+                          { id: 8, name: "손님경험" },
+                          { id: 9, name: "장거리손님" }
+                        ],
+                        count: 2,
+                        ratio: 0.125,
+                        sampleSummaries: ["청주에서 일부러 방문"],
+                        items: [
+                          {
+                            id: "203",
+                            date: "2026-07-12",
+                            summary: "청주에서 일부러 방문",
+                            text: "청주에서 일부러 방문"
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    key: "serviceRisk",
+                    title: "응대·위험 신호",
                     count: 4,
                     ratio: 0.25,
-                    summary: "맛·품질 혹평, 포장, 대기, 응대처럼 불편으로 확인된 반응입니다.",
+                    summary: "컴플레인, 환불, 위생, 응대 불만처럼 바로 확인해야 할 위험 신호입니다.",
                     topics: [
                       {
                         criterionId: 7,
@@ -661,7 +699,15 @@ describe("App", () => {
                         ],
                         count: 4,
                         ratio: 0.25,
-                        sampleSummaries: ["식감 개선 필요"]
+                        sampleSummaries: ["식감 개선 필요"],
+                        items: [
+                          {
+                            id: "204",
+                            date: "2026-07-12",
+                            summary: "식감 개선 필요",
+                            text: "식감 개선 필요"
+                          }
+                        ]
                       }
                     ]
                   }
@@ -717,17 +763,21 @@ describe("App", () => {
 
     expect(await screen.findByRole("heading", { name: "대표 리포트" })).toBeInTheDocument();
     expect(
-      screen.getAllByText("이번 기간에 가장 뚜렷한 축은 제품·메뉴 신호와 불편·개선 신호입니다.").length
+      screen.getAllByText("이번 기간에 가장 뚜렷한 축은 제품 개선 신호와 응대·위험 신호입니다.").length
     ).toBeGreaterThan(0);
-    expect(screen.getAllByText("긍정·방문 신호").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("잘 팔리는 신호").length).toBeGreaterThan(0);
     expect(
-      screen.getByText("칭찬, 재방문, 일부러 찾아온 이유처럼 긍정으로 확인된 반응입니다.")
+      screen.getByText("반복 구매, 시식 후 구매, 대량 구매처럼 매출로 이어지는 신호입니다.")
     ).toBeInTheDocument();
-    expect(screen.getAllByText("제품·메뉴 신호").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("불편·개선 신호").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("놓친 매출 신호").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("제품 개선 신호").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("방문 흐름 신호").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("응대·위험 신호").length).toBeGreaterThan(0);
     expect(screen.getByText("손님이 직접 한 말")).toBeInTheDocument();
     expect(screen.getAllByText(/청주에서 일부러 방문/).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/식감 개선 필요/).length).toBeGreaterThan(0);
+    expect(screen.getByText("바게트가 전보다 딱딱함")).toBeInTheDocument();
+    expect(screen.getByText("2026-07-11")).toBeInTheDocument();
     expect(screen.getAllByText(/제품 > 맛 > 바게트/).length).toBeGreaterThan(0);
     expect(screen.getAllByText("4건").length).toBeGreaterThan(0);
     expect(screen.getByText("월별 빠른 조회")).toBeInTheDocument();
@@ -749,7 +799,7 @@ describe("App", () => {
       "href",
       "/response?mode=lookup&tab=detail&from=2026-06-14&to=2026-07-13&criterion_id=6"
     );
-    expect(screen.getByRole("link", { name: /대표 주제 · 6건 바게트/ })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: /바게트 6건 전체 상세 기록 보기/ })).toHaveAttribute(
       "href",
       "/response?mode=lookup&tab=detail&from=2026-06-14&to=2026-07-13&criterion_id=6"
     );

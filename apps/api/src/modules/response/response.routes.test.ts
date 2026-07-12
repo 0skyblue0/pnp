@@ -51,6 +51,7 @@ type ResponseStatsBody = {
         label: string;
         count: number;
         sampleSummaries: string[];
+        items: Array<{ id: string; date: string; summary: string; text: string }>;
       }>;
     }>;
     repeatedTopics: Array<{
@@ -305,7 +306,7 @@ describe("response stats route", () => {
     await app.close();
   });
 
-  it("groups executive insight buckets by brand strength, menu needs, and improvements", async () => {
+  it("groups executive insight buckets by report action axes with every top-topic record", async () => {
     const prisma = buildPrismaMock();
     prisma.customerResponse.count.mockResolvedValue(6);
     prisma.customerResponse.groupBy
@@ -366,42 +367,54 @@ describe("response stats route", () => {
         middleCriterionId: 110,
         minorCriterionId: 111,
         shortSummary: "청주에서 일부러 방문",
-        fullText: "청주에서 일부러 왔어요."
+        fullText: "청주에서 일부러 왔어요.",
+        id: 1n,
+        date: new Date("2026-01-02T00:00:00.000Z")
       },
       {
         majorCriterionId: 100,
         middleCriterionId: 110,
         minorCriterionId: 111,
         shortSummary: "인스타 보고 장거리 방문",
-        fullText: "인스타 보고 꼭 와보고 싶었어요."
+        fullText: "인스타 보고 꼭 와보고 싶었어요.",
+        id: 2n,
+        date: new Date("2026-01-03T00:00:00.000Z")
       },
       {
         majorCriterionId: 200,
         middleCriterionId: 210,
         minorCriterionId: 211,
         shortSummary: "쌀빵 요청",
-        fullText: "쌀빵도 있으면 좋겠어요."
+        fullText: "쌀빵도 있으면 좋겠어요.",
+        id: 3n,
+        date: new Date("2026-01-04T00:00:00.000Z")
       },
       {
         majorCriterionId: 200,
         middleCriterionId: 210,
         minorCriterionId: 211,
         shortSummary: "건강빵 문의",
-        fullText: "건강빵은 없나요?"
+        fullText: "건강빵은 없나요?",
+        id: 4n,
+        date: new Date("2026-01-05T00:00:00.000Z")
       },
       {
         majorCriterionId: 200,
         middleCriterionId: 220,
         minorCriterionId: 221,
         shortSummary: "치즈 치아바타 짠맛 혹평",
-        fullText: "단골손님인 김영호님이 치즈 치아바타가 짜다는 평을 남겨주셨습니다."
+        fullText: "단골손님인 김영호님이 치즈 치아바타가 짜다는 평을 남겨주셨습니다.",
+        id: 5n,
+        date: new Date("2026-01-06T00:00:00.000Z")
       },
       {
         majorCriterionId: 300,
         middleCriterionId: 310,
         minorCriterionId: 311,
         shortSummary: "대기시간 불만",
-        fullText: "줄이 너무 길어서 불편했어요."
+        fullText: "줄이 너무 길어서 불편했어요.",
+        id: 6n,
+        date: new Date("2026-01-07T00:00:00.000Z")
       }
     ]);
 
@@ -417,55 +430,80 @@ describe("response stats route", () => {
     expect(response.statusCode).toBe(200);
     const body = response.json<ApiEnvelope<ResponseStatsBody>>();
     expect(body.data?.insights.headline).toBe(
-      "이번 기간에 가장 뚜렷한 축은 제품·메뉴 신호와 긍정·방문 신호입니다."
+      "이번 기간에 가장 뚜렷한 축은 제품 개선 신호와 방문 흐름 신호입니다."
     );
     expect(body.data?.insights.executiveBuckets).toEqual([
       expect.objectContaining({
-        key: "brandStrength",
-        title: "긍정·방문 신호",
-        count: 2,
-        ratio: 2 / 6,
-        summary: "칭찬, 재방문, 일부러 찾아온 이유처럼 긍정으로 확인된 반응입니다.",
-        topics: [
-          expect.objectContaining({
-            label: "장거리손님",
-            count: 2,
-            sampleSummaries: ["청주에서 일부러 왔어요.", "인스타 보고 꼭 와보고 싶었어요."]
-          })
-        ]
+        key: "salesStrength",
+        title: "잘 팔리는 신호",
+        count: 0,
+        ratio: 0
       }),
       expect.objectContaining({
-        key: "productNeeds",
-        title: "제품·메뉴 신호",
+        key: "missedSales",
+        title: "놓친 매출 신호",
+        count: 0,
+        ratio: 0
+      }),
+      expect.objectContaining({
+        key: "productImprovements",
+        title: "제품 개선 신호",
         count: 3,
         ratio: 0.5
       }),
       expect.objectContaining({
-        key: "operationImprovements",
-        title: "불편·개선 신호",
+        key: "visitFlow",
+        title: "방문 흐름 신호",
         count: 2,
-        ratio: 2 / 6
+        ratio: 2 / 6,
+        summary: "언제·어떤 손님이 왜 방문하는지 보여주는 흐름입니다.",
+        topics: [
+          expect.objectContaining({
+            label: "장거리손님",
+            count: 2,
+            sampleSummaries: ["청주에서 일부러 왔어요.", "인스타 보고 꼭 와보고 싶었어요."],
+            items: [
+              {
+                id: "1",
+                date: "2026-01-02",
+                summary: "청주에서 일부러 방문",
+                text: "청주에서 일부러 왔어요."
+              },
+              {
+                id: "2",
+                date: "2026-01-03",
+                summary: "인스타 보고 장거리 방문",
+                text: "인스타 보고 꼭 와보고 싶었어요."
+              }
+            ]
+          })
+        ]
+      }),
+      expect.objectContaining({
+        key: "serviceRisk",
+        title: "응대·위험 신호",
+        count: 1,
+        ratio: 1 / 6
       })
     ]);
 
-    const brandStrengthBucket = body.data?.insights.executiveBuckets.find(
-      (bucket) => bucket.key === "brandStrength"
+    const visitFlowBucket = body.data?.insights.executiveBuckets.find(
+      (bucket) => bucket.key === "visitFlow"
     );
-    const productNeedsBucket = body.data?.insights.executiveBuckets.find(
-      (bucket) => bucket.key === "productNeeds"
+    const productImprovementBucket = body.data?.insights.executiveBuckets.find(
+      (bucket) => bucket.key === "productImprovements"
     );
-    const operationImprovementsBucket = body.data?.insights.executiveBuckets.find(
-      (bucket) => bucket.key === "operationImprovements"
+    const serviceRiskBucket = body.data?.insights.executiveBuckets.find(
+      (bucket) => bucket.key === "serviceRisk"
     );
-    expect(brandStrengthBucket?.topics.some((topic) => topic.label === "짠맛")).toBe(false);
-    expect(productNeedsBucket?.topics.some((topic) => topic.label === "쌀빵/건강빵 요청" && topic.count === 2)).toBe(true);
+    expect(visitFlowBucket?.topics.some((topic) => topic.label === "짠맛")).toBe(false);
+    expect(productImprovementBucket?.topics.some((topic) => topic.label === "쌀빵/건강빵 요청" && topic.count === 2)).toBe(true);
     expect(
-      operationImprovementsBucket?.topics.some(
+      serviceRiskBucket?.topics.some(
         (topic) =>
-          topic.label === "짠맛" &&
+          topic.label === "대기시간 김" &&
           topic.count === 1 &&
-          topic.sampleSummaries[0] ===
-            "단골손님인 김영호님이 치즈 치아바타가 짜다는 평을 남겨주셨습니다."
+          topic.sampleSummaries[0] === "줄이 너무 길어서 불편했어요."
       )
     ).toBe(true);
 
@@ -688,7 +726,7 @@ describe("response stats route", () => {
       { date: "2026-01-03", count: 4 }
     ]);
     expect(stats.insights.headline).toBe(
-      "이번 기간에 가장 뚜렷한 축은 제품·메뉴 신호와 불편·개선 신호입니다."
+      "이번 기간에 가장 뚜렷한 축은 제품 개선 신호와 응대·위험 신호입니다."
     );
     expect(stats.insights.repeatedTopics).toEqual(
       expect.arrayContaining([

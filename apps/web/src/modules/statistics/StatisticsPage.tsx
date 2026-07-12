@@ -106,6 +106,24 @@ function monthRange(value: string, offset: number): DateRange {
   };
 }
 
+function monthLabel(range: DateRange): string | null {
+  const [fromYear, fromMonth, fromDay] = parseDateParts(range.from);
+  const [toYear, toMonth] = parseDateParts(range.to);
+  const expected = monthRange(`${fromYear}-${String(fromMonth).padStart(2, "0")}-01`, 0);
+
+  if (
+    fromYear === toYear &&
+    fromMonth === toMonth &&
+    fromDay === 1 &&
+    range.from === expected.from &&
+    range.to === expected.to
+  ) {
+    return `${fromYear}년 ${fromMonth}월`;
+  }
+
+  return null;
+}
+
 function weekRange(value: string, offset = 0): DateRange {
   const [year, month, day] = parseDateParts(value);
   const base = new Date(Date.UTC(year, month - 1, day));
@@ -293,7 +311,7 @@ export function StatisticsPage() {
   const maxMajor = Math.max(...displayMajor.map((item) => item.count), 1);
   const middleA11y = stats.middle.slice(0, 8);
   const minorA11y = stats.minor.slice(0, 8);
-  const dailyTrend = stats.daily.slice(-14).map((item) => {
+  const dailyTrend = stats.daily.slice(-31).map((item) => {
     const [, month = "0", day = "0"] = item.date.split("-");
     return {
       ...item,
@@ -301,10 +319,12 @@ export function StatisticsPage() {
     };
   });
   const maxDaily = Math.max(...dailyTrend.map((item) => item.count), 1);
+  const selectedMonthLabel = monthLabel(range);
   const periodLabel =
-    range.from === recentThirtyDays(today).from && range.to === recentThirtyDays(today).to
-        ? "최근 30일"
-        : `${range.from.replaceAll("-", ".")} ~ ${range.to.replaceAll("-", ".")}`;
+    selectedMonthLabel ??
+    (range.from === recentThirtyDays(today).from && range.to === recentThirtyDays(today).to
+      ? "최근 30일"
+      : `${range.from.replaceAll("-", ".")} ~ ${range.to.replaceAll("-", ".")}`);
   const periodOptions: Array<{ label: string; range: DateRange }> = [
     { label: "이번달", range: monthRange(today, 0) },
     { label: "지난달", range: monthRange(today, -1) },
@@ -312,6 +332,13 @@ export function StatisticsPage() {
     { label: "지난주", range: weekRange(today, -1) },
     { label: "최근 30일", range: recentThirtyDays(today) }
   ];
+  const monthOptions = Array.from({ length: 6 }, (_, index) => {
+    const optionRange = monthRange(today, -index);
+    return {
+      label: monthLabel(optionRange) ?? optionRange.from.slice(0, 7),
+      range: optionRange
+    };
+  });
 
   return (
     <div className="grid gap-[14px]">
@@ -375,6 +402,32 @@ export function StatisticsPage() {
         </div>
       </div>
 
+      <section className="rounded-[14px] border border-latte bg-white px-4 py-3">
+        <div className="mb-2">
+          <p className="text-xs font-extrabold text-bread">월별 빠른 조회</p>
+          <p className="mt-1 text-[11.5px] font-semibold text-muted">한 달 단위로 손님 반응 흐름과 반복 주제를 바로 비교합니다.</p>
+        </div>
+        <div className="flex flex-wrap gap-[6px]">
+          {monthOptions.map((option) => {
+            const isActive = range.from === option.range.from && range.to === option.range.to;
+            return (
+              <button
+                key={option.label}
+                className={[
+                  "rounded-full border border-latte px-[13px] py-[7px] text-[12px] font-bold transition",
+                  isActive ? "bg-cocoa text-white" : "bg-cream text-cocoa hover:bg-[#F4E3D8]"
+                ].join(" ")}
+                type="button"
+                aria-pressed={isActive}
+                onClick={() => setRange(option.range)}
+              >
+                {option.label}
+              </button>
+            );
+          })}
+        </div>
+      </section>
+
       {error ? (
         <div className="rounded-[10px] border border-red/20 bg-red/10 px-3 py-2 text-sm font-semibold text-red">{error}</div>
       ) : null}
@@ -419,16 +472,19 @@ export function StatisticsPage() {
         </section>
 
         <section className="dc-card-pad">
-          <div className="dc-eyebrow mb-[14px]">최근 {dailyTrend.length}일 추이</div>
-          <div className="flex h-[88px] items-end gap-[10px]">
+          <div className="dc-eyebrow mb-[6px]">선택 기간 일별 추이</div>
+          <p className="mb-[12px] text-[11.5px] font-semibold leading-5 text-muted">
+            조회 기간 안에서 날짜별로 등록된 손님 반응 건수를 보여줍니다. 막대가 높을수록 그날 기록된 반응이 많습니다.
+          </p>
+          <div className="flex h-[88px] items-end gap-[4px] overflow-hidden">
             {dailyTrend.length > 0 ? dailyTrend.map((item) => (
-              <div key={item.date} className="flex h-full flex-1 flex-col items-center justify-end gap-[6px]">
+              <div key={item.date} className="flex h-full min-w-0 flex-1 flex-col items-center justify-end gap-[6px]">
                 <div className="text-[11px] font-bold text-ink">{item.count}</div>
                 <div
-                  className="w-full max-w-[26px] rounded-t-[5px] bg-bread"
+                  className="w-full max-w-[16px] rounded-t-[5px] bg-bread"
                   style={{ height: `${Math.max(4, Math.round((item.count / maxDaily) * 100))}%` }}
                 />
-                <div className="text-[10px] text-muted">{item.label}</div>
+                <div className="truncate text-[9px] text-muted">{item.label}</div>
               </div>
             )) : (
               <div className="grid h-full flex-1 place-items-center rounded-[10px] bg-cream text-xs font-semibold text-muted">

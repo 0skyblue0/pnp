@@ -39,6 +39,7 @@ type FilterState = {
   to: string;
   criterionId: string;
   checkNeeded: boolean;
+  keyword: string;
 };
 
 type ResponseEditDraft = {
@@ -100,6 +101,34 @@ function criterionOptionLabel(criterion: ResponseCriterionDto): string {
   return `${prefix}${criterion.name}${criterion.isActive ? "" : " (비활성)"}`;
 }
 
+function criterionPathFromSelection(
+  criteria: ResponseCriterionDto[],
+  criterion: ResponseCriterionDto | undefined
+): CriterionPathItem[] {
+  if (!criterion) {
+    return [];
+  }
+
+  const byId = new Map(criteria.map((item) => [item.id, item]));
+  const path: CriterionPathItem[] = [criterion];
+  let current = criterion;
+  while (current.parentId) {
+    const parent = byId.get(current.parentId);
+    if (!parent) {
+      break;
+    }
+    path.unshift(parent);
+    current = parent;
+  }
+  return path;
+}
+
+function monthRange(date: Date): { from: string; to: string } {
+  const from = new Date(date.getFullYear(), date.getMonth(), 1);
+  const to = new Date(date.getFullYear(), date.getMonth() + 1, 0);
+  return { from: from.toISOString().slice(0, 10), to: to.toISOString().slice(0, 10) };
+}
+
 export function ResponseListPage() {
   const [searchParams] = useSearchParams();
   const defaultRange = recentThirtyDaysRange();
@@ -107,13 +136,14 @@ export function ResponseListPage() {
     from: searchParams.get("from") ?? defaultRange.from,
     to: searchParams.get("to") ?? defaultRange.to,
     criterionId: searchParams.get("criterion_id") ?? "",
-    checkNeeded: searchParams.get("check_needed") === "true"
+    checkNeeded: searchParams.get("check_needed") === "true",
+    keyword: ""
   });
   const [criteria, setCriteria] = useState<ResponseCriterionDto[]>([]);
   const [responses, setResponses] = useState<ResponseDto[]>([]);
+  const [totalResponses, setTotalResponses] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingCriteria, setIsLoadingCriteria] = useState(false);
-  const [includeInactiveCriteria, setIncludeInactiveCriteria] = useState(false);
   const [editingResponseId, setEditingResponseId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState<ResponseEditDraft | null>(null);
   const [savingResponseId, setSavingResponseId] = useState<string | null>(null);
@@ -121,14 +151,37 @@ export function ResponseListPage() {
   const [error, setError] = useState<string | null>(null);
 
   const criterionOptions = useMemo(() => flattenCriteria(criteria), [criteria]);
+  const selectedCriterion = useMemo(
+    () => criterionOptions.find((criterion) => criterion.id.toString() === filters.criterionId),
+    [criterionOptions, filters.criterionId]
+  );
+  const selectedCriterionLabel = criterionPathLabel(
+    criterionPathFromSelection(criterionOptions, selectedCriterion)
+  );
+  const filteredResponses = useMemo(() => {
+    const keyword = filters.keyword.trim().toLocaleLowerCase("ko-KR");
+    if (!keyword) {
+      return responses;
+    }
+
+    return responses.filter((response) => {
+      const haystack = [
+        response.date,
+        criterionPathLabel(response.criterionPath),
+        response.shortSummary ?? "",
+        visibleResponseText(response.fullText)
+      ]
+        .join(" ")
+        .toLocaleLowerCase("ko-KR");
+      return haystack.includes(keyword);
+    });
+  }, [filters.keyword, responses]);
 
   const loadCriteria = useCallback(async () => {
     setIsLoadingCriteria(true);
 
     try {
-      const envelope = await apiGet<ListEnvelope<ResponseCriterionDto>>(
-        `/response-criteria${includeInactiveCriteria ? "" : "?active=true"}`
-      );
+      const envelope = await apiGet<ListEnvelope<ResponseCriterionDto>>("/response-criteria?active=true");
 
       if (envelope.error) {
         setError(envelope.error.message);
@@ -143,7 +196,7 @@ export function ResponseListPage() {
     } finally {
       setIsLoadingCriteria(false);
     }
-  }, [includeInactiveCriteria]);
+  }, []);
 
   const loadResponses = useCallback(async () => {
     setIsLoading(true);
@@ -158,6 +211,7 @@ export function ResponseListPage() {
       }
 
       setResponses(envelope.data.items);
+      setTotalResponses(envelope.data.total);
     } catch (unknownError) {
       setError(
         unknownError instanceof Error ? unknownError.message : "고객 반응을 조회하지 못했습니다."
@@ -166,6 +220,14 @@ export function ResponseListPage() {
       setIsLoading(false);
     }
   }, [filters]);
+
+  const applyRange = (range: { from: string; to: string }) => {
+    setFilters((current) => ({ ...current, ...range }));
+  };
+
+  const resetFilters = () => {
+    setFilters({ ...recentThirtyDaysRange(), criterionId: "", checkNeeded: false, keyword: "" });
+  };
 
   useEffect(() => {
     void loadCriteria();
@@ -326,7 +388,42 @@ export function ResponseListPage() {
           </div>
         ) : null}
 
-        <div className="grid gap-3 lg:grid-cols-[1fr_1fr_1.4fr_auto_auto_auto] lg:items-end">
+        <div className="mb-3 flex flex-wrap gap-2">
+          <button
+            type="button"
+            className="rounded-full border border-latte bg-white px-3 py-1 text-xs font-bold text-cocoa transition hover:bg-cream"
+            onClick={() => applyRange(recentThirtyDaysRange())}
+          >
+            최근 30일
+          </button>
+          <button
+            type="button"
+            className="rounded-full border border-latte bg-white px-3 py-1 text-xs font-bold text-cocoa transition hover:bg-cream"
+            onClick={() => applyRange(monthRange(new Date(todayInStoreTime())))}
+          >
+            이번달
+          </button>
+          <button
+            type="button"
+            className="rounded-full border border-latte bg-white px-3 py-1 text-xs font-bold text-cocoa transition hover:bg-cream"
+            onClick={() => {
+              const date = new Date(todayInStoreTime());
+              date.setMonth(date.getMonth() - 1);
+              applyRange(monthRange(date));
+            }}
+          >
+            지난달
+          </button>
+          <button
+            type="button"
+            className="rounded-full border border-latte bg-white px-3 py-1 text-xs font-bold text-muted transition hover:bg-cream"
+            onClick={resetFilters}
+          >
+            초기화
+          </button>
+        </div>
+
+        <div className="grid gap-3 lg:grid-cols-[150px_150px_minmax(220px,1.2fr)_minmax(180px,1fr)_auto_auto] lg:items-end">
           <label className="grid min-w-0 gap-2">
             <span className="field-label">시작일</span>
             <input
@@ -367,13 +464,16 @@ export function ResponseListPage() {
               ))}
             </select>
           </label>
-          <label className="flex min-h-10 items-center gap-2 text-sm font-semibold text-cocoa lg:pb-1">
+          <label className="grid min-w-0 gap-2">
+            <span className="field-label">내용 검색</span>
             <input
-              type="checkbox"
-              checked={includeInactiveCriteria}
-              onChange={(event) => setIncludeInactiveCriteria(event.target.checked)}
+              className="input min-w-0 w-full"
+              placeholder="예: 깜빠뉴, 품절, 컷팅"
+              value={filters.keyword}
+              onChange={(event) =>
+                setFilters((current) => ({ ...current, keyword: event.target.value }))
+              }
             />
-            과거 기준 포함
           </label>
           <label className="flex min-h-10 items-center gap-2 text-sm font-semibold text-cocoa lg:pb-1">
             <input
@@ -389,6 +489,23 @@ export function ResponseListPage() {
             {isLoading ? "조회 중" : "조회"}
           </Button>
         </div>
+
+        <div className="mt-3 flex flex-wrap items-center gap-2 text-xs font-semibold text-muted">
+          <span className="rounded-full bg-cream px-3 py-1 text-cocoa">
+            {filters.from} ~ {filters.to}
+          </span>
+          <span className="rounded-full bg-cream px-3 py-1 text-cocoa">
+            기준: {selectedCriterion ? selectedCriterionLabel : "전체"}
+          </span>
+          {filters.checkNeeded ? (
+            <span className="rounded-full bg-red/10 px-3 py-1 text-red">확인 필요만</span>
+          ) : null}
+          {filters.keyword.trim() ? (
+            <span className="rounded-full bg-blue/10 px-3 py-1 text-blue">
+              검색: {filters.keyword.trim()}
+            </span>
+          ) : null}
+        </div>
       </section>
 
       <section className="panel min-w-0">
@@ -396,11 +513,15 @@ export function ResponseListPage() {
           <div>
             <p className="text-sm text-muted">입력된 내용</p>
             <h2 className="section-title">반응 목록</h2>
+            <p className="mt-1 text-xs font-semibold text-muted">
+              {filteredResponses.length}건 표시 / 조회 결과 {totalResponses}건
+              {totalResponses >= 100 ? " · 최근 100건까지 표시" : ""}
+            </p>
           </div>
           <MessageSquareText className="h-5 w-5 text-bread" aria-hidden="true" />
         </div>
         <div className="space-y-3">
-          {responses.map((response) => (
+          {filteredResponses.map((response) => (
             <article key={response.id} className="rounded-control border border-stone-200 p-3">
               {editingResponseId === response.id && editDraft ? (
                 <div className="grid gap-3">
@@ -521,6 +642,11 @@ export function ResponseListPage() {
           {!isLoading && responses.length === 0 ? (
             <div className="rounded-control border border-stone-200 px-3 py-6 text-center text-sm font-medium text-muted">
               조회된 고객 반응 없음
+            </div>
+          ) : null}
+          {!isLoading && responses.length > 0 && filteredResponses.length === 0 ? (
+            <div className="rounded-control border border-stone-200 px-3 py-6 text-center text-sm font-medium text-muted">
+              검색어와 맞는 고객 반응 없음
             </div>
           ) : null}
         </div>

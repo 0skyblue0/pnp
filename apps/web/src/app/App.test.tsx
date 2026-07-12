@@ -1737,6 +1737,8 @@ describe("App", () => {
     expect(screen.getByRole("tab", { name: "요약 보기" })).toBeVisible();
     expect(screen.getByRole("tab", { name: "상세 기록" })).toHaveAttribute("aria-selected", "true");
     expect(await screen.findByLabelText("기준")).not.toHaveTextContent("비활성");
+    expect(screen.queryByLabelText("과거 기준 포함")).not.toBeInTheDocument();
+    expect(screen.getByPlaceholderText("예: 깜빠뉴, 품절, 컷팅")).toBeInTheDocument();
     expect(await screen.findByText("직원이 직접 분류한 반응")).toBeInTheDocument();
     expect(screen.getByText("AI 재분류 필요")).toBeInTheDocument();
     expect(screen.queryByText(/일일업무보고서 6월.xlsx/)).not.toBeInTheDocument();

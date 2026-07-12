@@ -176,11 +176,11 @@ function parseDailySheet(input: {
   const productRows = parseProductRows(sheet);
   const rawSections = buildRawSections(sheet, { fileName, sheetName, importedAt });
   const staffSpecialRows = createStaffSpecialRows();
+  const facilityChecks = parseFacilityChecks(sheet);
   staffSpecialRows.today.dayOff = lineAt(sheet, 76);
   staffSpecialRows.tomorrow.dayOff = lineAt(sheet, 77);
 
   const productText = rawSections.sections.productOpinionAndLoss.text;
-  const facilityText = rawSections.sections.facilityCheck.text;
   const customerResponseRows = buildCustomerResponseRows({
     date,
     fileName,
@@ -201,16 +201,16 @@ function parseDailySheet(input: {
     nonPosSalesAmount: numberText(sumChannels(channelRows, "amount")),
     nonPosSalesCount: numberText(sumChannels(channelRows, "count")),
     productOpinionAndLoss: productText,
-    facilityIssue: facilityText,
+    facilityIssue: "",
     cleaningWork: rawSections.sections.storeManagement.text,
     instructions: rawSections.sections.instructions.text,
     tomorrowPrep: rawSections.sections.tomorrowPrep.text,
-    firstWorker: "",
-    firstWorkerTime: "",
-    lastWorker: "",
-    lastWorkerTime: "",
-    hygieneChecker: "",
-    finalChecker: "",
+    firstWorker: facilityChecks.firstWorker,
+    firstWorkerTime: facilityChecks.firstWorkerTime,
+    lastWorker: facilityChecks.lastWorker,
+    lastWorkerTime: facilityChecks.lastWorkerTime,
+    hygieneChecker: facilityChecks.hygieneChecker,
+    finalChecker: facilityChecks.finalChecker,
     rawSections
   };
 
@@ -283,6 +283,22 @@ function normalizeServiceNoteLine(line: string): string {
   return result;
 }
 
+function parseFacilityChecks(sheet: XLSX.WorkSheet): Pick<
+  DailyOperationDraft,
+  "firstWorker" | "firstWorkerTime" | "lastWorker" | "lastWorkerTime" | "hygieneChecker" | "finalChecker"
+> {
+  const headerRow = findLabelRow(sheet, "10. 시설 점검사항") ?? 78;
+  const valueRow = headerRow + 1;
+  return {
+    firstWorker: cellDisplayText(sheet, `D${valueRow}`),
+    firstWorkerTime: cellDisplayText(sheet, `C${valueRow}`),
+    lastWorker: cellDisplayText(sheet, `F${valueRow}`),
+    lastWorkerTime: cellDisplayText(sheet, `E${valueRow}`),
+    hygieneChecker: cellDisplayText(sheet, `G${valueRow}`),
+    finalChecker: cellDisplayText(sheet, `I${valueRow}`)
+  };
+}
+
 function parseProductRows(sheet: XLSX.WorkSheet): ProductRow[] {
   const rows: ProductRow[] = [];
   for (let row = 13; row <= 50; row += 1) {
@@ -328,6 +344,7 @@ function buildRawSections(
   sheet: XLSX.WorkSheet,
   source: DailyOperationRawSections["source"]
 ): DailyOperationRawSections {
+  const facilityCheckRow = findLabelRow(sheet, "10. 시설 점검사항") ?? 78;
   return {
     source,
     sections: {
@@ -337,7 +354,7 @@ function buildRawSections(
       instructions: section(sheet, "7. 지시 및 전달사항", [70, 71, 72]),
       tomorrowPrep: section(sheet, "8. 내일 준비사항", [73, 74]),
       staffSpecial: section(sheet, "9. 직원 특이사항", [75, 76, 77]),
-      facilityCheck: section(sheet, "10. 시설 점검사항", [78, 79, 80])
+      facilityCheck: section(sheet, "10. 시설 점검사항", [facilityCheckRow, facilityCheckRow + 1, facilityCheckRow + 2])
     }
   };
 }
@@ -348,6 +365,20 @@ function section(sheet: XLSX.WorkSheet, label: string, rows: number[]): RawSecti
     rows,
     text: joinLines(rows.map((row) => lineAt(sheet, row)))
   };
+}
+
+function findLabelRow(sheet: XLSX.WorkSheet, label: string): number | null {
+  const normalizedLabel = normalizeSectionLabel(label);
+  for (let row = 1; row <= 100; row += 1) {
+    if (normalizeSectionLabel(cellText(sheet, `A${row}`)) === normalizedLabel) {
+      return row;
+    }
+  }
+  return null;
+}
+
+function normalizeSectionLabel(value: string): string {
+  return value.replace(/\s+/g, "").trim();
 }
 
 function lineAt(sheet: XLSX.WorkSheet, row: number): string {

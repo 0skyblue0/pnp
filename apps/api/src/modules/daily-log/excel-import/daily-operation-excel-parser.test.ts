@@ -19,7 +19,7 @@ function buildWorkbook(path: string) {
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([["사용법"]]), "사용법");
 
-  const rows: unknown[][] = Array.from({ length: 80 }, () => []);
+  const rows: unknown[][] = Array.from({ length: 81 }, () => []);
   setCell(rows, 1, 2, "2026년  5월  1일 ( 금요일)");
   setCell(rows, 2, 2, "여의도");
   setCell(rows, 2, 5, "정희주");
@@ -90,9 +90,17 @@ function buildWorkbook(path: string) {
   setCell(rows, 74, 2, "휴무");
   setCell(rows, 75, 2, "준모,용국");
   setCell(rows, 76, 2, "세은,희주");
-  setCell(rows, 77, 0, "10. 시설 점검사항");
-  setCell(rows, 77, 2, "첫 출 근 자");
-  setCell(rows, 78, 2, 0.25);
+  setCell(rows, 78, 0, "10. 시설 점검사항");
+  setCell(rows, 78, 2, "첫 출 근 자");
+  setCell(rows, 78, 4, "최 종 퇴 근 자");
+  setCell(rows, 78, 6, "위생/마감 점검");
+  setCell(rows, 78, 8, "최종 점검");
+  setCell(rows, 79, 2, 0.25);
+  setCell(rows, 79, 3, "도현,희주");
+  setCell(rows, 79, 4, 0.8125);
+  setCell(rows, 79, 5, "윤경");
+  setCell(rows, 79, 6, "윤희");
+  setCell(rows, 79, 8, "윤희");
 
   XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(rows), "1일");
 
@@ -133,7 +141,13 @@ describe("parseDailyOperationWorkbook", () => {
       cleaningWork: "도우컨 날개 청소 완료",
       instructions: "닭가슴살 재고 확인",
       tomorrowPrep: "구름빵 반죽 작업",
-      facilityIssue: "첫 출 근 자\n06:00"
+      facilityIssue: "",
+      firstWorker: "도현,희주",
+      firstWorkerTime: "06:00",
+      lastWorker: "윤경",
+      lastWorkerTime: "19:30",
+      hygieneChecker: "윤희",
+      finalChecker: "윤희"
     });
     expect(record.draft.productOpinionAndLoss).toContain("오픈(김도현)");
     expect(record.draft.productOpinionAndLoss).not.toContain("호밀빵 판매");
@@ -168,7 +182,7 @@ describe("parseDailyOperationWorkbook", () => {
     expect(record.channelRows).toContainEqual({ name: "배민", count: "1", amount: "33700" });
     expect(record.staffSpecialRows.today.dayOff).toBe("준모,용국");
     expect(record.staffSpecialRows.tomorrow.dayOff).toBe("세은,희주");
-    expect(record.draft.firstWorkerTime).toBe("");
+    expect(record.draft.firstWorkerTime).toBe("06:00");
     expect(record.checks).toMatchObject({
       salesMatched: true,
       productTotalsMatched: true,

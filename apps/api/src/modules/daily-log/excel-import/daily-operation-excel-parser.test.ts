@@ -135,8 +135,16 @@ describe("parseDailyOperationWorkbook", () => {
       tomorrowPrep: "구름빵 반죽 작업",
       facilityIssue: "첫 출 근 자\n06:00"
     });
-    expect(record.draft.productOpinionAndLoss).toContain("호밀빵 문의가 있었습니다.");
     expect(record.draft.productOpinionAndLoss).toContain("오픈(김도현)");
+    expect(record.draft.productOpinionAndLoss).not.toContain("호밀빵 문의가 있었습니다.");
+    expect(record.customerResponseRows).toEqual([
+      {
+        date: "2026-05-01",
+        shortSummary: "호밀빵 문의가 있었습니다.",
+        fullText:
+          "[일일업무보고서 서비스내역 및 손님 특이사항]\n출처: 일일업무보고서_5월.xlsx / 1일\n\n호밀빵 문의가 있었습니다.\n주차지원 요청이 많았습니다."
+      }
+    ]);
     expect(record.draft.rawSections?.sections.serviceAndCustomerNotes.text).toBe(
       "호밀빵 문의가 있었습니다.\n주차지원 요청이 많았습니다."
     );

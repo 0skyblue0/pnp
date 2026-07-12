@@ -84,11 +84,18 @@ export type ParsedDailyOperationRecord = {
   productRows: ProductRow[];
   channelRows: ChannelRow[];
   staffSpecialRows: StaffSpecialRows;
+  customerResponseRows: CustomerResponseRow[];
   checks: {
     salesMatched: boolean;
     productTotalsMatched: boolean;
     rawSectionsPreserved: boolean;
   };
+};
+
+export type CustomerResponseRow = {
+  date: string;
+  shortSummary: string;
+  fullText: string;
 };
 
 export type ParsedDailyOperationWorkbook = {
@@ -172,9 +179,14 @@ function parseDailySheet(input: {
   staffSpecialRows.today.dayOff = lineAt(sheet, 76);
   staffSpecialRows.tomorrow.dayOff = lineAt(sheet, 77);
 
-  const serviceText = rawSections.sections.serviceAndCustomerNotes.text;
   const productText = rawSections.sections.productOpinionAndLoss.text;
   const facilityText = rawSections.sections.facilityCheck.text;
+  const customerResponseRows = buildCustomerResponseRows({
+    date,
+    fileName,
+    sheetName,
+    serviceText: rawSections.sections.serviceAndCustomerNotes.text
+  });
 
   const draft: DailyOperationDraft = {
     date,
@@ -188,7 +200,7 @@ function parseDailySheet(input: {
     posSalesCount: numberText(cellNumber(sheet, "D11")),
     nonPosSalesAmount: numberText(sumChannels(channelRows, "amount")),
     nonPosSalesCount: numberText(sumChannels(channelRows, "count")),
-    productOpinionAndLoss: joinLines([serviceText, productText]),
+    productOpinionAndLoss: productText,
     facilityIssue: facilityText,
     cleaningWork: rawSections.sections.storeManagement.text,
     instructions: rawSections.sections.instructions.text,
@@ -213,12 +225,33 @@ function parseDailySheet(input: {
     productRows,
     channelRows,
     staffSpecialRows,
+    customerResponseRows,
     checks: {
       salesMatched,
       productTotalsMatched: productTotalsMatch(sheet, productRows),
       rawSectionsPreserved: rawSectionsPreserved(rawSections)
     }
   };
+}
+
+function buildCustomerResponseRows(input: {
+  date: string;
+  fileName: string;
+  sheetName: string;
+  serviceText: string;
+}): CustomerResponseRow[] {
+  const serviceText = input.serviceText.trim();
+  if (!serviceText) {
+    return [];
+  }
+  const firstLine = serviceText.split("\n").find((line) => line.trim().length > 0)?.trim() ?? "일일업무보고서 손님 특이사항";
+  return [
+    {
+      date: input.date,
+      shortSummary: firstLine.slice(0, 200),
+      fullText: `[일일업무보고서 서비스내역 및 손님 특이사항]\n출처: ${input.fileName} / ${input.sheetName}\n\n${serviceText}`
+    }
+  ];
 }
 
 function parseProductRows(sheet: XLSX.WorkSheet): ProductRow[] {

@@ -2,7 +2,7 @@ import { MessageSquareText, RefreshCcw } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 
-import { apiDelete, apiGet, apiPatch } from "../../shared/api/client.js";
+import { apiDelete, apiGet, apiPatch, apiPost } from "../../shared/api/client.js";
 import type { ListEnvelope } from "../../shared/api/types.js";
 import { todayInStoreTime } from "../../shared/time/storeTime.js";
 import { Button } from "../../shared/ui/Button.js";
@@ -45,7 +45,26 @@ type ResponseEditDraft = {
   criterionId: string;
   shortSummary: string;
   fullText: string;
+  llmAssisted: boolean;
 };
+
+type ResponseSuggestionDto = {
+  criterionId: number;
+  criterionPath: CriterionPathItem[];
+  shortSummary: string;
+  reason: string;
+};
+
+const sourceLinePattern = /^\s*(?:\[[^\]]+\]|출처:|source:)/i;
+
+function visibleResponseText(value: string | null): string {
+  return (value ?? "")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0 && !sourceLinePattern.test(line))
+    .join("\n")
+    .trim();
+}
 
 function buildQuery(filters: FilterState): string {
   const params = new URLSearchParams();
@@ -93,6 +112,7 @@ export function ResponseListPage() {
   const [editingResponseId, setEditingResponseId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState<ResponseEditDraft | null>(null);
   const [savingResponseId, setSavingResponseId] = useState<string | null>(null);
+  const [suggestingResponseId, setSuggestingResponseId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const criterionOptions = useMemo(() => flattenCriteria(criteria), [criteria]);
@@ -156,7 +176,8 @@ export function ResponseListPage() {
       date: response.date,
       criterionId: response.criterionId.toString(),
       shortSummary: response.shortSummary ?? "",
-      fullText: response.fullText ?? ""
+      fullText: visibleResponseText(response.fullText),
+      llmAssisted: response.llmAssisted
     });
     setError(null);
   };
@@ -186,7 +207,8 @@ export function ResponseListPage() {
           date: editDraft.date,
           criterionId: Number(editDraft.criterionId),
           shortSummary: editDraft.shortSummary.trim(),
-          fullText: editDraft.fullText.trim() || undefined
+          fullText: editDraft.fullText.trim() || undefined,
+          llmAssisted: editDraft.llmAssisted
         }
       );
 
@@ -205,6 +227,49 @@ export function ResponseListPage() {
       );
     } finally {
       setSavingResponseId(null);
+    }
+  };
+
+  const suggestEditing = async (responseId: string) => {
+    if (!editDraft) {
+      return;
+    }
+
+    const fullText = editDraft.fullText.trim();
+    if (!fullText) {
+      setError("AI 분류할 손님 반응 내용을 입력하세요.");
+      return;
+    }
+
+    setSuggestingResponseId(responseId);
+    setError(null);
+
+    try {
+      const envelope = await apiPost<ResponseSuggestionDto, { fullText: string }>("/response/suggest", {
+        fullText
+      });
+
+      if (envelope.error) {
+        setError(envelope.error.message);
+        return;
+      }
+
+      setEditDraft((current) =>
+        current
+          ? {
+              ...current,
+              criterionId: envelope.data.criterionId.toString(),
+              shortSummary: envelope.data.shortSummary,
+              llmAssisted: true
+            }
+          : current
+      );
+    } catch (unknownError) {
+      setError(
+        unknownError instanceof Error ? unknownError.message : "AI 분류를 실행하지 못했습니다."
+      );
+    } finally {
+      setSuggestingResponseId(null);
     }
   };
 
@@ -384,6 +449,13 @@ export function ResponseListPage() {
                   <div className="flex flex-wrap justify-end gap-2">
                     <button
                       type="button"
+                      className="inline-flex min-h-10 items-center justify-center rounded-control border border-bread bg-cream px-4 text-[13px] font-semibold text-cocoa transition hover:bg-[#F4E3D8]"
+                      onClick={() => void suggestEditing(response.id)}
+                    >
+                      {suggestingResponseId === response.id ? "AI 분류 중" : "AI 분류하기"}
+                    </button>
+                    <button
+                      type="button"
                       className="inline-flex min-h-10 items-center justify-center rounded-control border border-latte bg-white px-4 text-[13px] font-semibold text-cocoa transition hover:bg-cream"
                       onClick={cancelEditing}
                     >
@@ -402,13 +474,13 @@ export function ResponseListPage() {
                   </span>
                   <div className="min-w-0">
                     <p className="font-semibold">{response.shortSummary ?? "요약 없음"}</p>
-                    {response.fullText ? (
+                    {visibleResponseText(response.fullText) ? (
                       <p className="mt-1 whitespace-pre-wrap break-words text-sm text-muted [overflow-wrap:anywhere]">
-                        {response.fullText}
+                        {visibleResponseText(response.fullText)}
                       </p>
                     ) : null}
                     <span className="mt-2 inline-flex rounded-full bg-[#F4E3D8] px-2 py-1 text-[11px] font-bold text-cocoa">
-                      {response.llmAssisted ? "AI 분류" : "직원 분류"}
+                      {response.llmAssisted ? "AI 분류" : "AI 재분류 필요"}
                     </span>
                   </div>
                   <div className="flex shrink-0 gap-2 lg:justify-end">

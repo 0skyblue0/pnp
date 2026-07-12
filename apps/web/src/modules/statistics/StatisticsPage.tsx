@@ -472,7 +472,7 @@ export function StatisticsPage() {
             <p className="mt-2 text-[15px] font-extrabold leading-7 text-ink">
               {stats.insights.headline}
             </p>
-            {stats.insights.keyNotes[0] ? (
+            {(stats.insights.checkNeededCount ?? 0) > 0 && stats.insights.keyNotes[0] ? (
               <p className="mt-1 text-xs font-semibold leading-5 text-muted">
                 {stats.insights.keyNotes[0]}
               </p>
@@ -500,9 +500,6 @@ export function StatisticsPage() {
           <div className="mb-3 flex items-center justify-between gap-3">
             <div>
               <div className="dc-eyebrow">반복 주제 TOP 5</div>
-              <p className="mt-1 text-[11.5px] font-semibold text-muted">
-                숫자는 줄이고, 대표가 확인할 반복 신호만 남겼습니다.
-              </p>
             </div>
             {stats.insights.checkNeededCount ? (
               <span className="rounded-full bg-red/10 px-3 py-1 text-xs font-extrabold text-red">
@@ -547,7 +544,7 @@ export function StatisticsPage() {
         </section>
 
         <section className="dc-card-pad">
-          <div className="dc-eyebrow mb-3">실제 손님 말</div>
+          <div className="dc-eyebrow mb-3">손님이 직접 한 말</div>
           <div className="grid gap-2">
             {sampleQuotes.length > 0 ? (
               sampleQuotes.map((quote, index) => (
@@ -567,7 +564,7 @@ export function StatisticsPage() {
               ))
             ) : (
               <p className="rounded-[10px] bg-cream px-3 py-4 text-sm font-semibold text-muted">
-                실제 손님 말이 쌓이면 대표 예시가 표시됩니다.
+                손님이 직접 말한 내용이 있는 기록만 여기에 표시됩니다.
               </p>
             )}
           </div>

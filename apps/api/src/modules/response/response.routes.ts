@@ -296,9 +296,74 @@ function responseCriterionId(response: ResponseWithRelations): number {
   return response.minorCriterionId ?? response.middleCriterionId ?? response.majorCriterionId;
 }
 
+const sourceLinePattern = /^\s*(?:\[[^\]]+\]|출처:|source:)/i;
+const operationalReportWords = [
+  "매출",
+  "판매물량",
+  "판매완료",
+  "판매되었습니다",
+  "조기품절",
+  "솔드아웃",
+  "마감 되었습니다",
+  "마감되었습니다",
+  "꾸준히 방문",
+  "손님 방문 많",
+  "방문 많았습니다",
+  "손님 꾸준"
+];
+const customerVoiceWords = [
+  "손님",
+  "문의",
+  "요청",
+  "원하",
+  "찾",
+  "방문",
+  "왔",
+  "싶었",
+  "말씀",
+  "평",
+  "칭찬",
+  "반응",
+  "아쉬워",
+  "희망",
+  "구매의사"
+];
+
+function cleanResponseText(value: string | null | undefined): string {
+  return (value ?? "")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0 && !sourceLinePattern.test(line))
+    .join("\n")
+    .trim();
+}
+
+function isLikelyCustomerVoice(value: string): boolean {
+  const compact = value.replace(/\s+/g, " ").trim();
+  if (!compact) {
+    return false;
+  }
+
+  if (operationalReportWords.some((word) => compact.includes(word))) {
+    return customerVoiceWords.some((word) => compact.includes(word)) &&
+      ["문의", "요청", "원하", "말씀", "평", "칭찬", "아쉬워", "희망", "구매의사"].some((word) =>
+        compact.includes(word)
+      );
+  }
+
+  return customerVoiceWords.some((word) => compact.includes(word));
+}
+
 function responseSample(response: ResponseWithRelations): string | null {
-  const value = response.shortSummary?.trim() || response.fullText?.trim() || "";
-  return value ? value.slice(0, 80) : null;
+  const cleanedFullText = cleanResponseText(response.fullText);
+  const cleanedSummary = cleanResponseText(response.shortSummary);
+  const value = cleanedFullText || cleanedSummary;
+
+  if (!isLikelyCustomerVoice(value)) {
+    return null;
+  }
+
+  return value.slice(0, 120);
 }
 
 function hasAnyWord(value: string, words: string[]): boolean {
@@ -326,9 +391,25 @@ function classifyExecutiveBuckets(
   const combinedText = `${pathNames.join(" ")}\n${response.shortSummary ?? ""}\n${response.fullText ?? ""}`;
   const buckets = new Set<ExecutiveBucketKey>();
 
+  if (pathNames.includes("직원 메모")) {
+    return [];
+  }
+
   if (
-    pathNames.includes("손님경험") ||
+    pathNames.includes("방문 이유") ||
     pathNames.includes("장거리 방문") ||
+    pathNames.includes("단골") ||
+    pathNames.includes("긍정 반응") ||
+    pathNames.includes("선물·특별 목적") ||
+    pathNames.includes("일부러 방문") ||
+    pathNames.includes("SNS 보고 방문") ||
+    pathNames.includes("지인 추천") ||
+    pathNames.includes("장거리손님") ||
+    pathNames.includes("재방문 의사") ||
+    pathNames.includes("맛있음") ||
+    pathNames.includes("만족") ||
+    pathNames.includes("직원 칭찬") ||
+    pathNames.includes("선물용") ||
     hasAnyWord(combinedText, brandStrengthWords)
   ) {
     buckets.add("brandStrength");
@@ -517,15 +598,12 @@ function buildResponseInsights(
     executiveBuckets,
     repeatedTopics,
     keyNotes: [
-      checkNeededCount > 0
-        ? `확인 필요 반응 ${checkNeededCount.toLocaleString("ko-KR")}건은 우선 확인해 주세요.`
-        : "조회 기간에 확인 필요 반응은 없습니다.",
-      topTopic
-        ? `가장 반복된 세부 내용은 ${topTopic.path.map((item) => item.name).join(" > ")}입니다.`
-        : "아직 반복 내용을 판단할 기록이 없습니다.",
-      total > 0
-        ? `대표님 보고에는 상위 반복 내용 ${Math.min(repeatedTopics.length, 3)}개만 먼저 보이면 충분합니다.`
-        : "기록이 쌓이면 상위 반복 내용과 주의 사항이 자동으로 표시됩니다."
+      ...(checkNeededCount > 0
+        ? [`확인 필요 반응 ${checkNeededCount.toLocaleString("ko-KR")}건`]
+        : []),
+      ...(topTopic
+        ? [`최다 반복: ${topTopic.path.map((item) => item.name).join(" > ")}`]
+        : [])
     ]
   };
 }
@@ -566,6 +644,7 @@ const hermesSystemPrompt = [
   "예: '청주에서 방문한 손님 계셨습니다.'처럼 먼 지역 방문이 언급되면 손님경험 > 장거리 방문 > 장거리손님을 우선 검토합니다.",
   "예: '비가 와서 배달 주문이 거의 없었습니다.'는 단맛이 아니라 구매·운영 > 배달·플랫폼 > 배달 주문 적음입니다.",
   "예: '유동인구가 낮았습니다.'는 기타가 아니라 손님경험 > 방문 시간대 > 유동인구 낮음입니다.",
+  "예: '11-12시 시간대 매출 77만원'처럼 시간대 매출/방문 흐름만 말하면 특정 제품 수요가 아니라 손님경험 > 방문 시간대의 점심 몰림/오전 저조/오후 몰림 중 가장 가까운 기준입니다.",
   "예: '쌀빵이 있길 희망했습니다.'는 기타가 아니라 제품 > 제품 제안 > 쌀빵/건강빵 요청입니다.",
   "후속 질문, 설명, 작업 제안, 인사말은 절대 하지 않습니다.",
   '응답은 JSON 객체 하나만 반환합니다: {"criterionId": number, "shortSummary": string, "reason": string}.',
@@ -657,6 +736,7 @@ async function requestHermesSuggestion(
   const criteriaById = new Map(criteria.map((criterion) => [criterion.id, criterion]));
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), app.config.HERMES_API_TIMEOUT_MS);
+  const sessionNonce = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
   try {
     const response = await fetch(
@@ -667,8 +747,8 @@ async function requestHermesSuggestion(
           Accept: "application/json",
           Authorization: `Bearer ${app.config.HERMES_API_KEY}`,
           "Content-Type": "application/json",
-          "X-Hermes-Session-Id": "pnp-response-classifier",
-          "X-Hermes-Session-Key": "pnp:response-classifier"
+          "X-Hermes-Session-Id": `pnp-response-classifier-${sessionNonce}`,
+          "X-Hermes-Session-Key": `pnp:response-classifier:${sessionNonce}`
         },
         body: JSON.stringify({
           model: app.config.HERMES_API_MODEL,

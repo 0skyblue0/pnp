@@ -365,7 +365,7 @@ describe("response stats route", () => {
           expect.objectContaining({
             label: "장거리손님",
             count: 2,
-            sampleSummaries: ["청주에서 일부러 방문", "인스타 보고 장거리 방문"]
+            sampleSummaries: ["청주에서 일부러 왔어요.", "인스타 보고 꼭 와보고 싶었어요."]
           })
         ]
       }),
@@ -453,7 +453,7 @@ describe("response stats route", () => {
     expect(response.statusCode).toBe(200);
     const body = response.json<ApiEnvelope<ResponseStatsBody>>();
     expect(body.data?.insights.checkNeededCount).toBe(4);
-    expect(body.data?.insights.keyNotes[0]).toBe("확인 필요 반응 4건은 우선 확인해 주세요.");
+    expect(body.data?.insights.keyNotes[0]).toBe("확인 필요 반응 4건");
 
     await app.close();
   });

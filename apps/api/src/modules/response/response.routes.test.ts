@@ -40,6 +40,19 @@ type ResponseStatsBody = {
   insights: {
     headline: string;
     checkNeededCount: number;
+    executiveBuckets: Array<{
+      key: string;
+      title: string;
+      count: number;
+      ratio: number;
+      summary: string;
+      topics: Array<{
+        criterionId: number;
+        label: string;
+        count: number;
+        sampleSummaries: string[];
+      }>;
+    }>;
     repeatedTopics: Array<{
       criterionId: number;
       label: string;
@@ -243,6 +256,138 @@ describe("response suggestion route", () => {
 });
 
 describe("response stats route", () => {
+  it("groups executive insight buckets by brand strength, menu needs, and improvements", async () => {
+    const prisma = buildPrismaMock();
+    prisma.customerResponse.count.mockResolvedValue(5);
+    prisma.customerResponse.groupBy
+      .mockResolvedValueOnce([
+        { majorCriterionId: 100, _count: { _all: 2 } },
+        { majorCriterionId: 200, _count: { _all: 2 } },
+        { majorCriterionId: 300, _count: { _all: 1 } }
+      ])
+      .mockResolvedValueOnce([
+        { majorCriterionId: 100, middleCriterionId: 110, _count: { _all: 2 } },
+        { majorCriterionId: 200, middleCriterionId: 210, _count: { _all: 2 } },
+        { majorCriterionId: 300, middleCriterionId: 310, _count: { _all: 1 } }
+      ])
+      .mockResolvedValueOnce([
+        {
+          majorCriterionId: 100,
+          middleCriterionId: 110,
+          minorCriterionId: 111,
+          _count: { _all: 2 }
+        },
+        {
+          majorCriterionId: 200,
+          middleCriterionId: 210,
+          minorCriterionId: 211,
+          _count: { _all: 2 }
+        },
+        {
+          majorCriterionId: 300,
+          middleCriterionId: 310,
+          minorCriterionId: 311,
+          _count: { _all: 1 }
+        }
+      ])
+      .mockResolvedValueOnce([{ date: new Date("2026-01-02T00:00:00.000Z"), _count: { _all: 5 } }]);
+    prisma.responseCriterion.findMany.mockResolvedValue([
+      { id: 100, parentId: null, depth: 1, name: "손님경험", sortOrder: 1 },
+      { id: 110, parentId: 100, depth: 2, name: "장거리 방문", sortOrder: 1 },
+      { id: 111, parentId: 110, depth: 3, name: "장거리손님", sortOrder: 1 },
+      { id: 200, parentId: null, depth: 1, name: "제품", sortOrder: 2 },
+      { id: 210, parentId: 200, depth: 2, name: "제품 제안", sortOrder: 1 },
+      { id: 211, parentId: 210, depth: 3, name: "쌀빵/건강빵 요청", sortOrder: 1 },
+      { id: 300, parentId: null, depth: 1, name: "구매·운영", sortOrder: 3 },
+      { id: 310, parentId: 300, depth: 2, name: "대기", sortOrder: 1 },
+      { id: 311, parentId: 310, depth: 3, name: "대기시간 김", sortOrder: 1 }
+    ]);
+    prisma.customerResponse.findMany.mockResolvedValue([
+      {
+        majorCriterionId: 100,
+        middleCriterionId: 110,
+        minorCriterionId: 111,
+        shortSummary: "청주에서 일부러 방문",
+        fullText: "청주에서 일부러 왔어요."
+      },
+      {
+        majorCriterionId: 100,
+        middleCriterionId: 110,
+        minorCriterionId: 111,
+        shortSummary: "인스타 보고 장거리 방문",
+        fullText: "인스타 보고 꼭 와보고 싶었어요."
+      },
+      {
+        majorCriterionId: 200,
+        middleCriterionId: 210,
+        minorCriterionId: 211,
+        shortSummary: "쌀빵 요청",
+        fullText: "쌀빵도 있으면 좋겠어요."
+      },
+      {
+        majorCriterionId: 200,
+        middleCriterionId: 210,
+        minorCriterionId: 211,
+        shortSummary: "건강빵 문의",
+        fullText: "건강빵은 없나요?"
+      },
+      {
+        majorCriterionId: 300,
+        middleCriterionId: 310,
+        minorCriterionId: 311,
+        shortSummary: "대기시간 불만",
+        fullText: "줄이 너무 길어서 불편했어요."
+      }
+    ]);
+
+    const app = Fastify({ logger: false });
+    app.decorate("prisma", prisma as never);
+    await app.register(registerResponseRoutes, { prefix: "/response" });
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/response/stats?from=2026-01-01&to=2026-01-31"
+    });
+
+    expect(response.statusCode).toBe(200);
+    const body = response.json<ApiEnvelope<ResponseStatsBody>>();
+    expect(body.data?.insights.headline).toBe(
+      "이번 기간에 가장 뚜렷한 축은 브랜드 강점과 제품·메뉴 니즈입니다."
+    );
+    expect(body.data?.insights.executiveBuckets).toEqual([
+      expect.objectContaining({
+        key: "brandStrength",
+        title: "브랜드 강점",
+        count: 2,
+        ratio: 0.4,
+        summary: "손님이 일부러 찾아오는 이유와 다시 오고 싶은 지점입니다.",
+        topics: [
+          expect.objectContaining({
+            label: "장거리손님",
+            count: 2,
+            sampleSummaries: ["청주에서 일부러 방문", "인스타 보고 장거리 방문"]
+          })
+        ]
+      }),
+      expect.objectContaining({
+        key: "productNeeds",
+        title: "제품·메뉴 니즈",
+        count: 2,
+        ratio: 0.4,
+        topics: [expect.objectContaining({ label: "쌀빵/건강빵 요청", count: 2 })]
+      }),
+      expect.objectContaining({
+        key: "operationImprovements",
+        title: "운영 개선",
+        count: 1,
+        ratio: 0.2,
+        topics: [expect.objectContaining({ label: "대기시간 김", count: 1 })]
+      })
+    ]);
+
+    await app.close();
+  });
+
   it("counts check-needed responses from current criteria and risky wording", async () => {
     const prisma = buildPrismaMock();
     prisma.customerResponse.count.mockResolvedValue(4);
@@ -307,8 +452,8 @@ describe("response stats route", () => {
 
     expect(response.statusCode).toBe(200);
     const body = response.json<ApiEnvelope<ResponseStatsBody>>();
-    expect(body.data?.insights.checkNeededCount).toBe(3);
-    expect(body.data?.insights.keyNotes[0]).toBe("확인 필요 반응 3건은 우선 확인해 주세요.");
+    expect(body.data?.insights.checkNeededCount).toBe(4);
+    expect(body.data?.insights.keyNotes[0]).toBe("확인 필요 반응 4건은 우선 확인해 주세요.");
 
     await app.close();
   });
@@ -458,7 +603,9 @@ describe("response stats route", () => {
       { date: "2026-01-02", count: 2 },
       { date: "2026-01-03", count: 4 }
     ]);
-    expect(stats.insights.headline).toBe("6건 중 제품 비중이 가장 큽니다.");
+    expect(stats.insights.headline).toBe(
+      "이번 기간에 가장 뚜렷한 축은 제품·메뉴 니즈와 운영 개선입니다."
+    );
     expect(stats.insights.repeatedTopics).toEqual(
       expect.arrayContaining([
         expect.objectContaining({

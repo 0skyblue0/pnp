@@ -26,17 +26,29 @@ type ResponseStatsDto = {
   insights?: ResponseInsightsDto;
 };
 
+type ResponseInsightTopicDto = {
+  criterionId: number;
+  label: string;
+  path: Array<{ id: number; name: string }>;
+  count: number;
+  ratio: number;
+  sampleSummaries: string[];
+};
+
+type ResponseExecutiveBucketDto = {
+  key: string;
+  title: string;
+  count: number;
+  ratio: number;
+  summary: string;
+  topics: ResponseInsightTopicDto[];
+};
+
 type ResponseInsightsDto = {
   headline: string;
   checkNeededCount?: number;
-  repeatedTopics: Array<{
-    criterionId: number;
-    label: string;
-    path: Array<{ id: number; name: string }>;
-    count: number;
-    ratio: number;
-    sampleSummaries: string[];
-  }>;
+  executiveBuckets?: ResponseExecutiveBucketDto[];
+  repeatedTopics: ResponseInsightTopicDto[];
   keyNotes: string[];
 };
 
@@ -80,6 +92,7 @@ const emptyStats: NormalizedStats = {
   insights: {
     headline: "조회 기간에 등록된 손님 반응이 없습니다.",
     checkNeededCount: 0,
+    executiveBuckets: [],
     repeatedTopics: [],
     keyNotes: ["기록이 쌓이면 상위 반복 내용과 주의 사항이 자동으로 표시됩니다."]
   }
@@ -301,21 +314,22 @@ export function StatisticsPage() {
   }, [loadStats]);
 
   const displayTotal = stats.total;
-  const displayMajor = stats.major.slice(0, 5);
-  const displayRepeated = stats.insights.repeatedTopics.slice(0, 4);
-  const colors = ["#B5654A", "#3E6EA5", "#B8862B", "#3E7A55", "#B8AEA2"];
-  const donutStops = displayMajor
-    .reduce<{ cursor: number; stops: string[] }>(
-      (acc, item, index) => {
-        const pct = displayTotal > 0 ? (item.count / displayTotal) * 100 : 0;
-        const next = acc.cursor + pct;
-        acc.stops.push(`${colors[index % colors.length]} ${acc.cursor}% ${next}%`);
-        return { cursor: next, stops: acc.stops };
-      },
-      { cursor: 0, stops: [] }
+  const displayRepeated = stats.insights.repeatedTopics.slice(0, 5);
+  const displayBuckets = (stats.insights.executiveBuckets ?? []).slice(0, 3);
+  const sampleQuotes = displayBuckets
+    .flatMap((bucket) =>
+      bucket.topics.flatMap((topic) =>
+        topic.sampleSummaries.slice(0, 2).map((sample) => ({
+          bucketTitle: bucket.title,
+          criterionId: topic.criterionId,
+          path: topic.path,
+          sample
+        }))
+      )
     )
-    .stops.join(", ");
-  const maxMajor = Math.max(...displayMajor.map((item) => item.count), 1);
+    .slice(0, 5);
+  const maxRepeated = Math.max(...displayRepeated.map((item) => item.count), 1);
+  const colors = ["#B5654A", "#3E6EA5", "#B8862B", "#3E7A55", "#B8AEA2"];
   const middleA11y = stats.middle.slice(0, 8);
   const minorA11y = stats.minor.slice(0, 8);
   const selectedMonthLabel = monthLabel(range);
@@ -342,7 +356,7 @@ export function StatisticsPage() {
   return (
     <div className="grid gap-[14px]">
       <section className="sr-only">
-        <h2>주요 사항</h2>
+        <h2>대표 리포트 접근성 요약</h2>
         <p>{stats.insights.headline}</p>
         {stats.insights.repeatedTopics.map((topic) => (
           <Link key={topic.criterionId} to={detailLink(range, topic.criterionId)}>
@@ -450,180 +464,176 @@ export function StatisticsPage() {
         </div>
       ) : null}
 
-      <section className="rounded-[14px] border border-latte bg-white px-4 py-3">
-        <p className="text-xs font-extrabold text-bread">현장 요약</p>
-        <p className="mt-1 text-sm font-bold leading-6 text-ink">{stats.insights.headline}</p>
-        {stats.insights.keyNotes.length > 0 ? (
-          <p className="mt-1 text-xs font-semibold leading-5 text-muted">
-            {stats.insights.keyNotes[0]}
-          </p>
-        ) : null}
-      </section>
-
-      <div className="grid gap-3 md:grid-cols-4">
-        <MetricCard label="총 반응 건수" value={`${displayTotal}건`} />
-        <MetricCard label="분류된 반응" value={`${displayTotal}건`} />
-        <MetricCard label="반복 주제" value={`${displayRepeated.length}건`} />
-        <MetricCard
-          label="확인 필요"
-          value={`${stats.insights.checkNeededCount ?? 0}건`}
-          danger={(stats.insights.checkNeededCount ?? 0) > 0}
-        />
-      </div>
-
-      <div className="grid gap-[14px] lg:grid-cols-2">
-        <section className="dc-card-pad flex items-center gap-5">
-          <div
-            className="grid h-[104px] w-[104px] shrink-0 place-items-center rounded-full"
-            style={{ background: `conic-gradient(${donutStops || "#E9E1D3 0 100%"})` }}
-          >
-            <div className="grid h-[62px] w-[62px] place-items-center rounded-full bg-white text-center">
-              <div>
-                <div className="text-[15px] font-extrabold text-ink">{displayTotal}</div>
-                <div className="text-[9px] text-muted">총 건수</div>
-              </div>
-            </div>
-          </div>
-          <div className="grid flex-1 gap-[6px]">
-            {displayMajor.map((item, index) => (
-              <div key={item.id} className="flex items-center gap-2">
-                <span
-                  className="h-2 w-2 shrink-0 rounded-full"
-                  style={{ backgroundColor: colors[index % colors.length] }}
-                />
-                <span className="flex-1 text-[11.5px] text-ink">{item.label}</span>
-                <span className="text-[11px] text-muted">
-                  {item.count}건 · {formatPercent(item.count, displayTotal)}
-                </span>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <section className="dc-card-pad">
-          <div className="dc-eyebrow mb-[14px]">월별 핵심 보기</div>
-          <div className="grid gap-3">
-            <div>
-              <div className="mb-1 flex justify-between text-[12px] font-semibold text-ink">
-                <span>가장 많은 대분류</span>
-                <span>{displayMajor[0]?.label ?? "없음"}</span>
-              </div>
-              <p className="text-[11.5px] font-semibold leading-5 text-muted">
-                {displayMajor[0]
-                  ? `${displayMajor[0].count.toLocaleString("ko-KR")}건 · 전체 ${formatPercent(displayMajor[0].count, displayTotal)}`
-                  : "선택 기간에 등록된 반응이 없습니다."}
-              </p>
-            </div>
-            <div>
-              <div className="mb-1 flex justify-between text-[12px] font-semibold text-ink">
-                <span>가장 반복된 주제</span>
-                <span>{displayRepeated[0]?.label ?? "없음"}</span>
-              </div>
-              <p className="text-[11.5px] font-semibold leading-5 text-muted">
-                {displayRepeated[0]
-                  ? `${displayRepeated[0].count.toLocaleString("ko-KR")}건 · 클릭하면 상세 내용을 볼 수 있습니다.`
-                  : "반복 주제가 쌓이면 여기에 표시됩니다."}
-              </p>
-            </div>
-          </div>
-        </section>
-      </div>
-
-      <div className="grid gap-[14px] lg:grid-cols-2">
-        <section className="dc-card-pad">
-          <div className="dc-eyebrow mb-[14px]">대분류별 통계</div>
-          <div className="grid gap-2">
-            {displayMajor.map((item, index) => (
-              <Link
-                key={item.id}
-                className="block rounded-[8px] px-2 py-1.5 hover:bg-cream"
-                to={detailLink(range, item.id)}
-                aria-label={`${item.label} 전체 기록 보기`}
-              >
-                <div className="mb-[5px] flex justify-between">
-                  <span className="text-[12.5px] font-semibold text-ink">{item.label}</span>
-                  <span className="text-[11.5px] text-muted">{item.count}건</span>
-                </div>
-                <div className="h-2 overflow-hidden rounded bg-[#F1EAE0]">
-                  <div
-                    className="h-full rounded"
-                    style={{
-                      width: `${Math.max(4, Math.round((item.count / maxMajor) * 100))}%`,
-                      backgroundColor: colors[index % colors.length]
-                    }}
-                  />
-                </div>
-              </Link>
-            ))}
-          </div>
-        </section>
-
-        <section className="dc-card-pad">
-          <div className="dc-eyebrow mb-3">반복 주제</div>
-          {displayRepeated.map((topic, index) => (
-            <Link
-              key={topic.criterionId}
-              className="flex items-start gap-[10px] border-b border-[#F1EAE0] py-[9px] hover:bg-cream last:border-b-0"
-              to={detailLink(range, topic.criterionId)}
-              aria-label={`${topic.path.map((item) => item.name).join(" > ")} 기록 보기`}
-            >
-              <span
-                className="mt-1.5 h-[7px] w-[7px] shrink-0 rounded-full"
-                style={{ backgroundColor: colors[index % colors.length] }}
-              />
-              <div className="flex-1">
-                <div className="text-[12.5px] font-semibold text-ink">
-                  {topic.label} <span className="font-normal text-muted">· {topic.count}건</span>
-                </div>
-                <div className="mt-0.5 text-[11.5px] text-muted">
-                  예시: “{topic.sampleSummaries[0] ?? "기록 없음"}”
-                </div>
-              </div>
-            </Link>
-          ))}
-        </section>
-      </div>
-
       <section className="dc-card-pad">
-        <div className="dc-eyebrow mb-3">상세 내용 바로 열기</div>
-        {displayRepeated.map((topic) => (
-          <Link
-            key={`detail-${topic.criterionId}`}
-            className="block border-b border-[#F1EAE0] py-[10px] hover:bg-cream last:border-b-0"
-            to={detailLink(range, topic.criterionId)}
-          >
-            <div className="mb-1 flex justify-between">
-              <span className="text-[11px] text-muted">
-                {range.to.slice(5).replace("-", ".")} ·{" "}
-                {topic.path.map((item) => item.name).join(" > ")}
-              </span>
-              <span className="rounded-full bg-[#F4E3D8] px-2 py-0.5 text-[10px] font-semibold text-cocoa">
-                전체 보기
-              </span>
-            </div>
-            <div className="text-[13px] text-ink">{topic.sampleSummaries[0] ?? topic.label}</div>
-          </Link>
-        ))}
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="max-w-3xl">
+            <p className="dc-eyebrow">대표가 먼저 볼 결론</p>
+            <h2 className="section-title">대표 리포트</h2>
+            <p className="mt-2 text-[15px] font-extrabold leading-7 text-ink">
+              {stats.insights.headline}
+            </p>
+            {stats.insights.keyNotes[0] ? (
+              <p className="mt-1 text-xs font-semibold leading-5 text-muted">
+                {stats.insights.keyNotes[0]}
+              </p>
+            ) : null}
+          </div>
+          <div className="rounded-full bg-cream px-3 py-1 text-xs font-bold text-cocoa">
+            {periodLabel} · 총 {displayTotal.toLocaleString("ko-KR")}건
+          </div>
+        </div>
       </section>
+
+      <div className="grid gap-3 lg:grid-cols-3">
+        {displayBuckets.map((bucket) => (
+          <ExecutiveBucketCard
+            key={bucket.key}
+            bucket={bucket}
+            range={range}
+            total={displayTotal}
+          />
+        ))}
+      </div>
+
+      <div className="grid gap-[14px] lg:grid-cols-[1.15fr_0.85fr]">
+        <section className="dc-card-pad">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <div>
+              <div className="dc-eyebrow">반복 주제 TOP 5</div>
+              <p className="mt-1 text-[11.5px] font-semibold text-muted">
+                숫자는 줄이고, 대표가 확인할 반복 신호만 남겼습니다.
+              </p>
+            </div>
+            {stats.insights.checkNeededCount ? (
+              <span className="rounded-full bg-red/10 px-3 py-1 text-xs font-extrabold text-red">
+                확인 필요 {stats.insights.checkNeededCount.toLocaleString("ko-KR")}건
+              </span>
+            ) : null}
+          </div>
+          <div className="grid gap-2">
+            {displayRepeated.length > 0 ? (
+              displayRepeated.map((topic, index) => (
+                <Link
+                  key={topic.criterionId}
+                  className="block rounded-[10px] border border-[#F1EAE0] px-3 py-2 hover:bg-cream"
+                  to={detailLink(range, topic.criterionId)}
+                  aria-label={`${topic.path.map((item) => item.name).join(" > ")} 기록 보기`}
+                >
+                  <div className="mb-1 flex items-center justify-between gap-2">
+                    <span className="text-[12.5px] font-extrabold text-ink">
+                      {index + 1}. {topic.path.map((item) => item.name).join(" > ") || topic.label}
+                    </span>
+                    <span className="text-[11px] font-bold text-muted">
+                      {topic.count.toLocaleString("ko-KR")}건
+                    </span>
+                  </div>
+                  <div className="h-2 overflow-hidden rounded-full bg-[#F1EAE0]">
+                    <div
+                      className="h-full rounded-full"
+                      style={{
+                        width: `${Math.max(6, Math.round((topic.count / maxRepeated) * 100))}%`,
+                        backgroundColor: colors[index % colors.length]
+                      }}
+                    />
+                  </div>
+                </Link>
+              ))
+            ) : (
+              <p className="rounded-[10px] bg-cream px-3 py-4 text-sm font-semibold text-muted">
+                반복 주제가 쌓이면 여기에 표시됩니다.
+              </p>
+            )}
+          </div>
+        </section>
+
+        <section className="dc-card-pad">
+          <div className="dc-eyebrow mb-3">실제 손님 말</div>
+          <div className="grid gap-2">
+            {sampleQuotes.length > 0 ? (
+              sampleQuotes.map((quote, index) => (
+                <Link
+                  key={`${quote.criterionId}-${quote.sample}-${index}`}
+                  className="block rounded-[10px] border border-[#F1EAE0] bg-white px-3 py-2 hover:bg-cream"
+                  to={detailLink(range, quote.criterionId)}
+                >
+                  <div className="mb-1 text-[10.5px] font-extrabold text-bread">
+                    {quote.bucketTitle}
+                  </div>
+                  <p className="text-[13px] font-bold leading-5 text-ink">“{quote.sample}”</p>
+                  <p className="mt-1 text-[10.5px] font-semibold text-muted">
+                    {quote.path.map((item) => item.name).join(" > ")}
+                  </p>
+                </Link>
+              ))
+            ) : (
+              <p className="rounded-[10px] bg-cream px-3 py-4 text-sm font-semibold text-muted">
+                실제 손님 말이 쌓이면 대표 예시가 표시됩니다.
+              </p>
+            )}
+          </div>
+        </section>
+      </div>
     </div>
   );
 }
 
-function MetricCard({
-  label,
-  value,
-  danger = false
+function ExecutiveBucketCard({
+  bucket,
+  range,
+  total
 }: {
-  label: string;
-  value: string;
-  danger?: boolean;
+  bucket: ResponseExecutiveBucketDto;
+  range: DateRange;
+  total: number;
 }) {
+  const percent = total > 0 ? Math.round((bucket.count / total) * 100) : 0;
+  const topTopic = bucket.topics[0];
+
   return (
     <section className="dc-card-pad">
-      <div className="mb-[6px] text-[11px] text-muted">{label}</div>
-      <div className={["text-[19px] font-bold", danger ? "text-red" : "text-ink"].join(" ")}>
-        {value}
+      <div className="mb-2 flex items-start justify-between gap-2">
+        <div>
+          <div className="text-[11px] font-extrabold text-bread">{bucket.title}</div>
+          <div className="mt-1 text-[24px] font-extrabold text-ink">
+            {bucket.count.toLocaleString("ko-KR")}건
+          </div>
+        </div>
+        <span className="rounded-full bg-cream px-2 py-0.5 text-[11px] font-bold text-cocoa">
+          {percent}%
+        </span>
       </div>
+      <p className="min-h-[38px] text-[11.5px] font-semibold leading-5 text-muted">
+        {bucket.summary}
+      </p>
+      <div
+        className="mt-3 h-2 overflow-hidden rounded-full bg-[#F1EAE0]"
+        aria-label={`${bucket.title} 비율 ${percent}%`}
+      >
+        <div
+          className="h-full rounded-full bg-bread"
+          style={{ width: `${Math.max(percent, bucket.count > 0 ? 5 : 0)}%` }}
+        />
+      </div>
+      {topTopic ? (
+        <Link
+          className="mt-3 block rounded-[10px] bg-cream px-3 py-2 hover:bg-[#F4E3D8]"
+          to={detailLink(range, topTopic.criterionId)}
+        >
+          <div className="text-[11px] font-extrabold text-cocoa">
+            대표 주제 · {topTopic.count.toLocaleString("ko-KR")}건
+          </div>
+          <div className="mt-0.5 text-[12.5px] font-bold text-ink">{topTopic.label}</div>
+          {topTopic.sampleSummaries[0] ? (
+            <div className="mt-1 text-[11px] font-semibold leading-4 text-muted">
+              “{topTopic.sampleSummaries[0]}”
+            </div>
+          ) : null}
+        </Link>
+      ) : (
+        <div className="mt-3 rounded-[10px] bg-cream px-3 py-2 text-[11.5px] font-semibold text-muted">
+          아직 대표 주제가 없습니다.
+        </div>
+      )}
     </section>
   );
 }

@@ -83,6 +83,17 @@ type ResponseInsightTopic = {
   sampleSummaries: string[];
 };
 
+type ExecutiveBucketKey = "brandStrength" | "productNeeds" | "operationImprovements";
+
+type ExecutiveBucket = {
+  key: ExecutiveBucketKey;
+  title: string;
+  count: number;
+  ratio: number;
+  summary: string;
+  topics: ResponseInsightTopic[];
+};
+
 type CriterionPathIds = {
   criterionId: number;
   majorCriterionId: number;
@@ -111,6 +122,75 @@ const checkNeededCriterionNames = new Set([
 ]);
 
 const checkNeededWords = ["컴플레인", "환불", "불만", "문제", "보상", "위생", "이물", "변질"];
+
+const executiveBucketConfigs: Array<{
+  key: ExecutiveBucketKey;
+  title: string;
+  summary: string;
+}> = [
+  {
+    key: "brandStrength",
+    title: "브랜드 강점",
+    summary: "손님이 일부러 찾아오는 이유와 다시 오고 싶은 지점입니다."
+  },
+  {
+    key: "productNeeds",
+    title: "제품·메뉴 니즈",
+    summary: "메뉴 구성, 품절, 신제품 검토에 반영할 손님 요구입니다."
+  },
+  {
+    key: "operationImprovements",
+    title: "운영 개선",
+    summary: "매장 운영, 응대, 품질에서 먼저 손볼 부분입니다."
+  }
+];
+
+const brandStrengthWords = [
+  "장거리",
+  "일부러",
+  "추천",
+  "입소문",
+  "인스타",
+  "재방문",
+  "단골",
+  "선물",
+  "칭찬",
+  "친절",
+  "맛있",
+  "좋아"
+];
+
+const productNeedWords = [
+  "요청",
+  "문의",
+  "제안",
+  "있으면",
+  "없나요",
+  "원해",
+  "찾",
+  "품절",
+  "쌀빵",
+  "건강빵",
+  "호밀",
+  "예약"
+];
+
+const operationImprovementWords = [
+  "대기",
+  "줄",
+  "응대",
+  "불친절",
+  "설명",
+  "청결",
+  "위생",
+  "포장",
+  "가격",
+  "딱딱",
+  "질김",
+  "눅눅",
+  "덜 구워",
+  "탐"
+];
 
 const activeResponseCriterionWhere: Prisma.CustomerResponseWhereInput = {
   majorCriterion: { is: { isActive: true } }
@@ -202,6 +282,185 @@ function buildPathFromCriteria(
   return path;
 }
 
+function responsePathFromIds(
+  response: ResponseWithRelations,
+  criteriaById: Map<number, ResponseCriterionPathItem>
+): ResponseCriterionPathItem[] {
+  return [response.majorCriterionId, response.middleCriterionId, response.minorCriterionId]
+    .filter((criterionId): criterionId is number => typeof criterionId === "number")
+    .map((criterionId) => criteriaById.get(criterionId))
+    .filter((criterion): criterion is ResponseCriterionPathItem => criterion !== undefined);
+}
+
+function responseCriterionId(response: ResponseWithRelations): number {
+  return response.minorCriterionId ?? response.middleCriterionId ?? response.majorCriterionId;
+}
+
+function responseSample(response: ResponseWithRelations): string | null {
+  const value = response.shortSummary?.trim() || response.fullText?.trim() || "";
+  return value ? value.slice(0, 80) : null;
+}
+
+function hasAnyWord(value: string, words: string[]): boolean {
+  return words.some((word) => value.includes(word));
+}
+
+function responseNeedsCheck(
+  response: ResponseWithRelations,
+  path: ResponseCriterionPathItem[]
+): boolean {
+  const pathNames = path.map((criterion) => criterion.name);
+  const combinedText = `${response.shortSummary ?? ""}\n${response.fullText ?? ""}`;
+
+  return (
+    pathNames.some((name) => checkNeededCriterionNames.has(name)) ||
+    checkNeededWords.some((word) => combinedText.includes(word))
+  );
+}
+
+function classifyExecutiveBuckets(
+  response: ResponseWithRelations,
+  path: ResponseCriterionPathItem[]
+): ExecutiveBucketKey[] {
+  const pathNames = path.map((criterion) => criterion.name);
+  const combinedText = `${pathNames.join(" ")}\n${response.shortSummary ?? ""}\n${response.fullText ?? ""}`;
+  const buckets = new Set<ExecutiveBucketKey>();
+
+  if (
+    pathNames.includes("손님경험") ||
+    pathNames.includes("장거리 방문") ||
+    hasAnyWord(combinedText, brandStrengthWords)
+  ) {
+    buckets.add("brandStrength");
+  }
+
+  if (
+    pathNames.includes("제품") ||
+    pathNames.includes("제품 제안") ||
+    pathNames.includes("품절") ||
+    hasAnyWord(combinedText, productNeedWords)
+  ) {
+    buckets.add("productNeeds");
+  }
+
+  if (
+    responseNeedsCheck(response, path) ||
+    hasAnyWord(combinedText, operationImprovementWords)
+  ) {
+    buckets.add("operationImprovements");
+  }
+
+  return Array.from(buckets);
+}
+
+function buildExecutiveBuckets(
+  total: number,
+  criteriaById: Map<number, ResponseCriterionPathItem>,
+  responses: ResponseWithRelations[]
+): ExecutiveBucket[] {
+  const bucketResponses = new Map<ExecutiveBucketKey, Set<ResponseWithRelations>>();
+  const bucketTopicMaps = new Map<ExecutiveBucketKey, Map<number, ResponseInsightTopic>>();
+
+  for (const config of executiveBucketConfigs) {
+    bucketResponses.set(config.key, new Set());
+    bucketTopicMaps.set(config.key, new Map());
+  }
+
+  for (const response of responses) {
+    const path = responsePathFromIds(response, criteriaById);
+    const buckets = classifyExecutiveBuckets(response, path);
+    const criterionId = responseCriterionId(response);
+    const criterion = criteriaById.get(criterionId);
+    const topicPath = criterion ? buildPathFromCriteria(criteriaById, criterion) : path;
+    const sample = responseSample(response);
+
+    for (const bucket of buckets) {
+      bucketResponses.get(bucket)?.add(response);
+      const topicMap = bucketTopicMaps.get(bucket);
+      const existingTopic = topicMap?.get(criterionId);
+
+      if (topicMap && existingTopic) {
+        existingTopic.count += 1;
+        existingTopic.ratio = ratio(existingTopic.count, total);
+        if (sample && !existingTopic.sampleSummaries.includes(sample)) {
+          existingTopic.sampleSummaries = [...existingTopic.sampleSummaries, sample].slice(0, 3);
+        }
+      } else if (topicMap) {
+        topicMap.set(criterionId, {
+          criterionId,
+          label: criterionLabel(criterion),
+          path: topicPath,
+          count: 1,
+          ratio: ratio(1, total),
+          sampleSummaries: sample ? [sample] : []
+        });
+      }
+    }
+  }
+
+  return executiveBucketConfigs.map((config) => {
+    const count = bucketResponses.get(config.key)?.size ?? 0;
+    const topics = Array.from(bucketTopicMaps.get(config.key)?.values() ?? [])
+      .sort((left, right) => right.count - left.count || left.label.localeCompare(right.label))
+      .slice(0, 3);
+
+    return {
+      key: config.key,
+      title: config.title,
+      count,
+      ratio: ratio(count, total),
+      summary: config.summary,
+      topics
+    };
+  });
+}
+
+function hasFinalConsonant(value: string): boolean {
+  const lastChar = value.trim().at(-1);
+  if (!lastChar) {
+    return false;
+  }
+
+  const code = lastChar.charCodeAt(0);
+  if (code < 0xac00 || code > 0xd7a3) {
+    return false;
+  }
+
+  return (code - 0xac00) % 28 > 0;
+}
+
+function joinExecutiveTitles(buckets: ExecutiveBucket[]): string {
+  if (buckets.length <= 1) {
+    return buckets[0]?.title ?? "손님 반응";
+  }
+
+  const first = buckets[0];
+  const second = buckets[1];
+  if (!first || !second) {
+    return first?.title ?? "손님 반응";
+  }
+
+  const particle = hasFinalConsonant(first.title) ? "과" : "와";
+  return `${first.title}${particle} ${second.title}`;
+}
+
+function executiveHeadline(total: number, buckets: ExecutiveBucket[], fallback: string): string {
+  if (total <= 0) {
+    return "조회 기간에 등록된 손님 반응이 없습니다.";
+  }
+
+  const topBuckets = buckets
+    .filter((bucket) => bucket.count > 0)
+    .sort((left, right) => right.count - left.count || left.title.localeCompare(right.title))
+    .slice(0, 2);
+
+  if (topBuckets.length === 0) {
+    return fallback;
+  }
+
+  return `이번 기간에 가장 뚜렷한 축은 ${joinExecutiveTitles(topBuckets)}입니다.`;
+}
+
 function buildResponseInsights(
   total: number,
   majorGroups: MajorGroup[],
@@ -211,8 +470,7 @@ function buildResponseInsights(
 ) {
   const summariesByCriterionId = new Map<number, string[]>();
   for (const response of responses) {
-    const criterionId =
-      response.minorCriterionId ?? response.middleCriterionId ?? response.majorCriterionId;
+    const criterionId = responseCriterionId(response);
     const summaries = summariesByCriterionId.get(criterionId) ?? [];
     if (response.shortSummary && !summaries.includes(response.shortSummary)) {
       summaries.push(response.shortSummary);
@@ -244,22 +502,19 @@ function buildResponseInsights(
     ? criterionLabel(criteriaById.get(topMajorGroup.majorCriterionId))
     : "기록 없음";
   const topTopic = repeatedTopics[0];
-  const checkNeededCount = responses.filter((response) => {
-    const pathNames = toCriterionPath(response).map((criterion) => criterion.name);
-    const combinedText = `${response.shortSummary ?? ""}\n${response.fullText ?? ""}`;
-
-    return (
-      pathNames.some((name) => checkNeededCriterionNames.has(name)) ||
-      checkNeededWords.some((word) => combinedText.includes(word))
-    );
-  }).length;
+  const executiveBuckets = buildExecutiveBuckets(total, criteriaById, responses);
+  const fallbackHeadline =
+    total > 0
+      ? `${total.toLocaleString("ko-KR")}건 중 ${topMajorName} 비중이 가장 큽니다.`
+      : "조회 기간에 등록된 손님 반응이 없습니다.";
+  const checkNeededCount = responses.filter((response) =>
+    responseNeedsCheck(response, responsePathFromIds(response, criteriaById))
+  ).length;
 
   return {
-    headline:
-      total > 0
-        ? `${total.toLocaleString("ko-KR")}건 중 ${topMajorName} 비중이 가장 큽니다.`
-        : "조회 기간에 등록된 손님 반응이 없습니다.",
+    headline: executiveHeadline(total, executiveBuckets, fallbackHeadline),
     checkNeededCount,
+    executiveBuckets,
     repeatedTopics,
     keyNotes: [
       checkNeededCount > 0

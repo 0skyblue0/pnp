@@ -600,9 +600,74 @@ describe("App", () => {
                 { date: "2026-07-12", count: 9 }
               ],
               insights: {
-                headline: "16건 중 제품 비중이 가장 큽니다.",
+                headline: "이번 기간에 가장 뚜렷한 축은 제품·메뉴 니즈와 운영 개선입니다.",
+                checkNeededCount: 4,
+                executiveBuckets: [
+                  {
+                    key: "brandStrength",
+                    title: "브랜드 강점",
+                    count: 2,
+                    ratio: 0.125,
+                    summary: "손님이 일부러 찾아오는 이유와 다시 오고 싶은 지점입니다.",
+                    topics: [
+                      {
+                        criterionId: 9,
+                        label: "장거리손님",
+                        path: [
+                          { id: 8, name: "손님경험" },
+                          { id: 9, name: "장거리손님" }
+                        ],
+                        count: 2,
+                        ratio: 0.125,
+                        sampleSummaries: ["청주에서 일부러 방문"]
+                      }
+                    ]
+                  },
+                  {
+                    key: "productNeeds",
+                    title: "제품·메뉴 니즈",
+                    count: 9,
+                    ratio: 0.5625,
+                    summary: "메뉴 구성, 품절, 신제품 검토에 반영할 손님 요구입니다.",
+                    topics: [
+                      {
+                        criterionId: 6,
+                        label: "바게트",
+                        path: [
+                          { id: 1, name: "제품" },
+                          { id: 3, name: "맛" },
+                          { id: 6, name: "바게트" }
+                        ],
+                        count: 6,
+                        ratio: 0.375,
+                        sampleSummaries: ["바게트 맛 불만 반복"]
+                      }
+                    ]
+                  },
+                  {
+                    key: "operationImprovements",
+                    title: "운영 개선",
+                    count: 4,
+                    ratio: 0.25,
+                    summary: "매장 운영, 응대, 품질에서 먼저 손볼 부분입니다.",
+                    topics: [
+                      {
+                        criterionId: 7,
+                        label: "식감",
+                        path: [
+                          { id: 1, name: "제품" },
+                          { id: 3, name: "맛" },
+                          { id: 7, name: "식감" }
+                        ],
+                        count: 4,
+                        ratio: 0.25,
+                        sampleSummaries: ["식감 개선 필요"]
+                      }
+                    ]
+                  }
+                ],
                 keyNotes: [
-                  "불만 12건은 우선 확인이 필요합니다.",
+                  "확인 필요 반응 4건은 우선 확인해 주세요.",
                   "가장 반복된 세부 내용은 제품 > 맛 > 바게트입니다.",
                   "대표님 보고에는 상위 반복 내용 2개만 먼저 보이면 충분합니다."
                 ],
@@ -650,21 +715,30 @@ describe("App", () => {
       "false"
     );
 
-    expect((await screen.findAllByText("제품")).length).toBeGreaterThan(0);
-    expect(screen.getByRole("heading", { name: "주요 사항" })).toBeInTheDocument();
-    expect(screen.getAllByText("16건 중 제품 비중이 가장 큽니다.").length).toBeGreaterThan(0);
+    expect(await screen.findByRole("heading", { name: "대표 리포트" })).toBeInTheDocument();
+    expect(
+      screen.getAllByText("이번 기간에 가장 뚜렷한 축은 제품·메뉴 니즈와 운영 개선입니다.").length
+    ).toBeGreaterThan(0);
+    expect(screen.getAllByText("브랜드 강점").length).toBeGreaterThan(0);
+    expect(
+      screen.getByText("손님이 일부러 찾아오는 이유와 다시 오고 싶은 지점입니다.")
+    ).toBeInTheDocument();
+    expect(screen.getAllByText("제품·메뉴 니즈").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("운영 개선").length).toBeGreaterThan(0);
+    expect(screen.getByText("실제 손님 말")).toBeInTheDocument();
+    expect(screen.getAllByText(/청주에서 일부러 방문/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/식감 개선 필요/).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/제품 > 맛 > 바게트/).length).toBeGreaterThan(0);
-    expect(screen.getByText("12건 · 75%")).toBeInTheDocument();
-    expect(screen.getAllByText("맛").length).toBeGreaterThan(0);
-    expect(screen.getByText("9건 · 75%")).toBeInTheDocument();
+    expect(screen.getAllByText("4건").length).toBeGreaterThan(0);
     expect(screen.getByText("월별 빠른 조회")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "2026년 7월" })).toHaveAttribute(
       "aria-pressed",
       "false"
     );
     expect(screen.getByRole("button", { name: "2026년 6월" })).toBeInTheDocument();
-    expect(screen.getByText("월별 핵심 보기")).toBeInTheDocument();
-    expect(screen.getByText("가장 많은 대분류")).toBeInTheDocument();
+    expect(screen.getByText("반복 주제 TOP 5")).toBeInTheDocument();
+    expect(screen.queryByText("월별 핵심 보기")).not.toBeInTheDocument();
+    expect(screen.queryByText("상세 내용 바로 열기")).not.toBeInTheDocument();
     expect(screen.queryByText("선택 기간 일별 추이")).not.toBeInTheDocument();
     expect(screen.queryByText(/날짜별로 등록된 손님 반응 건수/)).not.toBeInTheDocument();
     expect(screen.queryByText("5월 보고")).not.toBeInTheDocument();
@@ -674,9 +748,9 @@ describe("App", () => {
       "href",
       "/response?mode=lookup&tab=detail&from=2026-06-13&to=2026-07-12&criterion_id=6"
     );
-    expect(screen.getByRole("link", { name: "제품 전체 기록 보기" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: /대표 주제 · 6건 바게트/ })).toHaveAttribute(
       "href",
-      "/response?mode=lookup&tab=detail&from=2026-06-13&to=2026-07-12&criterion_id=1"
+      "/response?mode=lookup&tab=detail&from=2026-06-13&to=2026-07-12&criterion_id=6"
     );
     expect(screen.queryByRole("button", { name: "원형" })).not.toBeInTheDocument();
   });

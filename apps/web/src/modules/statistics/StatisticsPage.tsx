@@ -467,7 +467,7 @@ export function StatisticsPage() {
       <section className="dc-card-pad">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="max-w-3xl">
-            <p className="dc-eyebrow">대표가 먼저 볼 결론</p>
+            <p className="dc-eyebrow">통계 요약</p>
             <h2 className="section-title">대표 리포트</h2>
             <p className="mt-2 text-[15px] font-extrabold leading-7 text-ink">
               {stats.insights.headline}

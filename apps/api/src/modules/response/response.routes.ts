@@ -130,18 +130,18 @@ const executiveBucketConfigs: Array<{
 }> = [
   {
     key: "brandStrength",
-    title: "브랜드 강점",
-    summary: "손님이 일부러 찾아오는 이유와 다시 오고 싶은 지점입니다."
+    title: "긍정·방문 신호",
+    summary: "칭찬, 재방문, 일부러 찾아온 이유처럼 긍정으로 확인된 반응입니다."
   },
   {
     key: "productNeeds",
-    title: "제품·메뉴 니즈",
-    summary: "메뉴 구성, 품절, 신제품 검토에 반영할 손님 요구입니다."
+    title: "제품·메뉴 신호",
+    summary: "제품 문의, 품절, 구매 수요처럼 메뉴와 상품에서 반복된 반응입니다."
   },
   {
     key: "operationImprovements",
-    title: "운영 개선",
-    summary: "매장 운영, 응대, 품질에서 먼저 손볼 부분입니다."
+    title: "불편·개선 신호",
+    summary: "맛·품질 혹평, 포장, 대기, 응대처럼 불편으로 확인된 반응입니다."
   }
 ];
 
@@ -158,6 +158,45 @@ const brandStrengthWords = [
   "친절",
   "맛있",
   "좋아"
+];
+
+const negativeSignalCriterionNames = new Set([
+  "덜 구워짐",
+  "너무 탐",
+  "딱딱함",
+  "질김",
+  "눅눅함",
+  "짠맛",
+  "포장 불편",
+  "불친절",
+  "응대 불만",
+  "설명 부족",
+  "결제 문제",
+  "대기시간 김",
+  "줄 혼잡",
+  "가격 부담",
+  "동선 불편",
+  "분류 보류"
+]);
+
+const negativeSignalWords = [
+  "혹평",
+  "불만",
+  "실망",
+  "아쉬워",
+  "불편",
+  "문제",
+  "부족",
+  "짜다",
+  "짰",
+  "짜다는",
+  "짠",
+  "딱딱",
+  "질김",
+  "눅눅",
+  "덜 구워",
+  "탔",
+  "비싸"
 ];
 
 const productNeedWords = [
@@ -395,7 +434,11 @@ function classifyExecutiveBuckets(
     return [];
   }
 
-  if (
+  const hasNegativeSignal =
+    pathNames.some((name) => negativeSignalCriterionNames.has(name)) ||
+    hasAnyWord(combinedText, negativeSignalWords);
+
+  const hasPositiveSignal =
     pathNames.includes("방문 이유") ||
     pathNames.includes("장거리 방문") ||
     pathNames.includes("단골") ||
@@ -410,8 +453,9 @@ function classifyExecutiveBuckets(
     pathNames.includes("만족") ||
     pathNames.includes("직원 칭찬") ||
     pathNames.includes("선물용") ||
-    hasAnyWord(combinedText, brandStrengthWords)
-  ) {
+    hasAnyWord(combinedText, brandStrengthWords);
+
+  if (hasPositiveSignal && !hasNegativeSignal) {
     buckets.add("brandStrength");
   }
 
@@ -426,6 +470,7 @@ function classifyExecutiveBuckets(
 
   if (
     responseNeedsCheck(response, path) ||
+    hasNegativeSignal ||
     hasAnyWord(combinedText, operationImprovementWords)
   ) {
     buckets.add("operationImprovements");

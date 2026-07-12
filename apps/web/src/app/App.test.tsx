@@ -600,15 +600,15 @@ describe("App", () => {
                 { date: "2026-07-12", count: 9 }
               ],
               insights: {
-                headline: "이번 기간에 가장 뚜렷한 축은 제품·메뉴 니즈와 운영 개선입니다.",
+                headline: "이번 기간에 가장 뚜렷한 축은 제품·메뉴 신호와 불편·개선 신호입니다.",
                 checkNeededCount: 4,
                 executiveBuckets: [
                   {
                     key: "brandStrength",
-                    title: "브랜드 강점",
+                    title: "긍정·방문 신호",
                     count: 2,
                     ratio: 0.125,
-                    summary: "손님이 일부러 찾아오는 이유와 다시 오고 싶은 지점입니다.",
+                    summary: "칭찬, 재방문, 일부러 찾아온 이유처럼 긍정으로 확인된 반응입니다.",
                     topics: [
                       {
                         criterionId: 9,
@@ -625,10 +625,10 @@ describe("App", () => {
                   },
                   {
                     key: "productNeeds",
-                    title: "제품·메뉴 니즈",
+                    title: "제품·메뉴 신호",
                     count: 9,
                     ratio: 0.5625,
-                    summary: "메뉴 구성, 품절, 신제품 검토에 반영할 손님 요구입니다.",
+                    summary: "제품 문의, 품절, 구매 수요처럼 메뉴와 상품에서 반복된 반응입니다.",
                     topics: [
                       {
                         criterionId: 6,
@@ -646,10 +646,10 @@ describe("App", () => {
                   },
                   {
                     key: "operationImprovements",
-                    title: "운영 개선",
+                    title: "불편·개선 신호",
                     count: 4,
                     ratio: 0.25,
-                    summary: "매장 운영, 응대, 품질에서 먼저 손볼 부분입니다.",
+                    summary: "맛·품질 혹평, 포장, 대기, 응대처럼 불편으로 확인된 반응입니다.",
                     topics: [
                       {
                         criterionId: 7,
@@ -717,14 +717,14 @@ describe("App", () => {
 
     expect(await screen.findByRole("heading", { name: "대표 리포트" })).toBeInTheDocument();
     expect(
-      screen.getAllByText("이번 기간에 가장 뚜렷한 축은 제품·메뉴 니즈와 운영 개선입니다.").length
+      screen.getAllByText("이번 기간에 가장 뚜렷한 축은 제품·메뉴 신호와 불편·개선 신호입니다.").length
     ).toBeGreaterThan(0);
-    expect(screen.getAllByText("브랜드 강점").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("긍정·방문 신호").length).toBeGreaterThan(0);
     expect(
-      screen.getByText("손님이 일부러 찾아오는 이유와 다시 오고 싶은 지점입니다.")
+      screen.getByText("칭찬, 재방문, 일부러 찾아온 이유처럼 긍정으로 확인된 반응입니다.")
     ).toBeInTheDocument();
-    expect(screen.getAllByText("제품·메뉴 니즈").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("운영 개선").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("제품·메뉴 신호").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("불편·개선 신호").length).toBeGreaterThan(0);
     expect(screen.getByText("손님이 직접 한 말")).toBeInTheDocument();
     expect(screen.getAllByText(/청주에서 일부러 방문/).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/식감 개선 필요/).length).toBeGreaterThan(0);

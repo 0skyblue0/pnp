@@ -258,16 +258,17 @@ describe("response suggestion route", () => {
 describe("response stats route", () => {
   it("groups executive insight buckets by brand strength, menu needs, and improvements", async () => {
     const prisma = buildPrismaMock();
-    prisma.customerResponse.count.mockResolvedValue(5);
+    prisma.customerResponse.count.mockResolvedValue(6);
     prisma.customerResponse.groupBy
       .mockResolvedValueOnce([
         { majorCriterionId: 100, _count: { _all: 2 } },
-        { majorCriterionId: 200, _count: { _all: 2 } },
+        { majorCriterionId: 200, _count: { _all: 3 } },
         { majorCriterionId: 300, _count: { _all: 1 } }
       ])
       .mockResolvedValueOnce([
         { majorCriterionId: 100, middleCriterionId: 110, _count: { _all: 2 } },
         { majorCriterionId: 200, middleCriterionId: 210, _count: { _all: 2 } },
+        { majorCriterionId: 200, middleCriterionId: 220, _count: { _all: 1 } },
         { majorCriterionId: 300, middleCriterionId: 310, _count: { _all: 1 } }
       ])
       .mockResolvedValueOnce([
@@ -284,6 +285,12 @@ describe("response stats route", () => {
           _count: { _all: 2 }
         },
         {
+          majorCriterionId: 200,
+          middleCriterionId: 220,
+          minorCriterionId: 221,
+          _count: { _all: 1 }
+        },
+        {
           majorCriterionId: 300,
           middleCriterionId: 310,
           minorCriterionId: 311,
@@ -298,6 +305,8 @@ describe("response stats route", () => {
       { id: 200, parentId: null, depth: 1, name: "제품", sortOrder: 2 },
       { id: 210, parentId: 200, depth: 2, name: "제품 제안", sortOrder: 1 },
       { id: 211, parentId: 210, depth: 3, name: "쌀빵/건강빵 요청", sortOrder: 1 },
+      { id: 220, parentId: 200, depth: 2, name: "맛", sortOrder: 2 },
+      { id: 221, parentId: 220, depth: 3, name: "짠맛", sortOrder: 1 },
       { id: 300, parentId: null, depth: 1, name: "구매·운영", sortOrder: 3 },
       { id: 310, parentId: 300, depth: 2, name: "대기", sortOrder: 1 },
       { id: 311, parentId: 310, depth: 3, name: "대기시간 김", sortOrder: 1 }
@@ -332,6 +341,13 @@ describe("response stats route", () => {
         fullText: "건강빵은 없나요?"
       },
       {
+        majorCriterionId: 200,
+        middleCriterionId: 220,
+        minorCriterionId: 221,
+        shortSummary: "치즈 치아바타 짠맛 혹평",
+        fullText: "단골손님인 김영호님이 치즈 치아바타가 짜다는 평을 남겨주셨습니다."
+      },
+      {
         majorCriterionId: 300,
         middleCriterionId: 310,
         minorCriterionId: 311,
@@ -352,15 +368,15 @@ describe("response stats route", () => {
     expect(response.statusCode).toBe(200);
     const body = response.json<ApiEnvelope<ResponseStatsBody>>();
     expect(body.data?.insights.headline).toBe(
-      "이번 기간에 가장 뚜렷한 축은 브랜드 강점과 제품·메뉴 니즈입니다."
+      "이번 기간에 가장 뚜렷한 축은 제품·메뉴 신호와 긍정·방문 신호입니다."
     );
     expect(body.data?.insights.executiveBuckets).toEqual([
       expect.objectContaining({
         key: "brandStrength",
-        title: "브랜드 강점",
+        title: "긍정·방문 신호",
         count: 2,
-        ratio: 0.4,
-        summary: "손님이 일부러 찾아오는 이유와 다시 오고 싶은 지점입니다.",
+        ratio: 2 / 6,
+        summary: "칭찬, 재방문, 일부러 찾아온 이유처럼 긍정으로 확인된 반응입니다.",
         topics: [
           expect.objectContaining({
             label: "장거리손님",
@@ -371,19 +387,38 @@ describe("response stats route", () => {
       }),
       expect.objectContaining({
         key: "productNeeds",
-        title: "제품·메뉴 니즈",
-        count: 2,
-        ratio: 0.4,
-        topics: [expect.objectContaining({ label: "쌀빵/건강빵 요청", count: 2 })]
+        title: "제품·메뉴 신호",
+        count: 3,
+        ratio: 0.5
       }),
       expect.objectContaining({
         key: "operationImprovements",
-        title: "운영 개선",
-        count: 1,
-        ratio: 0.2,
-        topics: [expect.objectContaining({ label: "대기시간 김", count: 1 })]
+        title: "불편·개선 신호",
+        count: 2,
+        ratio: 2 / 6
       })
     ]);
+
+    const brandStrengthBucket = body.data?.insights.executiveBuckets.find(
+      (bucket) => bucket.key === "brandStrength"
+    );
+    const productNeedsBucket = body.data?.insights.executiveBuckets.find(
+      (bucket) => bucket.key === "productNeeds"
+    );
+    const operationImprovementsBucket = body.data?.insights.executiveBuckets.find(
+      (bucket) => bucket.key === "operationImprovements"
+    );
+    expect(brandStrengthBucket?.topics.some((topic) => topic.label === "짠맛")).toBe(false);
+    expect(productNeedsBucket?.topics.some((topic) => topic.label === "쌀빵/건강빵 요청" && topic.count === 2)).toBe(true);
+    expect(
+      operationImprovementsBucket?.topics.some(
+        (topic) =>
+          topic.label === "짠맛" &&
+          topic.count === 1 &&
+          topic.sampleSummaries[0] ===
+            "단골손님인 김영호님이 치즈 치아바타가 짜다는 평을 남겨주셨습니다."
+      )
+    ).toBe(true);
 
     await app.close();
   });
@@ -604,7 +639,7 @@ describe("response stats route", () => {
       { date: "2026-01-03", count: 4 }
     ]);
     expect(stats.insights.headline).toBe(
-      "이번 기간에 가장 뚜렷한 축은 제품·메뉴 니즈와 운영 개선입니다."
+      "이번 기간에 가장 뚜렷한 축은 제품·메뉴 신호와 불편·개선 신호입니다."
     );
     expect(stats.insights.repeatedTopics).toEqual(
       expect.arrayContaining([

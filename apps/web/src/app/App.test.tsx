@@ -347,6 +347,24 @@ describe("App", () => {
     expect(within(modal).queryByRole("textbox", { name: "제품명 1" })).not.toBeInTheDocument();
     expect(within(modal).queryByRole("button", { name: "반컷팅" })).not.toBeInTheDocument();
     expect(within(modal).queryByRole("button", { name: "반컷팅+슬라이스" })).not.toBeInTheDocument();
+    const firstProductSelect = within(modal).getByRole("combobox", { name: "제품명 1" });
+    const firstCuttingSelect = within(modal).getByRole("combobox", { name: "컷팅 옵션 1" });
+    expect(firstCuttingSelect).toBeDisabled();
+    expect(within(firstCuttingSelect).queryByRole("option", { name: "반컷팅" })).not.toBeInTheDocument();
+
+    fireEvent.change(firstProductSelect, { target: { value: "바게트" } });
+    expect(firstCuttingSelect).not.toBeDisabled();
+    expect(within(firstCuttingSelect).getByRole("option", { name: "반컷팅" })).toBeInTheDocument();
+    expect(within(firstCuttingSelect).queryByRole("option", { name: "슬라이스" })).not.toBeInTheDocument();
+
+    fireEvent.change(firstProductSelect, { target: { value: "식 빵" } });
+    expect(within(firstCuttingSelect).getByRole("option", { name: "반컷팅" })).toBeInTheDocument();
+    expect(within(firstCuttingSelect).getByRole("option", { name: "슬라이스" })).toBeInTheDocument();
+
+    fireEvent.change(firstProductSelect, { target: { value: "크로와상" } });
+    expect(firstCuttingSelect).toBeDisabled();
+    expect(within(firstCuttingSelect).queryByRole("option", { name: "반컷팅" })).not.toBeInTheDocument();
+    expect(within(firstCuttingSelect).queryByRole("option", { name: "슬라이스" })).not.toBeInTheDocument();
     expect(within(modal).getByLabelText("예약 메모")).not.toHaveClass("sr-only");
     fireEvent.click(within(modal).getByRole("button", { name: "제품 추가" }));
     expect(within(modal).getByRole("combobox", { name: "제품명 2" })).toBeInTheDocument();

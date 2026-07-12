@@ -56,8 +56,8 @@ type ProductDto = {
 const modalQuickTimes = Array.from({ length: 10 }, (_, index) => `${String(index + 10).padStart(2, "0")}:00`);
 const pickupHours = Array.from({ length: 10 }, (_, index) => String(index + 10).padStart(2, "0"));
 const pickupMinutes = ["00", "10", "20", "30", "40", "50"];
-const halfCuttableProducts = new Set(["바게트", "깜빠뉴", "호밀빵", "화이트바게트", "식빵"]);
-const sliceableProducts = new Set(["식빵"]);
+const halfCuttableProducts = new Set(["바게트", "깜빠뉴", "호밀빵", "식빵", "식 빵"]);
+const sliceableProducts = new Set(["식빵", "식 빵"]);
 const productLineupOrder = new Map<string, number>(
   productLineup.map((name, index) => [name, index])
 );
@@ -202,6 +202,14 @@ function normalizedCuttingOption(productName: string, cuttingOption: CuttingOpti
     canHalfCut(productName) && isHalfCutSelected(cuttingOption),
     canSlice(productName) && isSliceSelected(cuttingOption)
   );
+}
+
+function cuttingOptionChoices(productName: string): Array<{ label: string; value: CuttingOption }> {
+  return [
+    { label: "없음", value: "NONE" },
+    ...(canHalfCut(productName) ? [{ label: "반컷팅", value: "HALF" as const }] : []),
+    ...(canSlice(productName) ? [{ label: "슬라이스", value: "SLICE" as const }] : [])
+  ];
 }
 
 function formatReservationItem(item: ReservationDto["items"][number]): string {
@@ -644,6 +652,7 @@ export function ReservationPage() {
                       ? [...productOptions, item.productName]
                       : productOptions
                   );
+                  const rowCuttingOptions = cuttingOptionChoices(item.productName);
                   return (
                   <div
                     key={item.id}
@@ -685,14 +694,17 @@ export function ReservationPage() {
                       <select
                         aria-label={`컷팅 옵션 ${index + 1}`}
                         className="min-w-0 rounded-[8px] border border-latte px-[9px] py-[8px] text-[13px] outline-none focus:border-bread"
+                        disabled={rowCuttingOptions.length === 1}
                         value={normalizedCuttingOption(item.productName, item.cuttingOption)}
                         onChange={(event) =>
                           updateReservationItem(item.id, { cuttingOption: event.target.value as CuttingOption })
                         }
                       >
-                        <option value="NONE">없음</option>
-                        <option value="HALF">반컷팅</option>
-                        <option value="SLICE">슬라이스</option>
+                        {rowCuttingOptions.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
                       </select>
                     </label>
                     <button

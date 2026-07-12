@@ -662,7 +662,7 @@ export function ReservationPage() {
                       <span className="text-[10.5px] font-semibold text-muted">제품명</span>
                       <select
                         aria-label={`제품명 ${index + 1}`}
-                        className="min-w-0 rounded-[8px] border border-latte bg-cream px-[11px] py-[8px] text-[13px] font-semibold text-cocoa outline-none transition focus:border-bread focus:bg-white"
+                        className="min-w-0 rounded-[8px] border border-latte bg-white px-[11px] py-[8px] text-[13px] text-ink outline-none transition focus:border-bread"
                         value={item.productName}
                         onChange={(event) => updateReservationItem(item.id, { productName: event.target.value })}
                       >

@@ -348,6 +348,10 @@ describe("App", () => {
     expect(within(modal).queryByRole("combobox", { name: "컷팅 옵션 1" })).not.toBeInTheDocument();
     expect(within(modal).queryByRole("button", { name: "반컷팅+슬라이스" })).not.toBeInTheDocument();
     const firstProductSelect = within(modal).getByRole("combobox", { name: "제품명 1" });
+    expect(firstProductSelect).not.toHaveClass("bg-cream");
+    expect(firstProductSelect).not.toHaveClass("text-cocoa");
+    expect(firstProductSelect).not.toHaveClass("font-semibold");
+    expect(firstProductSelect).toHaveClass("text-ink");
     expect(within(modal).queryByRole("button", { name: "없음" })).not.toBeInTheDocument();
     expect(within(modal).queryByRole("button", { name: "반컷팅" })).not.toBeInTheDocument();
 

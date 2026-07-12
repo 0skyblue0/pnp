@@ -402,6 +402,99 @@ describe("App", () => {
     expect(within(minuteSelect).getByRole("option", { name: "50분" })).toBeInTheDocument();
   });
 
+  it("shows readable reservation cards and lets staff delete a saved reservation", async () => {
+    vi.mocked(fetch).mockImplementation(async (input, init) => {
+      const url = input instanceof Request ? input.url : String(input);
+      const method = init?.method ?? "GET";
+
+      if (url.endsWith("/auth/csrf")) {
+        return new Response(JSON.stringify({ data: { csrfToken: "test-token" }, error: null }), {
+          headers: { "Content-Type": "application/json" }
+        });
+      }
+
+      if (url.includes("/product")) {
+        return new Response(
+          JSON.stringify({ data: { items: [], total: 0, page: 1, size: 0 }, error: null }),
+          { headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      if (url.includes("/reservation/r-1") && method === "DELETE") {
+        return new Response(JSON.stringify({ data: { deleted: true }, error: null }), {
+          headers: { "Content-Type": "application/json" }
+        });
+      }
+
+      if (url.includes("/reservation?") && method === "GET") {
+        return new Response(
+          JSON.stringify({
+            data: {
+              items: [
+                {
+                  id: "r-1",
+                  customerName: "김예약",
+                  contactPhone: "010-1234-5678",
+                  pickupAt: "2026-07-12T15:10:00.000Z",
+                  status: "PENDING",
+                  isPaid: true,
+                  isCut: true,
+                  isBag: true,
+                  purpose: "UNKNOWN",
+                  allergyNote: null,
+                  memo: "깜빠뉴 반씩 따로 포장",
+                  cancelReason: null,
+                  items: [
+                    { productId: 1, productName: "깜빠뉴", quantity: 2, cuttingOption: "HALF" },
+                    { productId: 2, productName: "크로와상", quantity: 3, cuttingOption: "NONE" }
+                  ]
+                }
+              ],
+              total: 1,
+              page: 1,
+              size: 1
+            },
+            error: null
+          }),
+          { headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      return new Response(JSON.stringify({ data: { items: [], total: 0, page: 1, size: 0 }, error: null }), {
+        headers: { "Content-Type": "application/json" }
+      });
+    });
+
+    render(
+      <AppProviders>
+        <App />
+      </AppProviders>
+    );
+
+    fireEvent.click(screen.getByRole("link", { name: "예약" }));
+
+    const reservationCard = await screen.findByRole("article", { name: "김예약 예약" });
+    expect(within(reservationCard).getByText("김예약님")).toBeInTheDocument();
+    expect(within(reservationCard).getByText("깜빠뉴 2개")).toBeInTheDocument();
+    expect(within(reservationCard).getByText("크로와상 3개")).toBeInTheDocument();
+    expect(within(reservationCard).getByText("반컷팅")).toBeInTheDocument();
+    expect(within(reservationCard).getByText("비닐봉투")).toBeInTheDocument();
+    expect(within(reservationCard).getByText("결제완료")).toBeInTheDocument();
+    expect(within(reservationCard).getByText("깜빠뉴 반씩 따로 포장")).toBeInTheDocument();
+
+    fireEvent.click(within(reservationCard).getByRole("button", { name: "김예약 예약 삭제" }));
+    const confirmDialog = await screen.findByRole("alertdialog");
+    fireEvent.click(within(confirmDialog).getByRole("button", { name: "삭제" }));
+
+    await waitFor(() =>
+      expect(fetch).toHaveBeenCalledWith(
+        expect.stringContaining("/reservation/r-1"),
+        expect.objectContaining({ method: "DELETE" })
+      )
+    );
+    expect(await screen.findByText("예약 삭제 #r-1")).toBeInTheDocument();
+  });
+
   it("renders statistics inside the integrated lookup screen", async () => {
     vi.mocked(fetch).mockImplementation(
       async () =>

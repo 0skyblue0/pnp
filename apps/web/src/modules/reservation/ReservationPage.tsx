@@ -2,10 +2,11 @@ import { RefreshCcw } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 
-import { apiGet, apiPatch, apiPost } from "../../shared/api/client.js";
+import { apiDelete, apiGet, apiPatch, apiPost } from "../../shared/api/client.js";
 import type { ListEnvelope } from "../../shared/api/types.js";
 import { productLineup } from "../../shared/productLineup.js";
 import { todayInStoreTime } from "../../shared/time/storeTime.js";
+import { useConfirm } from "../../shared/ui/ConfirmDialog.js";
 
 type ReservationDto = {
   id: string;
@@ -216,6 +217,19 @@ function formatReservationItem(item: ReservationDto["items"][number]): string {
   return `${item.productName} ${item.quantity}개`;
 }
 
+function cuttingOptionLabel(cuttingOption: CuttingOption): string {
+  if (cuttingOption === "SLICE") {
+    return "슬라이스";
+  }
+  if (cuttingOption === "HALF_SLICE") {
+    return "반컷팅+슬라이스";
+  }
+  if (cuttingOption === "HALF") {
+    return "반컷팅";
+  }
+  return "";
+}
+
 function formatPhoneInput(value: string): string {
   const digits = value.replace(/\D/g, "").slice(0, 11);
   if (digits.length <= 3) {
@@ -228,6 +242,7 @@ function formatPhoneInput(value: string): string {
 }
 
 export function ReservationPage() {
+  const confirm = useConfirm();
   const [searchParams, setSearchParams] = useSearchParams();
   const [date, setDate] = useState(() => searchParams.get("date") ?? todayInStoreTime());
   const [reservationQuery, setReservationQuery] = useState("");
@@ -496,6 +511,36 @@ export function ReservationPage() {
     }
 
     setMessage(`상태 변경 #${id}`);
+    await loadReservations();
+  }
+
+  async function deleteReservation(reservation: ReservationDto) {
+    setMessage(null);
+    setError(null);
+
+    const confirmed = await confirm({
+      title: "예약 삭제",
+      message: `${reservation.customerName || "선택한 손님"} 예약을 삭제할까요?\n삭제 후에는 예약 목록에서 사라집니다.`,
+      confirmLabel: "삭제",
+      cancelLabel: "취소",
+      tone: "danger"
+    });
+
+    if (!confirmed) {
+      return;
+    }
+
+    const envelope = await apiDelete<{ deleted: boolean }>(`/reservation/${reservation.id}`);
+
+    if (envelope.error) {
+      setError(envelope.error.message);
+      return;
+    }
+
+    setMessage(`예약 삭제 #${reservation.id}`);
+    if (editingId === reservation.id) {
+      cancelEdit();
+    }
     await loadReservations();
   }
 
@@ -843,62 +888,114 @@ export function ReservationPage() {
             {error}
           </div>
         ) : null}
-        <div className="dc-card overflow-hidden px-[22px] py-2">
-          <div className="dc-row-head grid grid-cols-[0.7fr_1fr_1.35fr_2.2fr_1fr_1fr_1.15fr_0.7fr] gap-2">
-            <div>시간</div><div>이름</div><div>연락처</div><div>제품</div><div>컷팅</div><div>결제</div><div>상태</div><div>수정</div>
-          </div>
+        <div className="grid gap-3">
           {sortedReservations.map((reservation) => {
             const isLate = reservation.status !== "COMPLETED" && isPastPickup(reservation.pickupAt);
-            const cuttingText = reservation.items
-              .map((item) => item.cuttingOption)
-              .filter((option) => option !== "NONE")
-              .map((option) => option === "SLICE" ? "슬라이스" : option === "HALF_SLICE" ? "반컷팅+슬라이스" : "반컷팅")
-              .join(", ");
+            const customerName = reservation.customerName || "이름 없음";
+            const cuttingBadges = reservation.items
+              .map((item) => cuttingOptionLabel(item.cuttingOption))
+              .filter((label): label is string => Boolean(label));
 
             return (
-              <div
+              <article
                 key={reservation.id}
-                className="dc-row grid grid-cols-[0.7fr_1fr_1.35fr_2.2fr_1fr_1fr_1.15fr_0.7fr] gap-2"
+                aria-label={`${customerName} 예약`}
+                className="dc-card grid gap-3 px-4 py-4 md:grid-cols-[9rem_minmax(0,1fr)] md:gap-4"
               >
-                <div className="font-semibold">{formatPickupDateTime(reservation.pickupAt)}</div>
-                <div>{reservation.customerName || "-"}</div>
-                <div className="text-xs text-muted">{reservation.contactPhone || "-"}</div>
-                <div className="text-xs">{reservation.items.map(formatReservationItem).join(", ") || "-"}</div>
-                <div className="text-xs text-muted">{cuttingText || "없음"}</div>
-                <div className="text-[11.5px]">{reservation.isPaid ? "완료" : "미결제"}</div>
-                <div>
-                  <button
-                    type="button"
-                    className={[
-                      "rounded-full px-3 py-1 text-[11px] font-bold transition",
-                      reservation.status === "COMPLETED"
-                        ? "bg-green/10 text-green"
-                        : isLate
-                          ? "bg-red/10 text-red"
-                          : "bg-[#F8E8CF] text-[#B5822C]"
+                <div className="flex flex-row items-start justify-between gap-3 border-b border-latte pb-3 md:block md:border-b-0 md:border-r md:pb-0 md:pr-4">
+                  <div>
+                    <div className="text-[11px] font-semibold text-muted">픽업 시간</div>
+                    <div className={[
+                      "mt-1 text-[17px] font-bold leading-6",
+                      isLate ? "text-red" : "text-ink"
                     ].join(" ")}
-                    onClick={() =>
-                      void updateStatus(
-                        reservation.id,
-                        reservation.status === "COMPLETED" ? "PENDING" : "COMPLETED"
-                      )
-                    }
-                  >
-                    {statusLabel(reservation.status)}
-                  </button>
+                    >
+                      {formatPickupDateTime(reservation.pickupAt)}
+                    </div>
+                  </div>
+                  <div className="flex shrink-0 gap-2 md:mt-3 md:flex-col">
+                    <button
+                      type="button"
+                      className="rounded-full border border-latte bg-white px-3 py-1 text-[11px] font-semibold text-cocoa transition hover:bg-cream"
+                      onClick={() => startEdit(reservation)}
+                    >
+                      수정
+                    </button>
+                    <button
+                      type="button"
+                      aria-label={`${customerName} 예약 삭제`}
+                      className="rounded-full border border-red/20 bg-red/5 px-3 py-1 text-[11px] font-semibold text-red transition hover:bg-red/10"
+                      onClick={() => void deleteReservation(reservation)}
+                    >
+                      삭제
+                    </button>
+                  </div>
                 </div>
-                <button
-                  type="button"
-                  className="text-xs font-semibold text-cocoa hover:underline"
-                  onClick={() => startEdit(reservation)}
-                >
-                  수정
-                </button>
-              </div>
+
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div>
+                      <div className="text-[15px] font-bold text-ink">{customerName}님</div>
+                      <div className="mt-0.5 text-xs font-medium text-muted">{reservation.contactPhone || "연락처 없음"}</div>
+                    </div>
+                    <button
+                      type="button"
+                      className={[
+                        "rounded-full px-3 py-1 text-[11px] font-bold transition",
+                        reservation.status === "COMPLETED"
+                          ? "bg-green/10 text-green"
+                          : isLate
+                            ? "bg-red/10 text-red"
+                            : "bg-[#F8E8CF] text-[#B5822C]"
+                      ].join(" ")}
+                      onClick={() =>
+                        void updateStatus(
+                          reservation.id,
+                          reservation.status === "COMPLETED" ? "PENDING" : "COMPLETED"
+                        )
+                      }
+                    >
+                      {statusLabel(reservation.status)}
+                    </button>
+                  </div>
+
+                  <div className="mt-3 flex flex-wrap gap-1.5">
+                    {reservation.items.length > 0 ? reservation.items.map((item, itemIndex) => (
+                      <span
+                        key={`${item.productName}-${itemIndex}`}
+                        className="rounded-full bg-cream px-2.5 py-1 text-xs font-semibold text-ink"
+                      >
+                        {formatReservationItem(item)}
+                      </span>
+                    )) : <span className="text-xs font-medium text-muted">제품 없음</span>}
+                  </div>
+
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {cuttingBadges.map((badge, badgeIndex) => (
+                      <span key={`${badge}-${badgeIndex}`} className="rounded-full border border-latte bg-white px-2.5 py-1 text-[11px] font-semibold text-muted">
+                        {badge}
+                      </span>
+                    ))}
+                    {reservation.isPaid ? (
+                      <span className="rounded-full border border-latte bg-white px-2.5 py-1 text-[11px] font-semibold text-muted">결제완료</span>
+                    ) : null}
+                    {reservation.isBag ? (
+                      <span className="rounded-full border border-latte bg-white px-2.5 py-1 text-[11px] font-semibold text-muted">비닐봉투</span>
+                    ) : null}
+                  </div>
+
+                  {reservation.memo ? (
+                    <div className="mt-3 border-l-2 border-bread bg-cream/50 px-3 py-2 text-xs leading-5 text-ink">
+                      <span className="mr-2 font-bold text-cocoa">메모</span>
+                      {reservation.memo}
+                    </div>
+                  ) : null}
+                </div>
+              </article>
             );
           })}
           {!isLoading && reservations.length === 0 ? (
-            <div className="px-3 py-8 text-center text-sm font-medium text-muted">
+            <div className="dc-card px-3 py-8 text-center text-sm font-medium text-muted">
               예약 없음
             </div>
           ) : null}

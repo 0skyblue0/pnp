@@ -38,6 +38,7 @@ type FilterState = {
   from: string;
   to: string;
   criterionId: string;
+  checkNeeded: boolean;
 };
 
 type ResponseEditDraft = {
@@ -77,6 +78,9 @@ function buildQuery(filters: FilterState): string {
   if (filters.criterionId) {
     params.set("criterion_id", filters.criterionId);
   }
+  if (filters.checkNeeded) {
+    params.set("check_needed", "true");
+  }
   const query = params.toString();
   return query ? `?${query}` : "";
 }
@@ -102,7 +106,8 @@ export function ResponseListPage() {
   const [filters, setFilters] = useState<FilterState>({
     from: searchParams.get("from") ?? defaultRange.from,
     to: searchParams.get("to") ?? defaultRange.to,
-    criterionId: searchParams.get("criterion_id") ?? ""
+    criterionId: searchParams.get("criterion_id") ?? "",
+    checkNeeded: searchParams.get("check_needed") === "true"
   });
   const [criteria, setCriteria] = useState<ResponseCriterionDto[]>([]);
   const [responses, setResponses] = useState<ResponseDto[]>([]);
@@ -321,7 +326,7 @@ export function ResponseListPage() {
           </div>
         ) : null}
 
-        <div className="grid gap-3 lg:grid-cols-[1fr_1fr_1.4fr_auto_auto] lg:items-end">
+        <div className="grid gap-3 lg:grid-cols-[1fr_1fr_1.4fr_auto_auto_auto] lg:items-end">
           <label className="grid min-w-0 gap-2">
             <span className="field-label">시작일</span>
             <input
@@ -369,6 +374,16 @@ export function ResponseListPage() {
               onChange={(event) => setIncludeInactiveCriteria(event.target.checked)}
             />
             과거 기준 포함
+          </label>
+          <label className="flex min-h-10 items-center gap-2 text-sm font-semibold text-cocoa lg:pb-1">
+            <input
+              type="checkbox"
+              checked={filters.checkNeeded}
+              onChange={(event) =>
+                setFilters((current) => ({ ...current, checkNeeded: event.target.checked }))
+              }
+            />
+            확인 필요만
           </label>
           <Button icon={RefreshCcw} type="button" onClick={() => void loadResponses()}>
             {isLoading ? "조회 중" : "조회"}

@@ -753,6 +753,10 @@ describe("App", () => {
       "href",
       "/response?mode=lookup&tab=detail&from=2026-06-14&to=2026-07-13&criterion_id=6"
     );
+    expect(screen.getByRole("link", { name: "확인 필요 반응 4건 상세 기록 보기" })).toHaveAttribute(
+      "href",
+      "/response?mode=lookup&tab=detail&from=2026-06-14&to=2026-07-13&check_needed=true"
+    );
     expect(screen.queryByRole("button", { name: "원형" })).not.toBeInTheDocument();
   });
 

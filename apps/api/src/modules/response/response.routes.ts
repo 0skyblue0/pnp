@@ -970,13 +970,45 @@ async function buildCriterionFilter(
   return { minorCriterionId: criterion.id };
 }
 
+async function buildCheckNeededFilter(
+  app: FastifyInstance,
+  enabled: boolean
+): Promise<Prisma.CustomerResponseWhereInput> {
+  if (!enabled) {
+    return {};
+  }
+
+  const criteria = await app.prisma.responseCriterion.findMany({
+    where: { name: { in: Array.from(checkNeededCriterionNames) } },
+    select: { id: true, depth: true }
+  });
+
+  const criterionFilters = criteria.flatMap((criterion): Prisma.CustomerResponseWhereInput[] => {
+    if (criterion.depth === 1) {
+      return [{ majorCriterionId: criterion.id }];
+    }
+    if (criterion.depth === 2) {
+      return [{ middleCriterionId: criterion.id }];
+    }
+    return [{ minorCriterionId: criterion.id }];
+  });
+
+  const textFilters = checkNeededWords.flatMap((word): Prisma.CustomerResponseWhereInput[] => [
+    { shortSummary: { contains: word } },
+    { fullText: { contains: word } }
+  ]);
+
+  return { OR: [...criterionFilters, ...textFilters] };
+}
+
 export async function registerResponseRoutes(app: FastifyInstance): Promise<void> {
   app.get("/", async (request, reply) => {
     const query = listResponseQuerySchema.parse(request.query);
     const where = {
       ...buildDateWhere(query),
       ...activeResponseCriterionWhere,
-      ...(await buildCriterionFilter(app, query.criterion_id))
+      ...(await buildCriterionFilter(app, query.criterion_id)),
+      ...(await buildCheckNeededFilter(app, query.check_needed))
     };
 
     const [items, total] = await app.prisma.$transaction([

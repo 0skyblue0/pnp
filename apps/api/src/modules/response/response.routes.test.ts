@@ -73,7 +73,8 @@ function buildPrismaMock() {
       findMany: vi.fn()
     },
     responseCriterion: {
-      findMany: vi.fn()
+      findMany: vi.fn(),
+      findUnique: vi.fn()
     }
   };
 }
@@ -256,6 +257,54 @@ describe("response suggestion route", () => {
 });
 
 describe("response stats route", () => {
+  it("filters detailed responses to check-needed records", async () => {
+    const prisma = buildPrismaMock();
+    prisma.responseCriterion.findMany.mockResolvedValue([{ id: 221, depth: 3 }]);
+    prisma.customerResponse.findMany.mockResolvedValue([
+      {
+        id: 101n,
+        date: new Date("2026-01-02T00:00:00.000Z"),
+        criterionId: 221,
+        majorCriterionId: 200,
+        middleCriterionId: 220,
+        minorCriterionId: 221,
+        criterion: { id: 221, parentId: 220, depth: 3, name: "짠맛" },
+        majorCriterion: { id: 200, parentId: null, depth: 1, name: "제품" },
+        middleCriterion: { id: 220, parentId: 200, depth: 2, name: "맛" },
+        minorCriterion: { id: 221, parentId: 220, depth: 3, name: "짠맛" },
+        shortSummary: "치즈 치아바타 짠맛 혹평",
+        fullText: "치즈 치아바타가 짜다는 평",
+        llmAssisted: true,
+        createdAt: new Date("2026-01-02T09:00:00.000Z")
+      }
+    ]);
+    prisma.customerResponse.count.mockResolvedValue(1);
+
+    const app = Fastify({ logger: false });
+    app.decorate("prisma", prisma as never);
+    await app.register(registerResponseRoutes, { prefix: "/response" });
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/response?from=2026-01-01&to=2026-01-31&check_needed=true"
+    });
+
+    expect(response.statusCode).toBe(200);
+    const findManyArgs = prisma.customerResponse.findMany.mock.calls[0]?.[0] as {
+      where?: { OR?: unknown[] };
+    };
+    expect(findManyArgs.where?.OR).toEqual(
+      expect.arrayContaining([
+        { minorCriterionId: 221 },
+        { shortSummary: { contains: "불만" } },
+        { fullText: { contains: "불만" } }
+      ])
+    );
+    expect(response.json<ApiEnvelope<{ total: number }>>().data?.total).toBe(1);
+
+    await app.close();
+  });
+
   it("groups executive insight buckets by brand strength, menu needs, and improvements", async () => {
     const prisma = buildPrismaMock();
     prisma.customerResponse.count.mockResolvedValue(6);

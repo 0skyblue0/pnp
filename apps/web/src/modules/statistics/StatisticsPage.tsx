@@ -253,6 +253,18 @@ function detailLink(range: DateRange, criterionId: number): string {
   return `/response?${params.toString()}`;
 }
 
+function checkNeededDetailLink(range: DateRange): string {
+  const params = new URLSearchParams({
+    mode: "lookup",
+    tab: "detail",
+    from: range.from,
+    to: range.to,
+    check_needed: "true"
+  });
+
+  return `/response?${params.toString()}`;
+}
+
 export function StatisticsPage() {
   const today = todayInStoreTime();
   const [range, setRange] = useState<DateRange>(recentThirtyDays(today));
@@ -502,9 +514,13 @@ export function StatisticsPage() {
               <div className="dc-eyebrow">반복 주제 TOP 5</div>
             </div>
             {stats.insights.checkNeededCount ? (
-              <span className="rounded-full bg-red/10 px-3 py-1 text-xs font-extrabold text-red">
+              <Link
+                className="rounded-full bg-red/10 px-3 py-1 text-xs font-extrabold text-red hover:bg-red/15"
+                to={checkNeededDetailLink(range)}
+                aria-label={`확인 필요 반응 ${stats.insights.checkNeededCount.toLocaleString("ko-KR")}건 상세 기록 보기`}
+              >
                 확인 필요 {stats.insights.checkNeededCount.toLocaleString("ko-KR")}건
-              </span>
+              </Link>
             ) : null}
           </div>
           <div className="grid gap-2">

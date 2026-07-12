@@ -326,7 +326,10 @@ export function ReservationPage() {
     }));
   }
 
-  function updateReservationItem(itemId: string, updates: Partial<Pick<ReservationItemForm, "productName" | "quantity">>) {
+  function updateReservationItem(
+    itemId: string,
+    updates: Partial<Pick<ReservationItemForm, "productName" | "quantity" | "cuttingOption">>
+  ) {
     setForm((current) => ({
       ...current,
       items: current.items.map((item) => {
@@ -334,11 +337,12 @@ export function ReservationPage() {
           return item;
         }
         const productName = updates.productName ?? item.productName;
+        const cuttingOption = updates.cuttingOption ?? item.cuttingOption;
         return {
           ...item,
           ...updates,
           productName,
-          cuttingOption: normalizedCuttingOption(productName, item.cuttingOption)
+          cuttingOption: normalizedCuttingOption(productName, cuttingOption)
         };
       })
     }));
@@ -355,22 +359,6 @@ export function ReservationPage() {
     }));
   }
 
-  function selectedCuttingOption(): CuttingOption {
-    return normalizedCuttingOption(form.items[0]?.productName ?? "", form.items[0]?.cuttingOption ?? "NONE");
-  }
-
-  function setPrimaryCuttingOption(cuttingOption: CuttingOption) {
-    setForm((current) => ({
-      ...current,
-      items: [
-        {
-          ...(current.items[0] ?? emptyReservationItem()),
-          cuttingOption: normalizedCuttingOption(current.items[0]?.productName ?? "", cuttingOption)
-        },
-        ...current.items.slice(1)
-      ]
-    }));
-  }
 
   function validateForm(): string[] {
     return [
@@ -659,7 +647,7 @@ export function ReservationPage() {
                   return (
                   <div
                     key={item.id}
-                    className="grid min-w-0 grid-cols-[minmax(0,1fr)_5.5rem_3.25rem] items-end gap-2 rounded-[10px] border border-latte bg-white px-3 py-2"
+                    className="grid min-w-0 grid-cols-[minmax(0,1fr)_5.5rem_7rem_3.25rem] items-end gap-2 rounded-[10px] border border-latte bg-white px-3 py-2"
                   >
                     <label className="grid min-w-0 gap-1">
                       <span className="text-[10.5px] font-semibold text-muted">제품명</span>
@@ -692,6 +680,21 @@ export function ReservationPage() {
                         <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[11px] font-bold text-muted">개</span>
                       </span>
                     </label>
+                    <label className="grid min-w-0 gap-1">
+                      <span className="text-[10.5px] font-semibold text-muted">컷팅 옵션</span>
+                      <select
+                        aria-label={`컷팅 옵션 ${index + 1}`}
+                        className="min-w-0 rounded-[8px] border border-latte px-[9px] py-[8px] text-[13px] outline-none focus:border-bread"
+                        value={normalizedCuttingOption(item.productName, item.cuttingOption)}
+                        onChange={(event) =>
+                          updateReservationItem(item.id, { cuttingOption: event.target.value as CuttingOption })
+                        }
+                      >
+                        <option value="NONE">없음</option>
+                        <option value="HALF">반컷팅</option>
+                        <option value="SLICE">슬라이스</option>
+                      </select>
+                    </label>
                     <button
                       type="button"
                       className="rounded-[8px] border border-latte bg-cream px-1.5 py-[8px] text-[12px] font-bold text-cocoa transition hover:bg-red/10 hover:text-red disabled:cursor-not-allowed disabled:opacity-45"
@@ -706,31 +709,6 @@ export function ReservationPage() {
               </div>
             </div>
 
-            <div className="mb-2">
-              <div className="mb-[5px] text-[11px] text-muted">컷팅 옵션</div>
-              <div className="flex gap-[6px]">
-                {[
-                  ["없음", "NONE"],
-                  ["반컷팅", "HALF"],
-                  ["슬라이스", "SLICE"]
-                ].map(([label, value]) => {
-                  const isSelected = selectedCuttingOption() === value;
-                  return (
-                    <button
-                      key={value}
-                      type="button"
-                      className={[
-                        "flex-1 rounded-[8px] px-1 py-[5px] text-center text-[11.5px] font-semibold transition",
-                        isSelected ? "bg-bread text-white" : "bg-cream text-cocoa hover:bg-[#EFE6DA]"
-                      ].join(" ")}
-                      onClick={() => setPrimaryCuttingOption(value as CuttingOption)}
-                    >
-                      {label}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
 
             <div className="mb-3 flex gap-4">
               <label className="flex cursor-pointer items-center gap-[7px]">

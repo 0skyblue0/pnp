@@ -342,10 +342,15 @@ describe("App", () => {
     expect(within(modal).getByText("제품 및 수량 *")).toBeInTheDocument();
     expect(within(modal).getByText("컷팅 옵션")).toBeInTheDocument();
     expect(within(modal).getByRole("combobox", { name: "제품명 1" })).toBeInTheDocument();
+    expect(within(modal).getByRole("combobox", { name: "컷팅 옵션 1" })).toBeInTheDocument();
     expect(within(modal).getByRole("option", { name: "예: 깜빠뉴" })).toBeInTheDocument();
     expect(within(modal).queryByRole("textbox", { name: "제품명 1" })).not.toBeInTheDocument();
+    expect(within(modal).queryByRole("button", { name: "반컷팅" })).not.toBeInTheDocument();
     expect(within(modal).queryByRole("button", { name: "반컷팅+슬라이스" })).not.toBeInTheDocument();
     expect(within(modal).getByLabelText("예약 메모")).not.toHaveClass("sr-only");
+    fireEvent.click(within(modal).getByRole("button", { name: "제품 추가" }));
+    expect(within(modal).getByRole("combobox", { name: "제품명 2" })).toBeInTheDocument();
+    expect(within(modal).getByRole("combobox", { name: "컷팅 옵션 2" })).toBeInTheDocument();
     expect(within(modal).getByText("결제완료")).toBeInTheDocument();
     expect(within(modal).getByText("비닐봉투")).toBeInTheDocument();
     expect(within(modal).getByRole("button", { name: "취소" })).toBeInTheDocument();

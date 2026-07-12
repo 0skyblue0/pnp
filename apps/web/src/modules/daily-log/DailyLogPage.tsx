@@ -202,10 +202,10 @@ function createDefaultDraft(): DailyOperationDraft {
   return {
     date: todayInStoreTime(),
     author: "",
-    outsideTemp: "",
-    insideTemp: "",
-    outsideHumidity: "",
-    insideHumidity: "",
+    outsideTemp: "0",
+    insideTemp: "0",
+    outsideHumidity: "0",
+    insideHumidity: "0",
     weather: "",
     posSalesAmount: "0",
     posSalesCount: "0",
@@ -1473,7 +1473,7 @@ function BasicSection({
               wrapperClassName="w-0 flex-1"
               className="h-[34px] w-full rounded-[8px] border border-latte px-[10px] text-[13px] outline-none focus:border-bread"
               unit="℃"
-              value={draft.outsideTemp || "28.5"}
+              value={draft.outsideTemp || "0"}
               onFocus={(event) => event.currentTarget.select()}
               onChange={(event) => updateDraft("outsideTemp", event.target.value)}
             />
@@ -1482,7 +1482,7 @@ function BasicSection({
               wrapperClassName="w-0 flex-1"
               className="h-[34px] w-full rounded-[8px] border border-latte px-[10px] text-[13px] outline-none focus:border-bread"
               unit="%"
-              value={draft.outsideHumidity || "62"}
+              value={draft.outsideHumidity || "0"}
               onFocus={(event) => event.currentTarget.select()}
               onChange={(event) => updateDraft("outsideHumidity", event.target.value)}
             />
@@ -1496,7 +1496,7 @@ function BasicSection({
               wrapperClassName="w-0 flex-1"
               className="h-[34px] w-full rounded-[8px] border border-latte px-[10px] text-[13px] outline-none focus:border-bread"
               unit="℃"
-              value={draft.insideTemp || "24.0"}
+              value={draft.insideTemp || "0"}
               onFocus={(event) => event.currentTarget.select()}
               onChange={(event) => updateDraft("insideTemp", event.target.value)}
             />
@@ -1505,7 +1505,7 @@ function BasicSection({
               wrapperClassName="w-0 flex-1"
               className="h-[34px] w-full rounded-[8px] border border-latte px-[10px] text-[13px] outline-none focus:border-bread"
               unit="%"
-              value={draft.insideHumidity || "48"}
+              value={draft.insideHumidity || "0"}
               onFocus={(event) => event.currentTarget.select()}
               onChange={(event) => updateDraft("insideHumidity", event.target.value)}
             />
@@ -1573,7 +1573,7 @@ function SalesSection({
             value={
               draft.posSalesAmount && draft.posSalesAmount !== "0"
                 ? draft.posSalesAmount
-                : "1,842,000"
+                : "0"
             }
             onFocus={(event) => event.currentTarget.select()}
             onChange={(event) =>
@@ -1588,7 +1588,7 @@ function SalesSection({
             wrapperClassName="w-[120px]"
             className="h-[32px] w-full rounded-[7px] border border-latte px-[8px] text-right text-[12.5px] outline-none focus:border-bread"
             unit="건"
-            value={draft.posSalesCount && draft.posSalesCount !== "0" ? draft.posSalesCount : "128"}
+            value={draft.posSalesCount && draft.posSalesCount !== "0" ? draft.posSalesCount : "0"}
             onFocus={(event) => event.currentTarget.select()}
             onChange={(event) => updateDraft("posSalesCount", event.target.value)}
           />
@@ -1600,18 +1600,18 @@ function SalesSection({
         <div className="mt-[4px] flex justify-between border-t border-[#F1EAE0] py-[6px] text-[12.5px]">
           <span className="text-cocoa/90">POS 외 매출 합계</span>
           <span className="font-semibold text-ink">
-            {formatCurrency(channelSalesAmount || 508500)}
+            {formatCurrency(channelSalesAmount)}
           </span>
         </div>
         <div className="mt-[2px] flex justify-between py-[8px]">
           <span className="text-[13px] font-bold text-ink">총 매출액</span>
           <span className="text-[15px] font-extrabold text-bread">
-            {formatCurrency(totalSales || 2350500)}
+            {formatCurrency(totalSales)}
           </span>
         </div>
         <div className="flex justify-between py-[6px] text-[12.5px]">
           <span className="text-cocoa/90">객단가</span>
-          <span className="font-semibold text-ink">{formatCurrency(averageSpend || 15775)}</span>
+          <span className="font-semibold text-ink">{formatCurrency(averageSpend)}</span>
         </div>
         <span aria-label="POS 외 매출건수" className="sr-only">
           {channelSalesCount.toLocaleString("ko-KR")}건
@@ -1887,11 +1887,11 @@ function ChannelsSection({
   updateRow: (name: string, key: keyof Omit<ChannelRow, "name">, value: string) => void;
 }) {
   const defaults: Record<string, { amount: string; count: string }> = {
-    쿠팡이츠: { amount: "186,000", count: "8" },
-    배민: { amount: "224,500", count: "10" },
-    선물: { amount: "48,000", count: "3" },
+    쿠팡이츠: { amount: "0", count: "0" },
+    배민: { amount: "0", count: "0" },
+    선물: { amount: "0", count: "0" },
     제로페이: { amount: "0", count: "0" },
-    택배: { amount: "50,000", count: "2" },
+    택배: { amount: "0", count: "0" },
     납품: { amount: "0", count: "0" }
   };
 

@@ -649,6 +649,10 @@ describe("App", () => {
     expect(screen.getByLabelText("외부온도")).toBeInTheDocument();
     expect(screen.getByLabelText("외부온도").parentElement).toHaveTextContent("℃");
     expect(screen.getByLabelText("외부습도").parentElement).toHaveTextContent("%");
+    expect(screen.getByLabelText("외부온도")).toHaveValue("0");
+    expect(screen.getByLabelText("내부온도")).toHaveValue("0");
+    expect(screen.getByLabelText("외부습도")).toHaveValue("0");
+    expect(screen.getByLabelText("내부습도")).toHaveValue("0");
     expect(screen.getByRole("button", { name: "폭염" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "한파" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "일일 운영 저장" }));
@@ -666,6 +670,10 @@ describe("App", () => {
     expect(screen.getByLabelText("POS 매출건수")).toBeInTheDocument();
     expect(screen.getByLabelText("POS 매출액").parentElement).toHaveTextContent("원");
     expect(screen.getByLabelText("POS 매출건수").parentElement).toHaveTextContent("건");
+    expect(screen.getByLabelText("POS 매출액")).toHaveValue("0");
+    expect(screen.getByLabelText("POS 매출건수")).toHaveValue("0");
+    expect(screen.getByLabelText("선물 매출액")).toHaveValue("0");
+    expect(screen.getByLabelText("선물 매출건수")).toHaveValue("0");
     expect(screen.getByLabelText("POS 외 매출액")).toHaveTextContent("0원");
     expect(screen.getByRole("heading", { name: "POS 외 매출" })).toBeInTheDocument();
     for (const channel of ["선물", "쿠팡이츠", "배민", "제로페이", "택배", "납품"]) {

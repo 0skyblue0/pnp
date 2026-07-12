@@ -240,7 +240,12 @@ function buildCustomerResponseRows(input: {
   sheetName: string;
   serviceText: string;
 }): CustomerResponseRow[] {
-  const serviceText = input.serviceText.trim();
+  const serviceText = input.serviceText
+    .split("\n")
+    .map(normalizeServiceNoteLine)
+    .filter((line) => line.length > 0)
+    .join("\n")
+    .trim();
   if (!serviceText) {
     return [];
   }
@@ -252,6 +257,30 @@ function buildCustomerResponseRows(input: {
       fullText: `[일일업무보고서 서비스내역 및 손님 특이사항]\n출처: ${input.fileName} / ${input.sheetName}\n\n${serviceText}`
     }
   ];
+}
+
+function normalizeServiceNoteLine(line: string): string {
+  let result = line.trim();
+  const productSalesPrefixPatterns = [
+    /^호밀빵\s*판매\s*:\s*[\d\s,().Hh개시식재고+-]+(?:\/\s*)?/,
+    /^호밀쇼콜라오렌지\s*(?:판매\s*)?:\s*[\d\s,().Hh개시식재고+-]+(?:\/\s*)?/,
+    /^호밀소콜라오렌지\s*(?:판매\s*)?:\s*[\d\s,().Hh개시식재고+-]+(?:\/\s*)?/,
+    /^여름메밀빵\s*판매\s*:\s*[\d\s,().Hh개시식재고+-]+(?:\/\s*)?/
+  ];
+
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const pattern of productSalesPrefixPatterns) {
+      const next = result.replace(pattern, "").replace(/^[\s,/]+/, "").trim();
+      if (next !== result) {
+        result = next;
+        changed = true;
+      }
+    }
+  }
+
+  return result;
 }
 
 function parseProductRows(sheet: XLSX.WorkSheet): ProductRow[] {

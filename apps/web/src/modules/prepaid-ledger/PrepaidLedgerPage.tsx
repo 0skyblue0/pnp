@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { apiDelete, apiGet, apiPatch, apiPost } from "../../shared/api/client.js";
 import type { ListEnvelope } from "../../shared/api/types.js";
 import { Button } from "../../shared/ui/Button.js";
+import { useConfirm } from "../../shared/ui/ConfirmDialog.js";
 
 type PrepaidTransactionDto = {
   id: string;
@@ -105,6 +106,7 @@ function transactionUndoHelp(type: string): string {
 }
 
 export function PrepaidLedgerPage() {
+  const confirm = useConfirm();
   const [customers, setCustomers] = useState<PrepaidCustomerDto[]>([]);
   const [query, setQuery] = useState("");
   const [newForm, setNewForm] = useState<NewLedgerForm>(() => emptyNewLedgerForm());
@@ -205,7 +207,13 @@ export function PrepaidLedgerPage() {
   }
 
   async function deleteCustomer(customer: PrepaidCustomerDto) {
-    if (!window.confirm(`${customer.customerName}님 선결제 장부를 삭제할까요?\n기록은 비활성 처리됩니다.`)) {
+    const confirmed = await confirm({
+      title: "선결제 장부 삭제",
+      message: `${customer.customerName}님 선결제 장부를 삭제할까요?\n기록은 비활성 처리됩니다.`,
+      confirmLabel: "삭제",
+      tone: "danger"
+    });
+    if (!confirmed) {
       return;
     }
     setMessage(null);
@@ -298,7 +306,13 @@ export function PrepaidLedgerPage() {
 
   async function cancelTransaction(customer: PrepaidCustomerDto, transaction: PrepaidTransactionDto) {
     const label = `${transactionLabel(transaction.type)} ${formatCurrency(transaction.amount)}원`;
-    if (!window.confirm(`${customer.customerName}님 ${label} 내역을 되돌릴까요?\n${transactionUndoHelp(transaction.type)}`)) {
+    const confirmed = await confirm({
+      title: "내역 되돌리기",
+      message: `${customer.customerName}님 ${label} 내역을 되돌릴까요?\n${transactionUndoHelp(transaction.type)}`,
+      confirmLabel: "되돌리기",
+      tone: "danger"
+    });
+    if (!confirmed) {
       return;
     }
 

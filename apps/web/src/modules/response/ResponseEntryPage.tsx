@@ -7,6 +7,7 @@ import { apiGet, apiPost } from "../../shared/api/client.js";
 import type { ListEnvelope } from "../../shared/api/types.js";
 import { todayInStoreTime } from "../../shared/time/storeTime.js";
 import { Button } from "../../shared/ui/Button.js";
+import { useToast } from "../../shared/ui/Toast.js";
 import {
   criteriaByParent,
   criterionPathLabel,
@@ -43,6 +44,7 @@ const responseExamples = [
 ];
 
 export function ResponseEntryPage({ embedded = false }: { embedded?: boolean } = {}) {
+  const toast = useToast();
   const {
     register,
     setValue,
@@ -165,7 +167,7 @@ export function ResponseEntryPage({ embedded = false }: { embedded?: boolean } =
 
   function stopSuggestionWithAlert(message: string) {
     setSaveError(message);
-    globalThis.alert(message);
+    toast.error(message);
   }
 
   async function suggestWithAi() {

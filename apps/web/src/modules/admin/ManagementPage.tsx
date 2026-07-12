@@ -5,6 +5,7 @@ import { apiDelete, apiGet, apiPatch, apiPost } from "../../shared/api/client.js
 import type { ListEnvelope } from "../../shared/api/types.js";
 import { productLineup } from "../../shared/productLineup.js";
 import { Button } from "../../shared/ui/Button.js";
+import { useConfirm } from "../../shared/ui/ConfirmDialog.js";
 
 type ProductDto = {
   id: number;
@@ -263,6 +264,7 @@ function criterionRowClass(isSelected: boolean) {
 }
 
 export function ManagementPage() {
+  const confirm = useConfirm();
   const [products, setProducts] = useState<ProductDto[]>([]);
   const [staff, setStaff] = useState<StaffDto[]>([]);
   const [responseCriteria, setResponseCriteria] = useState<ResponseCriterionDto[]>([]);
@@ -568,7 +570,7 @@ export function ManagementPage() {
   }
 
   async function deleteProduct(product: ProductDto) {
-    if (!window.confirm(`${product.name} 제품을 삭제하시겠습니까?`)) {
+    if (!(await confirm({ title: "제품 삭제", message: `${product.name} 제품을 삭제하시겠습니까?`, confirmLabel: "삭제", tone: "danger" }))) {
       return;
     }
 
@@ -640,7 +642,7 @@ export function ManagementPage() {
   }
 
   async function deleteStaff(person: StaffDto) {
-    if (!window.confirm(`${person.username} 직원을 삭제하시겠습니까?`)) {
+    if (!(await confirm({ title: "직원 삭제", message: `${person.username} 직원을 삭제하시겠습니까?`, confirmLabel: "삭제", tone: "danger" }))) {
       return;
     }
 
@@ -746,7 +748,7 @@ export function ManagementPage() {
   }
 
   async function deleteSchedule(schedule: AnnualScheduleDto) {
-    if (!window.confirm(`${schedule.title} 스케줄을 삭제하시겠습니까?`)) {
+    if (!(await confirm({ title: "스케줄 삭제", message: `${schedule.title} 스케줄을 삭제하시겠습니까?`, confirmLabel: "삭제", tone: "danger" }))) {
       return;
     }
 
@@ -768,7 +770,7 @@ export function ManagementPage() {
 
 
   async function deleteGoalNotice(notice: AnnualGoalNoticeDto) {
-    if (!window.confirm(`${notice.title} 홈 공지를 삭제하시겠습니까?`)) {
+    if (!(await confirm({ title: "홈 공지 삭제", message: `${notice.title} 홈 공지를 삭제하시겠습니까?`, confirmLabel: "삭제", tone: "danger" }))) {
       return;
     }
 
@@ -851,7 +853,15 @@ export function ManagementPage() {
 
   async function toggleCriterionStatus(criterion: ResponseCriterionDto) {
     const nextActive = !criterion.isActive;
-    if (!nextActive && !window.confirm(`${criterion.name} 반응 기준을 비활성 처리하시겠습니까?`)) {
+    if (
+      !nextActive &&
+      !(await confirm({
+        title: "반응 기준 비활성화",
+        message: `${criterion.name} 반응 기준을 비활성 처리하시겠습니까?`,
+        confirmLabel: "비활성화",
+        tone: "danger"
+      }))
+    ) {
       return;
     }
 
@@ -872,7 +882,7 @@ export function ManagementPage() {
   }
 
   async function deleteCriterion(criterion: ResponseCriterionDto) {
-    if (!window.confirm(`${criterion.name} 반응 기준을 삭제하시겠습니까?`)) {
+    if (!(await confirm({ title: "반응 기준 삭제", message: `${criterion.name} 반응 기준을 삭제하시겠습니까?`, confirmLabel: "삭제", tone: "danger" }))) {
       return;
     }
 

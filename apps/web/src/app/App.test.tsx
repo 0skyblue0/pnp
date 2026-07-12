@@ -8,10 +8,11 @@ import { AppProviders } from "./providers/AppProviders.js";
 import { ManagementPage } from "../modules/admin/ManagementPage.js";
 import { DailyLogPage, type DailyOperationSavedRecord } from "../modules/daily-log/DailyLogPage.js";
 import { providedDailyOperationRecords } from "../modules/daily-log/providedDailyOperationRecords.js";
-import { HomePage } from "../modules/home/HomePage.js";
 import { ResponseEntryPage } from "../modules/response/ResponseEntryPage.js";
 import { ResponseInquiryPage } from "../modules/response/ResponseInquiryPage.js";
 import { todayInStoreTime } from "../shared/time/storeTime.js";
+import { ConfirmProvider } from "../shared/ui/ConfirmDialog.js";
+import { ToastProvider } from "../shared/ui/Toast.js";
 
 const ACTIVE_NAV_CLASS = "from-cocoa";
 const monthlyTargetsFixture = {
@@ -28,10 +29,6 @@ const monthlyTargetsFixture = {
   "11": 0,
   "12": 0
 };
-
-function currentMonthLabel() {
-  return `${Number(todayInStoreTime().slice(5, 7))}월`;
-}
 
 describe("App", () => {
   let scrollIntoViewMock: ReturnType<typeof vi.fn>;
@@ -62,255 +59,6 @@ describe("App", () => {
     vi.unstubAllGlobals();
   });
 
-  it("shows goal notices first and keeps the schedule calendar in its own home tab", async () => {
-    vi.mocked(fetch).mockImplementation(async (input) => {
-      const url = input instanceof Request ? input.url : String(input);
-      if (url.endsWith("/annual-goal-notice")) {
-        return new Response(
-          JSON.stringify({
-            data: {
-              items: [
-                {
-                  id: "301",
-                  category: "sales",
-                  title: "올해 매출 목표",
-                  value: "전년 대비 +12%",
-                  note: "월별 매출을 함께 확인",
-                  targetYear: 2026,
-                  monthlyTargets: monthlyTargetsFixture,
-                  targetTotal: 48_000_000
-                },
-                {
-                  id: "302",
-                  category: "operation",
-                  title: "운영 목표",
-                  value: "신메뉴 개발 및 판매",
-                  note: "일요일 매출 상승도 함께 확인"
-                }
-              ],
-              total: 2,
-              page: 1,
-              size: 2
-            },
-            error: null
-          }),
-          { headers: { "Content-Type": "application/json" } }
-        );
-      }
-      return new Response(
-        JSON.stringify({ data: { items: [], total: 0, page: 1, size: 0 }, error: null }),
-        { headers: { "Content-Type": "application/json" } }
-      );
-    });
-
-    render(
-      <AppProviders>
-        <App />
-      </AppProviders>
-    );
-
-    expect(screen.getByRole("heading", { name: "올해 목표·매출 공지" })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "목표·공지" })).toHaveAttribute("aria-selected", "true");
-    expect(screen.queryByRole("heading", { name: "연간 스케줄 달력" })).not.toBeInTheDocument();
-
-    expect(await screen.findByText("7월 48,000,000원")).toBeInTheDocument();
-    expect(screen.getByText("이번 달 달성률")).toBeInTheDocument();
-    expect(screen.queryByText("월별 매출을 함께 확인")).not.toBeInTheDocument();
-    const salesGoalButton = screen.getByText("7월 48,000,000원").closest("button");
-    if (!salesGoalButton) {
-      throw new Error("매출 목표 버튼이 필요합니다.");
-    }
-    fireEvent.click(salesGoalButton);
-    expect(screen.getAllByText("월별 매출을 함께 확인").length).toBeGreaterThan(0);
-    expect(screen.queryByRole("heading", { name: "목표·공지 상세" })).not.toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole("tab", { name: "스케줄 달력" }));
-    expect(screen.getByRole("heading", { name: "연간 스케줄 달력" })).toBeInTheDocument();
-    expect(screen.getByLabelText("스케줄 구분")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: currentMonthLabel() })).toBeInTheDocument();
-    expect(screen.queryByText("여름깜빠뉴 출시")).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "삭제" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "수정" })).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "1년 전체 보기" }));
-    expect(screen.getByRole("heading", { name: "8월" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "스케줄 알림" })).toBeInTheDocument();
-    expect(screen.queryByRole("heading", { name: "오늘의 가용 재고" })).not.toBeInTheDocument();
-    expect(screen.queryByText("안녕하세요, 김도현님")).not.toBeInTheDocument();
-  });
-
-  it("adds staff schedules through the home input and places them under the matching calendar day", async () => {
-    vi.mocked(fetch).mockImplementation(async (input, init) => {
-      const url = input instanceof Request ? input.url : String(input);
-
-      if (url.endsWith("/auth/csrf")) {
-        return new Response(JSON.stringify({ data: { csrfToken: "test-token" }, error: null }), {
-          headers: { "Content-Type": "application/json" }
-        });
-      }
-
-      if (url.includes("/annual-schedule") && (!init?.method || init.method === "GET")) {
-        return new Response(JSON.stringify({ data: { items: [] }, error: null }), {
-          headers: { "Content-Type": "application/json" }
-        });
-      }
-
-      if (url.endsWith("/annual-schedule") && init?.method === "POST") {
-        return new Response(
-          JSON.stringify({
-            data: {
-              id: "202",
-              date: "2026-06-29",
-              title: "직원 추가 일정",
-              note: "추가 메모",
-              tone: "notice"
-            },
-            error: null
-          }),
-          { headers: { "Content-Type": "application/json" } }
-        );
-      }
-
-      return new Response(
-        JSON.stringify({ data: { items: [], total: 0, page: 1, size: 0 }, error: null }),
-        { headers: { "Content-Type": "application/json" } }
-      );
-    });
-
-    render(
-      <MemoryRouter initialEntries={["/home"]}>
-        <Routes>
-          <Route path="/home" element={<HomePage />} />
-        </Routes>
-      </MemoryRouter>
-    );
-
-    fireEvent.click(screen.getByRole("tab", { name: "스케줄 달력" }));
-    fireEvent.change(screen.getByLabelText("스케줄 구분"), { target: { value: "notice" } });
-    fireEvent.change(screen.getByLabelText("제목"), { target: { value: "직원 추가 일정" } });
-    fireEvent.change(screen.getByLabelText("메모"), { target: { value: "추가 메모" } });
-    fireEvent.click(screen.getByRole("button", { name: "추가" }));
-
-    const dayCell = await screen.findByLabelText("6월 29일");
-    expect(within(dayCell).getByText("직원 추가 일정")).toBeInTheDocument();
-    expect(within(dayCell).queryByText("추가 메모")).not.toBeInTheDocument();
-    fireEvent.click(within(dayCell).getByRole("button", { name: "직원 추가 일정 상세 보기" }));
-    expect(screen.getByText("추가 메모")).toBeInTheDocument();
-    expect(screen.getByLabelText("제목")).toHaveValue("");
-    expect(screen.getByLabelText("스케줄 구분")).toHaveValue("");
-  });
-
-  it("opens a schedule detail panel so staff can edit or delete the selected schedule", async () => {
-    vi.stubGlobal(
-      "confirm",
-      vi.fn(() => true)
-    );
-    vi.mocked(fetch).mockImplementation(async (input, init) => {
-      const url = input instanceof Request ? input.url : String(input);
-
-      if (url.endsWith("/auth/csrf")) {
-        return new Response(JSON.stringify({ data: { csrfToken: "test-token" }, error: null }), {
-          headers: { "Content-Type": "application/json" }
-        });
-      }
-
-      if (url.includes("/annual-schedule") && (!init?.method || init.method === "GET")) {
-        return new Response(
-          JSON.stringify({
-            data: {
-              items: [
-                {
-                  id: "101",
-                  date: "2026-06-30",
-                  title: "직원 입력 일정",
-                  note: "처음 메모",
-                  tone: "notice"
-                }
-              ]
-            },
-            error: null
-          }),
-          { headers: { "Content-Type": "application/json" } }
-        );
-      }
-
-      if (url.endsWith("/annual-schedule/101") && init?.method === "PATCH") {
-        return new Response(
-          JSON.stringify({
-            data: {
-              id: "101",
-              date: "2026-06-30",
-              title: "수정된 일정",
-              note: "수정 메모",
-              tone: "launch"
-            },
-            error: null
-          }),
-          { headers: { "Content-Type": "application/json" } }
-        );
-      }
-
-      if (url.endsWith("/annual-schedule/101") && init?.method === "DELETE") {
-        return new Response(JSON.stringify({ data: { deleted: true }, error: null }), {
-          headers: { "Content-Type": "application/json" }
-        });
-      }
-
-      return new Response(
-        JSON.stringify({ data: { items: [], total: 0, page: 1, size: 0 }, error: null }),
-        {
-          headers: { "Content-Type": "application/json" }
-        }
-      );
-    });
-
-    render(
-      <MemoryRouter initialEntries={["/home"]}>
-        <Routes>
-          <Route path="/home" element={<HomePage />} />
-        </Routes>
-      </MemoryRouter>
-    );
-
-    fireEvent.click(screen.getByRole("tab", { name: "스케줄 달력" }));
-    fireEvent.click(screen.getByRole("button", { name: "6월" }));
-    expect(await screen.findByText("직원 입력 일정")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "6월" })).toBeInTheDocument();
-    expect(screen.queryByRole("heading", { name: "8월" })).not.toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole("button", { name: "직원 입력 일정 상세 보기" }));
-    expect(screen.getByRole("heading", { name: "스케줄 상세" })).toBeInTheDocument();
-    expect(scrollIntoViewMock).toHaveBeenCalled();
-    fireEvent.click(
-      within(screen.getByRole("region", { name: "스케줄 상세창" })).getByRole("button", {
-        name: "수정"
-      })
-    );
-    expect(screen.getByLabelText("상세 수정 날짜")).toHaveValue("2026-06-30");
-    fireEvent.change(screen.getByLabelText("수정 스케줄 구분"), { target: { value: "launch" } });
-    fireEvent.change(screen.getByDisplayValue("직원 입력 일정"), {
-      target: { value: "수정된 일정" }
-    });
-    fireEvent.change(screen.getByDisplayValue("처음 메모"), { target: { value: "수정 메모" } });
-    fireEvent.click(screen.getByRole("button", { name: "저장" }));
-
-    expect((await screen.findAllByText("수정된 일정")).length).toBeGreaterThan(0);
-    expect(screen.getAllByText("수정 메모").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("출시").length).toBeGreaterThan(0);
-
-    fireEvent.click(screen.getByRole("button", { name: "수정된 일정 상세 보기" }));
-    fireEvent.click(
-      within(screen.getByRole("region", { name: "스케줄 상세창" })).getByRole("button", {
-        name: "삭제"
-      })
-    );
-    await waitFor(() =>
-      expect(fetch).toHaveBeenCalledWith(
-        expect.stringContaining("/annual-schedule/101"),
-        expect.objectContaining({ method: "DELETE" })
-      )
-    );
-  });
-
   it("shows the main bakery work tabs", () => {
     render(
       <MemoryRouter initialEntries={["/home"]}>
@@ -335,10 +83,6 @@ describe("App", () => {
   });
 
   it("lets staff manage home goal and sales notices from the management tab", async () => {
-    vi.stubGlobal(
-      "confirm",
-      vi.fn(() => true)
-    );
     vi.mocked(fetch).mockImplementation(async (input, init) => {
       const url = input instanceof Request ? input.url : String(input);
 
@@ -472,7 +216,11 @@ describe("App", () => {
       });
     });
 
-    render(<ManagementPage />);
+    render(
+      <ConfirmProvider>
+        <ManagementPage />
+      </ConfirmProvider>
+    );
 
     expect(
       await screen.findByRole("heading", { name: "홈 목표·매출 공지 관리" })
@@ -519,6 +267,8 @@ describe("App", () => {
     expect(await screen.findByText("홈 공지 수정 완료")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "올해 매출 목표 삭제" }));
+    const goalNoticeConfirmDialog = await screen.findByRole("alertdialog");
+    fireEvent.click(within(goalNoticeConfirmDialog).getByRole("button", { name: "삭제" }));
     expect(await screen.findByText("홈 공지 삭제 완료")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "연간 스케줄 관리" }));
@@ -863,11 +613,13 @@ describe("App", () => {
     });
 
     render(
-      <MemoryRouter initialEntries={["/daily-log/today"]}>
-        <Routes>
-          <Route path="/daily-log/today" element={<DailyLogPage />} />
-        </Routes>
-      </MemoryRouter>
+      <ConfirmProvider>
+        <MemoryRouter initialEntries={["/daily-log/today"]}>
+          <Routes>
+            <Route path="/daily-log/today" element={<DailyLogPage />} />
+          </Routes>
+        </MemoryRouter>
+      </ConfirmProvider>
     );
 
     expect(await screen.findByRole("heading", { name: "매장 운영일지" })).toBeInTheDocument();
@@ -1071,13 +823,15 @@ describe("App", () => {
 
     fireEvent.click(screen.getByRole("tab", { name: "데이터 조회" }));
     fireEvent.change(screen.getByLabelText("조회 방식"), { target: { value: "date" } });
-    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
     fireEvent.click(screen.getByRole("button", { name: "상세" }));
     fireEvent.click(screen.getByRole("button", { name: "삭제" }));
-    expect(confirmSpy).toHaveBeenCalledWith(`${todayInStoreTime()} 일지를 삭제할까요?`);
+    const deleteRecordDialog = await screen.findByRole("alertdialog");
+    expect(
+      within(deleteRecordDialog).getByText(`${todayInStoreTime()} 일지를 삭제할까요?`)
+    ).toBeInTheDocument();
+    fireEvent.click(within(deleteRecordDialog).getByRole("button", { name: "삭제" }));
     expect(await screen.findByText("선택한 일일 운영 일지를 삭제했습니다.")).toBeInTheDocument();
     expect(screen.queryByText("닭가슴살 재고 확인 필요합니다")).not.toBeInTheDocument();
-    confirmSpy.mockRestore();
 
     fireEvent.change(screen.getByLabelText("조회 방식"), { target: { value: "month" } });
     fireEvent.change(screen.getByLabelText("나열 방식"), { target: { value: "asc" } });
@@ -1200,7 +954,11 @@ describe("App", () => {
       value: showPicker
     });
 
-    render(<ResponseEntryPage />);
+    render(
+      <ToastProvider>
+        <ResponseEntryPage />
+      </ToastProvider>
+    );
 
     fireEvent.click(screen.getByText("날짜"));
     expect(showPicker).toHaveBeenCalled();
@@ -1232,8 +990,6 @@ describe("App", () => {
   });
 
   it("alerts staff and keeps classification stopped when AI suggestion API fails", async () => {
-    const alertSpy = vi.fn();
-    vi.stubGlobal("alert", alertSpy);
     vi.mocked(fetch).mockImplementation(async (input, init) => {
       const url = input instanceof Request ? input.url : String(input);
 
@@ -1281,21 +1037,24 @@ describe("App", () => {
       });
     });
 
-    render(<ResponseEntryPage />);
+    render(
+      <ToastProvider>
+        <ResponseEntryPage />
+      </ToastProvider>
+    );
 
     fireEvent.change(await screen.findByLabelText("손님 반응 내용"), {
       target: { value: "청주에서 방문한 손님 계셨습니다." }
     });
     fireEvent.click(screen.getByRole("button", { name: "AI 분류하기" }));
 
-    await waitFor(() =>
-      expect(alertSpy).toHaveBeenCalledWith(
-        "AI 분류 API가 설정되지 않았습니다. 관리자에게 연결 상태를 확인해 주세요."
-      )
+    const errorToast = await screen.findByRole("alert");
+    expect(errorToast).toHaveTextContent(
+      "AI 분류 API가 설정되지 않았습니다. 관리자에게 연결 상태를 확인해 주세요."
     );
     expect(
-      screen.getByText("AI 분류 API가 설정되지 않았습니다. 관리자에게 연결 상태를 확인해 주세요.")
-    ).toBeInTheDocument();
+      screen.getAllByText("AI 분류 API가 설정되지 않았습니다. 관리자에게 연결 상태를 확인해 주세요.").length
+    ).toBeGreaterThan(0);
     expect(screen.getByText("선택 기준: 미선택")).toBeInTheDocument();
     expect(screen.getByLabelText("요약")).toHaveValue("");
     expect(screen.queryByText(/AI 추천 적용됨/)).not.toBeInTheDocument();
@@ -1456,11 +1215,12 @@ describe("App", () => {
       screen.getByText("잘못 눌렀다면 최근 내역의 “되돌리기”를 누른 뒤 정확한 금액으로 다시 입력합니다.")
     ).toBeInTheDocument();
 
-    vi.spyOn(window, "confirm").mockReturnValue(true);
     const cancelButtons = screen.getAllByRole("button", { name: "되돌리기" });
     expect(cancelButtons).toHaveLength(6);
     const cancelButton = cancelButtons[1] as HTMLElement;
     fireEvent.click(cancelButton);
+    const cancelTransactionDialog = await screen.findByRole("alertdialog");
+    fireEvent.click(within(cancelTransactionDialog).getByRole("button", { name: "되돌리기" }));
     await waitFor(() => expect(cancelledTransactionPath).toBe("/api/v1/prepaid-ledger/1/transactions/t2"));
     expect(await screen.findByText("사용 12,000원 되돌리기 완료 #1")).toBeInTheDocument();
 

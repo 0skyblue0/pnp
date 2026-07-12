@@ -11,6 +11,7 @@ import { Link } from "react-router-dom";
 import { apiGet, apiPost } from "../../shared/api/client.js";
 import type { ListEnvelope } from "../../shared/api/types.js";
 import { currentStoreDateTime, todayInStoreTime } from "../../shared/time/storeTime.js";
+import { useConfirm } from "../../shared/ui/ConfirmDialog.js";
 
 type OperationTab = "concierge" | "baker";
 type QuantityKind = "discard" | "production";
@@ -158,6 +159,7 @@ function CompactActionButton({
 }
 
 export function OperationPage() {
+  const confirm = useConfirm();
   const [date] = useState(todayInStoreTime());
   const [currentTime, setCurrentTime] = useState(() => new Date());
   const [activeTab, setActiveTab] = useState<OperationTab>("concierge");
@@ -294,15 +296,15 @@ export function OperationPage() {
     });
   }
 
-  function confirmQuickAction(message: string): boolean {
-    return window.confirm(message);
+  function confirmQuickAction(message: string): Promise<boolean> {
+    return confirm({ message, confirmLabel: "저장" });
   }
 
   async function createStockout(product: ProductDto) {
     setMessage(null);
     setError(null);
 
-    if (!confirmQuickAction(`${product.name} 품절 기록을 저장할까요?`)) {
+    if (!(await confirmQuickAction(`${product.name} 품절 기록을 저장할까요?`))) {
       return;
     }
 
@@ -344,7 +346,7 @@ export function OperationPage() {
       return;
     }
 
-    if (!confirmQuickAction(`${product.name} 폐기 ${discardQty}개를 저장할까요?`)) {
+    if (!(await confirmQuickAction(`${product.name} 폐기 ${discardQty}개를 저장할까요?`))) {
       return;
     }
 
@@ -376,7 +378,7 @@ export function OperationPage() {
     setMessage(null);
     setError(null);
 
-    if (!confirmQuickAction(`${product.name} 시식 1회를 저장할까요?`)) {
+    if (!(await confirmQuickAction(`${product.name} 시식 1회를 저장할까요?`))) {
       return;
     }
 
@@ -417,7 +419,7 @@ export function OperationPage() {
       return;
     }
 
-    if (!confirmQuickAction(`${product.name} 입고 ${producedQty}개를 저장할까요?`)) {
+    if (!(await confirmQuickAction(`${product.name} 입고 ${producedQty}개를 저장할까요?`))) {
       return;
     }
 

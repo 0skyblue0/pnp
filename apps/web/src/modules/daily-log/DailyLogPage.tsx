@@ -5,6 +5,7 @@ import { apiDelete, apiGet, apiPut } from "../../shared/api/client.js";
 import type { ListEnvelope } from "../../shared/api/types.js";
 import { todayInStoreTime } from "../../shared/time/storeTime.js";
 import { Button } from "../../shared/ui/Button.js";
+import { useConfirm } from "../../shared/ui/ConfirmDialog.js";
 import { productLineup } from "../../shared/productLineup.js";
 import { providedDailyOperationDefaultMonth } from "./providedDailyOperationRecords.js";
 
@@ -457,6 +458,7 @@ function focusLabelForMissingItem(item: MissingDailyItem): string | null {
 }
 
 export function DailyLogPage() {
+  const confirm = useConfirm();
   const today = todayInStoreTime();
   const entryPanelRef = useRef<HTMLElement | null>(null);
   const [viewMode, setViewMode] = useState<DailyViewMode>("entry");
@@ -670,7 +672,13 @@ export function DailyLogPage() {
   }
 
   async function deleteRecord(record: DailyOperationSavedRecord) {
-    if (!window.confirm(`${record.draft.date} 일지를 삭제할까요?`)) {
+    const confirmed = await confirm({
+      title: "일지 삭제",
+      message: `${record.draft.date} 일지를 삭제할까요?`,
+      confirmLabel: "삭제",
+      tone: "danger"
+    });
+    if (!confirmed) {
       return;
     }
 

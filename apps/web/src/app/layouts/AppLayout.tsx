@@ -1,5 +1,9 @@
 import { Bell } from "lucide-react";
-import { NavLink, Outlet } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { NavLink, Outlet, useLocation } from "react-router-dom";
+
+import { apiGet } from "../../shared/api/client.js";
+import type { ListEnvelope } from "../../shared/api/types.js";
 
 const navItems = [
   { to: "/home", label: "홈" },
@@ -22,11 +26,29 @@ function todayLabel() {
 
 export function AppLayout() {
   const dateText = todayLabel();
+  const location = useLocation();
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadUnreadCount() {
+      const envelope = await apiGet<ListEnvelope<{ id: number }>>("/notification?unread=true");
+      if (!cancelled && !envelope.error) {
+        setUnreadCount(envelope.data.total);
+      }
+    }
+
+    void loadUnreadCount();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [location.pathname]);
 
   return (
-    <div className="min-h-screen bg-paper px-4 py-5 text-ink sm:px-6 lg:px-0 lg:py-7">
-      <div className="mx-auto w-full max-w-[1180px] overflow-hidden rounded-[20px] bg-[#F8F5EF] shadow-[0_24px_70px_rgba(63,50,39,0.16)]">
-      <header className="border-b border-latte bg-white px-7 py-4 lg:py-0">
+    <div className="min-h-screen bg-[#F8F5EF] text-ink">
+      <header className="border-b border-latte bg-white px-5 py-4 lg:px-9 lg:py-0">
         <div className="mx-auto flex w-full flex-col gap-3 lg:h-[68px] lg:flex-row lg:items-center lg:gap-7">
           <NavLink to="/home" className="shrink-0" aria-label="Paul & Paulina 홈" title="홈으로 이동">
             <span className="block font-serif text-[19px] font-bold tracking-[0.01em] text-ink">
@@ -70,26 +92,30 @@ export function AppLayout() {
               title="알림"
             >
               알림
-              <span className="absolute right-0 top-0 grid h-4 w-4 place-items-center rounded-full bg-red text-[9px] font-bold text-white">
-                3
-              </span>
+              {unreadCount > 0 ? (
+                <span className="absolute right-0 top-0 grid h-4 min-w-4 place-items-center rounded-full bg-red px-0.5 text-[9px] font-bold text-white">
+                  {unreadCount > 9 ? "9+" : unreadCount}
+                </span>
+              ) : null}
             </NavLink>
             <NavLink
               to="/notification"
-              className="grid h-8 w-8 place-items-center rounded-full bg-[#F4E3D8] text-xs font-bold text-cocoa transition hover:bg-[#ead3c5]"
+              className="relative grid h-8 w-8 place-items-center rounded-full bg-[#F4E3D8] text-xs font-bold text-cocoa transition hover:bg-[#ead3c5]"
               title="알림"
             >
               <Bell className="h-4 w-4 sm:hidden" aria-hidden="true" />
               <span className="hidden sm:inline">김</span>
+              {unreadCount > 0 ? (
+                <span className="absolute right-0 top-0 h-2.5 w-2.5 rounded-full bg-red sm:hidden" />
+              ) : null}
             </NavLink>
           </div>
         </div>
       </header>
 
-      <main className="w-full px-9 py-7">
+      <main className="w-full px-5 py-7 lg:px-9">
         <Outlet />
       </main>
-      </div>
     </div>
   );
 }

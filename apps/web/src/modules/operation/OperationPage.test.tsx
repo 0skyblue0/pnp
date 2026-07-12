@@ -3,6 +3,7 @@ import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { OperationPage } from "./OperationPage.js";
+import { ConfirmProvider } from "../../shared/ui/ConfirmDialog.js";
 
 vi.mock("../../shared/time/storeTime.js", () => ({
   currentStoreDateTime: () => "2026-06-03T12:34",
@@ -187,15 +188,28 @@ function lastPostTo(path: string) {
 function renderOperationPage() {
   return render(
     <MemoryRouter>
-      <OperationPage />
+      <ConfirmProvider>
+        <OperationPage />
+      </ConfirmProvider>
     </MemoryRouter>
   );
+}
+
+async function acceptConfirmDialog(message: string) {
+  const dialog = await screen.findByRole("alertdialog");
+  expect(within(dialog).getByText(message)).toBeInTheDocument();
+  fireEvent.click(within(dialog).getByRole("button", { name: "저장" }));
+}
+
+async function dismissConfirmDialog(message: string) {
+  const dialog = await screen.findByRole("alertdialog");
+  expect(within(dialog).getByText(message)).toBeInTheDocument();
+  fireEvent.click(within(dialog).getByRole("button", { name: "취소" }));
 }
 
 describe("OperationPage", () => {
   beforeEach(() => {
     setupFetch();
-    vi.spyOn(window, "confirm").mockReturnValue(true);
   });
 
   afterEach(() => {
@@ -241,9 +255,9 @@ describe("OperationPage", () => {
       target: { value: "3" }
     });
     fireEvent.click(screen.getByRole("button", { name: "바게트 폐기 기록" }));
+    await acceptConfirmDialog("바게트 폐기 3개를 저장할까요?");
 
     await waitFor(() => {
-      expect(window.confirm).toHaveBeenCalledWith("바게트 폐기 3개를 저장할까요?");
       expect(lastPostTo("/api/v1/discard")?.body).toEqual({
         productId: 1,
         date: "2026-06-03",
@@ -257,9 +271,9 @@ describe("OperationPage", () => {
 
     await screen.findByText("바게트");
     fireEvent.click(screen.getByRole("button", { name: "바게트 시식 기록" }));
+    await acceptConfirmDialog("바게트 시식 1회를 저장할까요?");
 
     await waitFor(() => {
-      expect(window.confirm).toHaveBeenCalledWith("바게트 시식 1회를 저장할까요?");
       expect(lastPostTo("/api/v1/daily-log/2026-06-03/tasting")?.body).toEqual({
         productId: 1,
         recommended: false
@@ -284,9 +298,9 @@ describe("OperationPage", () => {
     const productionButton = screen.getByRole("button", { name: "바게트 입고 기록" });
     expect(productionButton).toHaveClass("w-11");
     fireEvent.click(productionButton);
+    await acceptConfirmDialog("바게트 입고 7개를 저장할까요?");
 
     await waitFor(() => {
-      expect(window.confirm).toHaveBeenCalledWith("바게트 입고 7개를 저장할까요?");
       expect(lastPostTo("/api/v1/production-lot")?.body).toEqual({
         productId: 1,
         producedQty: 7,
@@ -297,13 +311,12 @@ describe("OperationPage", () => {
   });
 
   it("does not post a stockout record when confirmation is canceled", async () => {
-    vi.mocked(window.confirm).mockReturnValue(false);
     renderOperationPage();
 
     await screen.findByText("바게트");
     fireEvent.click(screen.getByRole("button", { name: "바게트 품절 기록" }));
+    await dismissConfirmDialog("바게트 품절 기록을 저장할까요?");
 
-    expect(window.confirm).toHaveBeenCalledWith("바게트 품절 기록을 저장할까요?");
     expect(lastPostTo("/api/v1/stockout")).toBeUndefined();
   });
 });

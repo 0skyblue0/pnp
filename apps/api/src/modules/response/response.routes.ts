@@ -90,6 +90,28 @@ type CriterionPathIds = {
   minorCriterionId: number | null;
 };
 
+const checkNeededCriterionNames = new Set([
+  "불친절",
+  "응대 불만",
+  "설명 부족",
+  "결제 문제",
+  "대기시간 김",
+  "줄 혼잡",
+  "가격 부담",
+  "청결",
+  "덜 구워짐",
+  "너무 탐",
+  "신선도",
+  "맛 변화",
+  "딱딱함",
+  "질김",
+  "눅눅함",
+  "포장 불편",
+  "분류 보류"
+]);
+
+const checkNeededWords = ["컴플레인", "환불", "불만", "문제", "보상", "위생", "이물", "변질"];
+
 const activeResponseCriterionWhere: Prisma.CustomerResponseWhereInput = {
   majorCriterion: { is: { isActive: true } }
 };
@@ -189,7 +211,8 @@ function buildResponseInsights(
 ) {
   const summariesByCriterionId = new Map<number, string[]>();
   for (const response of responses) {
-    const criterionId = response.minorCriterionId ?? response.middleCriterionId ?? response.majorCriterionId;
+    const criterionId =
+      response.minorCriterionId ?? response.middleCriterionId ?? response.majorCriterionId;
     const summaries = summariesByCriterionId.get(criterionId) ?? [];
     if (response.shortSummary && !summaries.includes(response.shortSummary)) {
       summaries.push(response.shortSummary);
@@ -214,21 +237,34 @@ function buildResponseInsights(
     .sort((left, right) => right.count - left.count || left.label.localeCompare(right.label))
     .slice(0, 5);
 
-  const complaintGroup = majorGroups.find((group) => criteriaById.get(group.majorCriterionId)?.name === "불만");
-  const topMajorGroup = [...majorGroups].sort((left, right) => right._count._all - left._count._all)[0];
-  const topMajorName = topMajorGroup ? criterionLabel(criteriaById.get(topMajorGroup.majorCriterionId)) : "기록 없음";
+  const topMajorGroup = [...majorGroups].sort(
+    (left, right) => right._count._all - left._count._all
+  )[0];
+  const topMajorName = topMajorGroup
+    ? criterionLabel(criteriaById.get(topMajorGroup.majorCriterionId))
+    : "기록 없음";
   const topTopic = repeatedTopics[0];
+  const checkNeededCount = responses.filter((response) => {
+    const pathNames = toCriterionPath(response).map((criterion) => criterion.name);
+    const combinedText = `${response.shortSummary ?? ""}\n${response.fullText ?? ""}`;
+
+    return (
+      pathNames.some((name) => checkNeededCriterionNames.has(name)) ||
+      checkNeededWords.some((word) => combinedText.includes(word))
+    );
+  }).length;
 
   return {
     headline:
       total > 0
         ? `${total.toLocaleString("ko-KR")}건 중 ${topMajorName} 비중이 가장 큽니다.`
         : "조회 기간에 등록된 손님 반응이 없습니다.",
+    checkNeededCount,
     repeatedTopics,
     keyNotes: [
-      complaintGroup && complaintGroup._count._all > 0
-        ? `불만 ${complaintGroup._count._all.toLocaleString("ko-KR")}건은 우선 확인이 필요합니다.`
-        : "조회 기간에 확인할 불만 반복 항목은 없습니다.",
+      checkNeededCount > 0
+        ? `확인 필요 반응 ${checkNeededCount.toLocaleString("ko-KR")}건은 우선 확인해 주세요.`
+        : "조회 기간에 확인 필요 반응은 없습니다.",
       topTopic
         ? `가장 반복된 세부 내용은 ${topTopic.path.map((item) => item.name).join(" > ")}입니다.`
         : "아직 반복 내용을 판단할 기록이 없습니다.",
@@ -277,7 +313,7 @@ const hermesSystemPrompt = [
   "예: '유동인구가 낮았습니다.'는 기타가 아니라 손님경험 > 방문 시간대 > 유동인구 낮음입니다.",
   "예: '쌀빵이 있길 희망했습니다.'는 기타가 아니라 제품 > 제품 제안 > 쌀빵/건강빵 요청입니다.",
   "후속 질문, 설명, 작업 제안, 인사말은 절대 하지 않습니다.",
-  "응답은 JSON 객체 하나만 반환합니다: {\"criterionId\": number, \"shortSummary\": string, \"reason\": string}.",
+  '응답은 JSON 객체 하나만 반환합니다: {"criterionId": number, "shortSummary": string, "reason": string}.',
   "shortSummary는 한국어 한 줄, 최대 60자입니다.",
   "위생, 품절, 제품 품질, 서비스 문제는 우선적으로 구체적인 세부 기준까지 반영합니다."
 ].join("\n");
@@ -368,26 +404,29 @@ async function requestHermesSuggestion(
   const timeout = setTimeout(() => controller.abort(), app.config.HERMES_API_TIMEOUT_MS);
 
   try {
-    const response = await fetch(`${app.config.HERMES_API_BASE_URL.replace(/\/$/, "")}/chat/completions`, {
-      method: "POST",
-      headers: {
-        Accept: "application/json",
-        Authorization: `Bearer ${app.config.HERMES_API_KEY}`,
-        "Content-Type": "application/json",
-        "X-Hermes-Session-Id": "pnp-response-classifier",
-        "X-Hermes-Session-Key": "pnp:response-classifier"
-      },
-      body: JSON.stringify({
-        model: app.config.HERMES_API_MODEL,
-        stream: false,
-        temperature: 0,
-        messages: [
-          { role: "system", content: hermesSystemPrompt },
-          { role: "user", content: buildHermesUserPrompt(input, criteria) }
-        ]
-      }),
-      signal: controller.signal
-    });
+    const response = await fetch(
+      `${app.config.HERMES_API_BASE_URL.replace(/\/$/, "")}/chat/completions`,
+      {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          Authorization: `Bearer ${app.config.HERMES_API_KEY}`,
+          "Content-Type": "application/json",
+          "X-Hermes-Session-Id": "pnp-response-classifier",
+          "X-Hermes-Session-Key": "pnp:response-classifier"
+        },
+        body: JSON.stringify({
+          model: app.config.HERMES_API_MODEL,
+          stream: false,
+          temperature: 0,
+          messages: [
+            { role: "system", content: hermesSystemPrompt },
+            { role: "user", content: buildHermesUserPrompt(input, criteria) }
+          ]
+        }),
+        signal: controller.signal
+      }
+    );
 
     if (!response.ok) {
       throw new Error(`Hermes API failed with ${response.status}`);
@@ -570,7 +609,7 @@ export async function registerResponseRoutes(app: FastifyInstance): Promise<void
           minorCriterion: true
         },
         orderBy: [{ date: "desc" }, { createdAt: "desc" }],
-        take: 100
+        take: query.size ?? 100
       }),
       app.prisma.customerResponse.count({ where })
     ]);
@@ -587,8 +626,8 @@ export async function registerResponseRoutes(app: FastifyInstance): Promise<void
     const query = statsResponseQuerySchema.parse(request.query);
     const where = { ...buildDateWhere(query), ...activeResponseCriterionWhere };
 
-    const [total, majorGroups, middleGroups, minorGroups, dailyGroups, criteria, responses] = await app.prisma.$transaction(
-      [
+    const [total, majorGroups, middleGroups, minorGroups, dailyGroups, criteria, responses] =
+      await app.prisma.$transaction([
         app.prisma.customerResponse.count({ where }),
         app.prisma.customerResponse.groupBy({
           by: ["majorCriterionId"],
@@ -632,8 +671,7 @@ export async function registerResponseRoutes(app: FastifyInstance): Promise<void
           orderBy: [{ date: "desc" }, { createdAt: "desc" }],
           take: 300
         })
-      ]
-    );
+      ]);
 
     const responseCriteria = criteria as ResponseCriterionPathItem[];
     const criteriaById = new Map(

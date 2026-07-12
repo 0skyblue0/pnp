@@ -17,6 +17,7 @@ type ResponsePreviewDto = {
   date: string;
   criterionPath: CriterionPathItem[];
   shortSummary: string | null;
+  llmAssisted: boolean;
 };
 
 const tabOptions: Array<{
@@ -24,8 +25,8 @@ const tabOptions: Array<{
   label: string;
   icon: typeof BarChart3;
 }> = [
-  { value: "stats", label: "통계", icon: BarChart3 },
-  { value: "detail", label: "상세 조회", icon: ListFilter }
+  { value: "stats", label: "요약 보기", icon: BarChart3 },
+  { value: "detail", label: "상세 기록", icon: ListFilter }
 ];
 
 function parseTab(value: string | null): InquiryTab {
@@ -87,19 +88,23 @@ export function ResponseInquiryPage() {
       <section className="mx-auto w-full max-w-none min-w-0">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <h2 className="section-title">손님 반응</h2>
-          <div aria-label="손님 반응 화면 선택" className="flex flex-wrap gap-2 rounded-control border border-latte bg-white p-1" role="tablist">
-            {([
-              ["entry", "반응 입력"],
-              ["lookup", "반응 분석"]
-            ] as Array<[ResponseMode, string]>).map(([mode, label]) => (
+          <div
+            aria-label="손님 반응 화면 선택"
+            className="flex flex-wrap gap-2 rounded-control border border-latte bg-white p-1"
+            role="tablist"
+          >
+            {(
+              [
+                ["entry", "반응 입력"],
+                ["lookup", "반응 분석"]
+              ] as Array<[ResponseMode, string]>
+            ).map(([mode, label]) => (
               <button
                 key={mode}
                 aria-selected={activeMode === mode}
                 className={[
                   "inline-flex min-h-8 items-center rounded-[7px] px-4 text-[12.5px] font-semibold transition",
-                  activeMode === mode
-                    ? "bg-bread text-white"
-                    : "text-cocoa hover:bg-cream"
+                  activeMode === mode ? "bg-bread text-white" : "text-cocoa hover:bg-cream"
                 ].join(" ")}
                 role="tab"
                 type="button"
@@ -112,31 +117,35 @@ export function ResponseInquiryPage() {
         </div>
 
         {activeMode === "lookup" ? (
-          <div aria-label="조회 유형" className="sr-only" role="tablist">
+          <div
+            aria-label="조회 유형"
+            className="mb-4 flex flex-wrap gap-2 rounded-control border border-latte bg-white p-1"
+            role="tablist"
+          >
             {tabOptions.map((option) => {
-            const Icon = option.icon;
-            const isActive = activeTab === option.value;
+              const Icon = option.icon;
+              const isActive = activeTab === option.value;
 
-            return (
-              <button
-                key={option.value}
-                aria-controls={tabIds[option.value].panel}
-                aria-selected={isActive}
-                className={[
-                  "inline-flex min-h-11 items-center rounded-control border px-3 text-sm font-semibold",
-                  isActive
-                    ? "border-stone-900 bg-stone-900 text-white"
-                    : "border-stone-300 bg-white text-stone-800 hover:bg-stone-100"
-                ].join(" ")}
-                id={tabIds[option.value].tab}
-                role="tab"
-                type="button"
-                onClick={() => handleTabChange(option.value)}
-              >
-                <Icon className="mr-2 h-4 w-4 shrink-0" aria-hidden="true" />
-                {option.label}
-              </button>
-            );
+              return (
+                <button
+                  key={option.value}
+                  aria-controls={tabIds[option.value].panel}
+                  aria-selected={isActive}
+                  className={[
+                    "inline-flex min-h-11 items-center rounded-control border px-3 text-sm font-semibold",
+                    isActive
+                      ? "border-bread bg-bread text-white"
+                      : "border-transparent bg-white text-cocoa hover:bg-cream"
+                  ].join(" ")}
+                  id={tabIds[option.value].tab}
+                  role="tab"
+                  type="button"
+                  onClick={() => handleTabChange(option.value)}
+                >
+                  <Icon className="mr-2 h-4 w-4 shrink-0" aria-hidden="true" />
+                  {option.label}
+                </button>
+              );
             })}
           </div>
         ) : null}
@@ -148,11 +157,7 @@ export function ResponseInquiryPage() {
           <RecentResponsesCard />
         </div>
       ) : (
-        <div
-          aria-labelledby={tabIds[activeTab].tab}
-          id={tabIds[activeTab].panel}
-          role="tabpanel"
-        >
+        <div aria-labelledby={tabIds[activeTab].tab} id={tabIds[activeTab].panel} role="tabpanel">
           {activeTab === "stats" ? <StatisticsPage /> : <ResponseListPage />}
         </div>
       )}
@@ -165,7 +170,7 @@ function RecentResponsesCard() {
   const [error, setError] = useState<string | null>(null);
 
   const loadRecent = useCallback(async () => {
-    const envelope = await apiGet<ListEnvelope<ResponsePreviewDto>>("/response?from=2026-05-01&to=2026-12-31");
+    const envelope = await apiGet<ListEnvelope<ResponsePreviewDto>>("/response?size=4");
     if (envelope.error) {
       setError(envelope.error.message);
       return;
@@ -183,13 +188,19 @@ function RecentResponsesCard() {
       <div className="mt-4 grid gap-3">
         {items.map((item) => (
           <article key={item.id} className="border-b border-latte pb-3 last:border-b-0">
-            <p className="text-xs text-muted">{item.date.slice(5).replace("-", ".")} · {criterionPathLabel(item.criterionPath)}</p>
+            <p className="text-xs text-muted">
+              {item.date.slice(5).replace("-", ".")} · {criterionPathLabel(item.criterionPath)}
+            </p>
             <p className="mt-1 text-sm font-bold text-ink">{item.shortSummary || "요약 없음"}</p>
-            <span className="mt-2 inline-flex rounded-full bg-[#F4E3D8] px-2 py-1 text-[11px] font-bold text-cocoa">AI 분류</span>
+            <span className="mt-2 inline-flex rounded-full bg-[#F4E3D8] px-2 py-1 text-[11px] font-bold text-cocoa">
+              {item.llmAssisted ? "AI 분류" : "직원 분류"}
+            </span>
           </article>
         ))}
         {error ? <p className="text-sm font-semibold text-red">{error}</p> : null}
-        {!error && items.length === 0 ? <p className="py-8 text-center text-sm text-muted">최근 기록 없음</p> : null}
+        {!error && items.length === 0 ? (
+          <p className="py-8 text-center text-sm text-muted">최근 기록 없음</p>
+        ) : null}
       </div>
     </section>
   );

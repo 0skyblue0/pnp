@@ -39,6 +39,7 @@ type ResponseStatsBody = {
   }>;
   insights: {
     headline: string;
+    checkNeededCount: number;
     repeatedTopics: Array<{
       criterionId: number;
       label: string;
@@ -105,7 +106,9 @@ describe("response suggestion route", () => {
       expect(requestBody.model).toBe("pnp-response-classifier");
       expect(requestBody.temperature).toBe(0);
       expect(requestBody.messages[0]?.content).toContain("고객 반응 분류 전용 프로필");
-      expect(requestBody.messages[0]?.content).toContain("제품, 서비스·응대, 구매·운영, 손님경험, 기타");
+      expect(requestBody.messages[0]?.content).toContain(
+        "제품, 서비스·응대, 구매·운영, 손님경험, 기타"
+      );
       expect(requestBody.messages[0]?.content).toContain("기타는 최후의 선택지");
       expect(requestBody.messages.at(-1)?.content).toContain("[PHONE]");
       expect(requestBody.messages.at(-1)?.content).not.toContain("010-1234-5678");
@@ -145,7 +148,11 @@ describe("response suggestion route", () => {
 
     expect(response.statusCode).toBe(200);
     const body = response.json<
-      ApiEnvelope<{ criterionId: number; shortSummary: string; criterionPath: { name: string }[] }>
+      ApiEnvelope<{
+        criterionId: number;
+        shortSummary: string;
+        criterionPath: { name: string }[];
+      }>
     >();
     expect(body.error).toBeNull();
     expect(body.data).not.toBeNull();
@@ -176,7 +183,10 @@ describe("response suggestion route", () => {
     prisma.responseCriterion.findMany.mockResolvedValue([
       { id: 1, parentId: null, depth: 1, name: "제품", sortOrder: 1, isActive: true }
     ]);
-    vi.stubGlobal("fetch", vi.fn(async () => Promise.reject(new Error("connect ECONNREFUSED"))));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => Promise.reject(new Error("connect ECONNREFUSED")))
+    );
 
     const app = Fastify({ logger: false });
     decorateTestConfig(app);
@@ -233,6 +243,76 @@ describe("response suggestion route", () => {
 });
 
 describe("response stats route", () => {
+  it("counts check-needed responses from current criteria and risky wording", async () => {
+    const prisma = buildPrismaMock();
+    prisma.customerResponse.count.mockResolvedValue(4);
+    prisma.customerResponse.groupBy
+      .mockResolvedValueOnce([{ majorCriterionId: 2001, _count: { _all: 4 } }])
+      .mockResolvedValueOnce([
+        { majorCriterionId: 2001, middleCriterionId: 2021, _count: { _all: 4 } }
+      ])
+      .mockResolvedValueOnce([
+        {
+          majorCriterionId: 2001,
+          middleCriterionId: 2021,
+          minorCriterionId: 2210,
+          _count: { _all: 4 }
+        }
+      ])
+      .mockResolvedValueOnce([{ date: new Date("2026-01-02T00:00:00.000Z"), _count: { _all: 4 } }]);
+    prisma.responseCriterion.findMany.mockResolvedValue([
+      { id: 2001, parentId: null, depth: 1, name: "서비스·응대", sortOrder: 1 },
+      { id: 2021, parentId: 2001, depth: 2, name: "불친절", sortOrder: 1 },
+      { id: 2210, parentId: 2021, depth: 3, name: "응대 불만", sortOrder: 1 }
+    ]);
+    prisma.customerResponse.findMany.mockResolvedValue([
+      {
+        majorCriterionId: 2001,
+        middleCriterionId: 2021,
+        minorCriterionId: 2210,
+        shortSummary: "응대 불만 접수",
+        fullText: "직원 응대 불만"
+      },
+      {
+        majorCriterionId: 2001,
+        middleCriterionId: 2021,
+        minorCriterionId: 2210,
+        shortSummary: "환불 요청",
+        fullText: "컴플레인으로 환불 요청"
+      },
+      {
+        majorCriterionId: 2001,
+        middleCriterionId: 2021,
+        minorCriterionId: 2210,
+        shortSummary: "친절했다는 말",
+        fullText: "친절했다"
+      },
+      {
+        majorCriterionId: 2001,
+        middleCriterionId: 2021,
+        minorCriterionId: 2210,
+        shortSummary: "보상 문의",
+        fullText: "보상 문의"
+      }
+    ]);
+
+    const app = Fastify({ logger: false });
+    app.decorate("prisma", prisma as never);
+    await app.register(registerResponseRoutes, { prefix: "/response" });
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/response/stats?from=2026-01-01&to=2026-01-31"
+    });
+
+    expect(response.statusCode).toBe(200);
+    const body = response.json<ApiEnvelope<ResponseStatsBody>>();
+    expect(body.data?.insights.checkNeededCount).toBe(3);
+    expect(body.data?.insights.keyNotes[0]).toBe("확인 필요 반응 3건은 우선 확인해 주세요.");
+
+    await app.close();
+  });
+
   it("returns major, middle, and minor aggregate stats without the list API limit", async () => {
     const prisma = buildPrismaMock();
     prisma.customerResponse.count.mockResolvedValue(6);
@@ -266,9 +346,24 @@ describe("response stats route", () => {
       { id: 8, parentId: 5, depth: 3, name: "대량", sortOrder: 1 }
     ]);
     prisma.customerResponse.findMany.mockResolvedValue([
-      { majorCriterionId: 1, middleCriterionId: 3, minorCriterionId: 6, shortSummary: "바게트 맛 불만 반복" },
-      { majorCriterionId: 1, middleCriterionId: 3, minorCriterionId: 6, shortSummary: "바게트 식감 확인 필요" },
-      { majorCriterionId: 2, middleCriterionId: 5, minorCriterionId: 8, shortSummary: "예약 대량 문의" }
+      {
+        majorCriterionId: 1,
+        middleCriterionId: 3,
+        minorCriterionId: 6,
+        shortSummary: "바게트 맛 불만 반복"
+      },
+      {
+        majorCriterionId: 1,
+        middleCriterionId: 3,
+        minorCriterionId: 6,
+        shortSummary: "바게트 식감 확인 필요"
+      },
+      {
+        majorCriterionId: 2,
+        middleCriterionId: 5,
+        minorCriterionId: 8,
+        shortSummary: "예약 대량 문의"
+      }
     ]);
 
     const app = Fastify({ logger: false });
@@ -393,7 +488,9 @@ describe("response stats route", () => {
       }
     });
     expect(prisma.customerResponse.groupBy).toHaveBeenCalledTimes(4);
-    expect(prisma.customerResponse.findMany).toHaveBeenCalledWith(expect.objectContaining({ take: 300 }));
+    expect(prisma.customerResponse.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ take: 300 })
+    );
     for (const [query] of prisma.customerResponse.groupBy.mock.calls) {
       expect(query).not.toHaveProperty("take");
     }

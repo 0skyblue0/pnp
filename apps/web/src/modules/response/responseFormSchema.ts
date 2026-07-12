@@ -4,7 +4,7 @@ export const responseFormSchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   criterionId: z.number().int().positive("반응 기준을 선택하세요."),
   shortSummary: z.string().min(1, "요약을 입력하세요.").max(200),
-  fullText: z.string().max(5000).optional(),
+  fullText: z.string().trim().min(1, "손님이 한 말을 적어주세요.").max(5000),
   llmAssisted: z.boolean().optional()
 });
 

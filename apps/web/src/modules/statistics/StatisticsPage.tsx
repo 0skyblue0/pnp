@@ -28,6 +28,7 @@ type ResponseStatsDto = {
 
 type ResponseInsightsDto = {
   headline: string;
+  checkNeededCount?: number;
   repeatedTopics: Array<{
     criterionId: number;
     label: string;
@@ -78,11 +79,11 @@ const emptyStats: NormalizedStats = {
   daily: [],
   insights: {
     headline: "조회 기간에 등록된 손님 반응이 없습니다.",
+    checkNeededCount: 0,
     repeatedTopics: [],
     keyNotes: ["기록이 쌓이면 상위 반복 내용과 주의 사항이 자동으로 표시됩니다."]
   }
 };
-
 
 function parseDateParts(value: string): [number, number, number] {
   const [year = "0", month = "1", day = "1"] = value.split("-");
@@ -239,7 +240,6 @@ function detailLink(range: DateRange, criterionId: number): string {
   return `/response?${params.toString()}`;
 }
 
-
 export function StatisticsPage() {
   const today = todayInStoreTime();
   const [range, setRange] = useState<DateRange>(recentThirtyDays(today));
@@ -286,7 +286,9 @@ export function StatisticsPage() {
       }
 
       clearStats();
-      setError(unknownError instanceof Error ? unknownError.message : "통계를 조회하지 못했습니다.");
+      setError(
+        unknownError instanceof Error ? unknownError.message : "통계를 조회하지 못했습니다."
+      );
     } finally {
       if (requestId === requestIdRef.current) {
         setIsLoading(false);
@@ -302,12 +304,17 @@ export function StatisticsPage() {
   const displayMajor = stats.major.slice(0, 5);
   const displayRepeated = stats.insights.repeatedTopics.slice(0, 4);
   const colors = ["#B5654A", "#3E6EA5", "#B8862B", "#3E7A55", "#B8AEA2"];
-  const donutStops = displayMajor.reduce<{ cursor: number; stops: string[] }>((acc, item, index) => {
-    const pct = displayTotal > 0 ? (item.count / displayTotal) * 100 : 0;
-    const next = acc.cursor + pct;
-    acc.stops.push(`${colors[index % colors.length]} ${acc.cursor}% ${next}%`);
-    return { cursor: next, stops: acc.stops };
-  }, { cursor: 0, stops: [] }).stops.join(", ");
+  const donutStops = displayMajor
+    .reduce<{ cursor: number; stops: string[] }>(
+      (acc, item, index) => {
+        const pct = displayTotal > 0 ? (item.count / displayTotal) * 100 : 0;
+        const next = acc.cursor + pct;
+        acc.stops.push(`${colors[index % colors.length]} ${acc.cursor}% ${next}%`);
+        return { cursor: next, stops: acc.stops };
+      },
+      { cursor: 0, stops: [] }
+    )
+    .stops.join(", ");
   const maxMajor = Math.max(...displayMajor.map((item) => item.count), 1);
   const middleA11y = stats.middle.slice(0, 8);
   const minorA11y = stats.minor.slice(0, 8);
@@ -343,10 +350,23 @@ export function StatisticsPage() {
           </Link>
         ))}
         {middleA11y.map((item) => (
-          <p key={`middle-${item.id}`}><span>{item.label}</span> {item.count.toLocaleString("ko-KR")}건 · {formatPercent(item.count, stats.major.find((major) => major.id === item.majorCriterionId)?.count ?? stats.total)}</p>
+          <p key={`middle-${item.id}`}>
+            <span>{item.label}</span> {item.count.toLocaleString("ko-KR")}건 ·{" "}
+            {formatPercent(
+              item.count,
+              stats.major.find((major) => major.id === item.majorCriterionId)?.count ?? stats.total
+            )}
+          </p>
         ))}
         {minorA11y.map((item) => (
-          <p key={`minor-${item.id}`}>{item.label} {item.count.toLocaleString("ko-KR")}건 · {formatPercent(item.count, stats.middle.find((middle) => middle.id === item.middleCriterionId)?.count ?? stats.total)}</p>
+          <p key={`minor-${item.id}`}>
+            {item.label} {item.count.toLocaleString("ko-KR")}건 ·{" "}
+            {formatPercent(
+              item.count,
+              stats.middle.find((middle) => middle.id === item.middleCriterionId)?.count ??
+                stats.total
+            )}
+          </p>
         ))}
       </section>
       <div className="flex items-center justify-between gap-3">
@@ -362,7 +382,9 @@ export function StatisticsPage() {
               aria-label="반응 분석 시작 날짜"
               type="date"
               value={range.from}
-              onChange={(event) => setRange((current) => ({ ...current, from: event.target.value }))}
+              onChange={(event) =>
+                setRange((current) => ({ ...current, from: event.target.value }))
+              }
             />
           </label>
           <label className="grid gap-1 text-[11px] font-semibold text-muted">
@@ -397,7 +419,9 @@ export function StatisticsPage() {
       <section className="rounded-[14px] border border-latte bg-white px-4 py-3">
         <div className="mb-2">
           <p className="text-xs font-extrabold text-bread">월별 빠른 조회</p>
-          <p className="mt-1 text-[11.5px] font-semibold text-muted">한 달 단위로 손님 반응 흐름과 반복 주제를 바로 비교합니다.</p>
+          <p className="mt-1 text-[11.5px] font-semibold text-muted">
+            한 달 단위로 손님 반응 흐름과 반복 주제를 바로 비교합니다.
+          </p>
         </div>
         <div className="flex flex-wrap gap-[6px]">
           {monthOptions.map((option) => {
@@ -421,14 +445,18 @@ export function StatisticsPage() {
       </section>
 
       {error ? (
-        <div className="rounded-[10px] border border-red/20 bg-red/10 px-3 py-2 text-sm font-semibold text-red">{error}</div>
+        <div className="rounded-[10px] border border-red/20 bg-red/10 px-3 py-2 text-sm font-semibold text-red">
+          {error}
+        </div>
       ) : null}
 
       <section className="rounded-[14px] border border-latte bg-white px-4 py-3">
         <p className="text-xs font-extrabold text-bread">현장 요약</p>
         <p className="mt-1 text-sm font-bold leading-6 text-ink">{stats.insights.headline}</p>
         {stats.insights.keyNotes.length > 0 ? (
-          <p className="mt-1 text-xs font-semibold leading-5 text-muted">{stats.insights.keyNotes[0]}</p>
+          <p className="mt-1 text-xs font-semibold leading-5 text-muted">
+            {stats.insights.keyNotes[0]}
+          </p>
         ) : null}
       </section>
 
@@ -436,7 +464,11 @@ export function StatisticsPage() {
         <MetricCard label="총 반응 건수" value={`${displayTotal}건`} />
         <MetricCard label="분류된 반응" value={`${displayTotal}건`} />
         <MetricCard label="반복 주제" value={`${displayRepeated.length}건`} />
-        <MetricCard label="확인 필요" value={displayTotal === 0 ? "0건" : `${stats.insights.keyNotes.length}건`} danger={stats.insights.keyNotes.length > 0} />
+        <MetricCard
+          label="확인 필요"
+          value={`${stats.insights.checkNeededCount ?? 0}건`}
+          danger={(stats.insights.checkNeededCount ?? 0) > 0}
+        />
       </div>
 
       <div className="grid gap-[14px] lg:grid-cols-2">
@@ -455,9 +487,14 @@ export function StatisticsPage() {
           <div className="grid flex-1 gap-[6px]">
             {displayMajor.map((item, index) => (
               <div key={item.id} className="flex items-center gap-2">
-                <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: colors[index % colors.length] }} />
+                <span
+                  className="h-2 w-2 shrink-0 rounded-full"
+                  style={{ backgroundColor: colors[index % colors.length] }}
+                />
                 <span className="flex-1 text-[11.5px] text-ink">{item.label}</span>
-                <span className="text-[11px] text-muted">{item.count}건 · {formatPercent(item.count, displayTotal)}</span>
+                <span className="text-[11px] text-muted">
+                  {item.count}건 · {formatPercent(item.count, displayTotal)}
+                </span>
               </div>
             ))}
           </div>
@@ -497,7 +534,12 @@ export function StatisticsPage() {
           <div className="dc-eyebrow mb-[14px]">대분류별 통계</div>
           <div className="grid gap-2">
             {displayMajor.map((item, index) => (
-              <Link key={item.id} className="block rounded-[8px] px-2 py-1.5 hover:bg-cream" to={detailLink(range, item.id)} aria-label={`${item.label} 전체 기록 보기`}>
+              <Link
+                key={item.id}
+                className="block rounded-[8px] px-2 py-1.5 hover:bg-cream"
+                to={detailLink(range, item.id)}
+                aria-label={`${item.label} 전체 기록 보기`}
+              >
                 <div className="mb-[5px] flex justify-between">
                   <span className="text-[12.5px] font-semibold text-ink">{item.label}</span>
                   <span className="text-[11.5px] text-muted">{item.count}건</span>
@@ -505,7 +547,10 @@ export function StatisticsPage() {
                 <div className="h-2 overflow-hidden rounded bg-[#F1EAE0]">
                   <div
                     className="h-full rounded"
-                    style={{ width: `${Math.max(4, Math.round((item.count / maxMajor) * 100))}%`, backgroundColor: colors[index % colors.length] }}
+                    style={{
+                      width: `${Math.max(4, Math.round((item.count / maxMajor) * 100))}%`,
+                      backgroundColor: colors[index % colors.length]
+                    }}
                   />
                 </div>
               </Link>
@@ -516,13 +561,23 @@ export function StatisticsPage() {
         <section className="dc-card-pad">
           <div className="dc-eyebrow mb-3">반복 주제</div>
           {displayRepeated.map((topic, index) => (
-            <Link key={topic.criterionId} className="flex items-start gap-[10px] border-b border-[#F1EAE0] py-[9px] hover:bg-cream last:border-b-0" to={detailLink(range, topic.criterionId)} aria-label={`${topic.path.map((item) => item.name).join(" > ")} 기록 보기`}>
-              <span className="mt-1.5 h-[7px] w-[7px] shrink-0 rounded-full" style={{ backgroundColor: colors[index % colors.length] }} />
+            <Link
+              key={topic.criterionId}
+              className="flex items-start gap-[10px] border-b border-[#F1EAE0] py-[9px] hover:bg-cream last:border-b-0"
+              to={detailLink(range, topic.criterionId)}
+              aria-label={`${topic.path.map((item) => item.name).join(" > ")} 기록 보기`}
+            >
+              <span
+                className="mt-1.5 h-[7px] w-[7px] shrink-0 rounded-full"
+                style={{ backgroundColor: colors[index % colors.length] }}
+              />
               <div className="flex-1">
                 <div className="text-[12.5px] font-semibold text-ink">
                   {topic.label} <span className="font-normal text-muted">· {topic.count}건</span>
                 </div>
-                <div className="mt-0.5 text-[11.5px] text-muted">예시: “{topic.sampleSummaries[0] ?? "기록 없음"}”</div>
+                <div className="mt-0.5 text-[11.5px] text-muted">
+                  예시: “{topic.sampleSummaries[0] ?? "기록 없음"}”
+                </div>
               </div>
             </Link>
           ))}
@@ -532,10 +587,19 @@ export function StatisticsPage() {
       <section className="dc-card-pad">
         <div className="dc-eyebrow mb-3">상세 내용 바로 열기</div>
         {displayRepeated.map((topic) => (
-          <Link key={`detail-${topic.criterionId}`} className="block border-b border-[#F1EAE0] py-[10px] hover:bg-cream last:border-b-0" to={detailLink(range, topic.criterionId)}>
+          <Link
+            key={`detail-${topic.criterionId}`}
+            className="block border-b border-[#F1EAE0] py-[10px] hover:bg-cream last:border-b-0"
+            to={detailLink(range, topic.criterionId)}
+          >
             <div className="mb-1 flex justify-between">
-              <span className="text-[11px] text-muted">{range.to.slice(5).replace("-", ".")} · {topic.path.map((item) => item.name).join(" > ")}</span>
-              <span className="rounded-full bg-[#F4E3D8] px-2 py-0.5 text-[10px] font-semibold text-cocoa">전체 보기</span>
+              <span className="text-[11px] text-muted">
+                {range.to.slice(5).replace("-", ".")} ·{" "}
+                {topic.path.map((item) => item.name).join(" > ")}
+              </span>
+              <span className="rounded-full bg-[#F4E3D8] px-2 py-0.5 text-[10px] font-semibold text-cocoa">
+                전체 보기
+              </span>
             </div>
             <div className="text-[13px] text-ink">{topic.sampleSummaries[0] ?? topic.label}</div>
           </Link>
@@ -545,11 +609,21 @@ export function StatisticsPage() {
   );
 }
 
-function MetricCard({ label, value, danger = false }: { label: string; value: string; danger?: boolean }) {
+function MetricCard({
+  label,
+  value,
+  danger = false
+}: {
+  label: string;
+  value: string;
+  danger?: boolean;
+}) {
   return (
     <section className="dc-card-pad">
       <div className="mb-[6px] text-[11px] text-muted">{label}</div>
-      <div className={["text-[19px] font-bold", danger ? "text-red" : "text-ink"].join(" ")}>{value}</div>
+      <div className={["text-[19px] font-bold", danger ? "text-red" : "text-ink"].join(" ")}>
+        {value}
+      </div>
     </section>
   );
 }

@@ -23,6 +23,7 @@ type ResponseDto = {
   criterionPath: CriterionPathItem[];
   shortSummary: string | null;
   fullText: string | null;
+  llmAssisted: boolean;
   createdAt: string;
 };
 
@@ -88,6 +89,7 @@ export function ResponseListPage() {
   const [responses, setResponses] = useState<ResponseDto[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingCriteria, setIsLoadingCriteria] = useState(false);
+  const [includeInactiveCriteria, setIncludeInactiveCriteria] = useState(false);
   const [editingResponseId, setEditingResponseId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState<ResponseEditDraft | null>(null);
   const [savingResponseId, setSavingResponseId] = useState<string | null>(null);
@@ -99,7 +101,9 @@ export function ResponseListPage() {
     setIsLoadingCriteria(true);
 
     try {
-      const envelope = await apiGet<ListEnvelope<ResponseCriterionDto>>("/response-criteria");
+      const envelope = await apiGet<ListEnvelope<ResponseCriterionDto>>(
+        `/response-criteria${includeInactiveCriteria ? "" : "?active=true"}`
+      );
 
       if (envelope.error) {
         setError(envelope.error.message);
@@ -114,7 +118,7 @@ export function ResponseListPage() {
     } finally {
       setIsLoadingCriteria(false);
     }
-  }, []);
+  }, [includeInactiveCriteria]);
 
   const loadResponses = useCallback(async () => {
     setIsLoading(true);
@@ -176,12 +180,15 @@ export function ResponseListPage() {
     setError(null);
 
     try {
-      const envelope = await apiPatch<ResponseDto, Record<string, unknown>>(`/response/${responseId}`, {
-        date: editDraft.date,
-        criterionId: Number(editDraft.criterionId),
-        shortSummary: editDraft.shortSummary.trim(),
-        fullText: editDraft.fullText.trim() || undefined
-      });
+      const envelope = await apiPatch<ResponseDto, Record<string, unknown>>(
+        `/response/${responseId}`,
+        {
+          date: editDraft.date,
+          criterionId: Number(editDraft.criterionId),
+          shortSummary: editDraft.shortSummary.trim(),
+          fullText: editDraft.fullText.trim() || undefined
+        }
+      );
 
       if (envelope.error) {
         setError(envelope.error.message);
@@ -193,7 +200,9 @@ export function ResponseListPage() {
       );
       cancelEditing();
     } catch (unknownError) {
-      setError(unknownError instanceof Error ? unknownError.message : "고객 반응을 수정하지 못했습니다.");
+      setError(
+        unknownError instanceof Error ? unknownError.message : "고객 반응을 수정하지 못했습니다."
+      );
     } finally {
       setSavingResponseId(null);
     }
@@ -220,7 +229,9 @@ export function ResponseListPage() {
         cancelEditing();
       }
     } catch (unknownError) {
-      setError(unknownError instanceof Error ? unknownError.message : "고객 반응을 삭제하지 못했습니다.");
+      setError(
+        unknownError instanceof Error ? unknownError.message : "고객 반응을 삭제하지 못했습니다."
+      );
     } finally {
       setSavingResponseId(null);
     }
@@ -245,7 +256,7 @@ export function ResponseListPage() {
           </div>
         ) : null}
 
-        <div className="grid gap-3 lg:grid-cols-[1fr_1fr_1.4fr_auto] lg:items-end">
+        <div className="grid gap-3 lg:grid-cols-[1fr_1fr_1.4fr_auto_auto] lg:items-end">
           <label className="grid min-w-0 gap-2">
             <span className="field-label">시작일</span>
             <input
@@ -285,6 +296,14 @@ export function ResponseListPage() {
                 </option>
               ))}
             </select>
+          </label>
+          <label className="flex min-h-10 items-center gap-2 text-sm font-semibold text-cocoa lg:pb-1">
+            <input
+              type="checkbox"
+              checked={includeInactiveCriteria}
+              onChange={(event) => setIncludeInactiveCriteria(event.target.checked)}
+            />
+            과거 기준 포함
           </label>
           <Button icon={RefreshCcw} type="button" onClick={() => void loadResponses()}>
             {isLoading ? "조회 중" : "조회"}
@@ -388,6 +407,9 @@ export function ResponseListPage() {
                         {response.fullText}
                       </p>
                     ) : null}
+                    <span className="mt-2 inline-flex rounded-full bg-[#F4E3D8] px-2 py-1 text-[11px] font-bold text-cocoa">
+                      {response.llmAssisted ? "AI 분류" : "직원 분류"}
+                    </span>
                   </div>
                   <div className="flex shrink-0 gap-2 lg:justify-end">
                     <button

@@ -6,7 +6,7 @@ export const createResponseSchema = z.object({
   date: dateOnlySchema,
   criterionId: z.number().int().positive(),
   shortSummary: z.string().trim().min(1).max(200),
-  fullText: z.string().max(5000).optional(),
+  fullText: z.string().trim().min(1, "손님이 한 말을 적어주세요.").max(5000),
   llmAssisted: z.boolean().optional()
 });
 
@@ -19,7 +19,8 @@ export const updateResponseSchema = createResponseSchema
 export const listResponseQuerySchema = z.object({
   from: dateOnlySchema.optional(),
   to: dateOnlySchema.optional(),
-  criterion_id: z.coerce.number().int().positive().optional()
+  criterion_id: z.coerce.number().int().positive().optional(),
+  size: z.coerce.number().int().positive().max(100).optional()
 });
 
 export const statsResponseQuerySchema = z

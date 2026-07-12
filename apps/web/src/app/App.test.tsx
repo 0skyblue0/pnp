@@ -883,6 +883,100 @@ describe("App", () => {
     expect(screen.getByText("기타사항")).toBeInTheDocument();
   });
 
+  it("preserves imported raw Excel sections when editing and saving a daily operation record", async () => {
+    const rawSections = {
+      source: {
+        fileName: "일일업무보고서_5월.xlsx",
+        sheetName: "1일",
+        importedAt: "2026-07-12T00:00:00.000Z"
+      },
+      sections: {
+        serviceAndCustomerNotes: {
+          label: "4. 서비스내역 및 손님 특이사항",
+          rows: [57, 58, 59, 60],
+          text: "원문 손님 특이사항"
+        }
+      }
+    };
+    const importedRecord = {
+      ...providedDailyOperationRecords[0]!,
+      draft: { ...providedDailyOperationRecords[0]!.draft, rawSections }
+    };
+    let savedBody: Pick<
+      DailyOperationSavedRecord,
+      "draft" | "productRows" | "channelRows" | "staffSpecialRows"
+    > | null = null;
+    const dailyOperationApiItems = [
+      {
+        id: "raw-1",
+        date: importedRecord.draft.date,
+        draft: importedRecord.draft,
+        productRows: importedRecord.productRows,
+        channelRows: importedRecord.channelRows,
+        staffSpecialRows: importedRecord.staffSpecialRows,
+        createdAt: importedRecord.savedAt,
+        updatedAt: importedRecord.savedAt
+      }
+    ];
+
+    vi.mocked(fetch).mockImplementation(async (input, init) => {
+      const url = input instanceof Request ? input.url : String(input);
+      if (url.endsWith("/auth/csrf")) {
+        return new Response(JSON.stringify({ data: { csrfToken: "test-token" }, error: null }), {
+          headers: { "Content-Type": "application/json" }
+        });
+      }
+      if (url.includes("/daily-operation") && (!init?.method || init.method === "GET")) {
+        return new Response(
+          JSON.stringify({
+            data: { items: dailyOperationApiItems, total: 1, page: 1, size: 1 },
+            error: null
+          }),
+          { headers: { "Content-Type": "application/json" } }
+        );
+      }
+      if (url.includes("/daily-operation/") && init?.method === "PUT") {
+        savedBody = JSON.parse(typeof init.body === "string" ? init.body : "{}") as typeof savedBody;
+        return new Response(
+          JSON.stringify({
+            data: {
+              id: "raw-1",
+              date: savedBody?.draft.date,
+              draft: savedBody?.draft,
+              productRows: savedBody?.productRows,
+              channelRows: savedBody?.channelRows,
+              staffSpecialRows: savedBody?.staffSpecialRows,
+              createdAt: importedRecord.savedAt,
+              updatedAt: "2026-07-12T00:00:00.000Z"
+            },
+            error: null
+          }),
+          { headers: { "Content-Type": "application/json" } }
+        );
+      }
+      return new Response(JSON.stringify({ data: { items: [], total: 0, page: 1, size: 0 }, error: null }), {
+        headers: { "Content-Type": "application/json" }
+      });
+    });
+
+    render(
+      <ConfirmProvider>
+        <MemoryRouter initialEntries={["/daily-log/today"]}>
+          <Routes>
+            <Route path="/daily-log/today" element={<DailyLogPage />} />
+          </Routes>
+        </MemoryRouter>
+      </ConfirmProvider>
+    );
+
+    fireEvent.click(await screen.findByRole("tab", { name: "데이터 조회" }));
+    fireEvent.click(await screen.findByRole("button", { name: "상세" }));
+    fireEvent.click(screen.getByRole("button", { name: "수정" }));
+    fireEvent.click(screen.getByRole("button", { name: "일일 운영 저장" }));
+
+    await waitFor(() => expect(savedBody?.draft.rawSections).toEqual(rawSections));
+  });
+
   it("applies the AI suggestion into editable response fields", async () => {
     let postedResponse: unknown = null;
     vi.mocked(fetch).mockImplementation(async (input, init) => {

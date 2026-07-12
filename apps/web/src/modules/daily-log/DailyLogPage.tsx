@@ -15,6 +15,7 @@ type LookupMode = "date" | "range" | "week" | "month";
 type LookupSortOrder = "desc" | "asc";
 type StaffPeriod = "today" | "tomorrow";
 type MissingDailyItem = { tab: DailyTab; label: string };
+type RequiredDailyOperationDraftKey = Exclude<keyof DailyOperationDraft, "rawSections">;
 type StaffCategory =
   | "dayOff"
   | "vacation"
@@ -44,6 +45,21 @@ export type ChannelRow = {
 
 export type StaffSpecialRows = Record<StaffPeriod, Record<StaffCategory, string>>;
 
+export type DailyOperationRawSection = {
+  label: string;
+  rows: number[];
+  text: string;
+};
+
+export type DailyOperationRawSections = {
+  source: {
+    fileName: string;
+    sheetName: string;
+    importedAt: string;
+  };
+  sections: Record<string, DailyOperationRawSection>;
+};
+
 export type DailyOperationDraft = {
   date: string;
   author: string;
@@ -67,6 +83,7 @@ export type DailyOperationDraft = {
   lastWorkerTime: string;
   hygieneChecker: string;
   finalChecker: string;
+  rawSections?: DailyOperationRawSections;
 };
 
 export type DailyOperationSavedRecord = {
@@ -391,7 +408,7 @@ function collectMissingDailyItems(
 ): MissingDailyItem[] {
   const missing: MissingDailyItem[] = [];
   const requiredDraftFields: Array<{
-    key: keyof DailyOperationDraft;
+    key: RequiredDailyOperationDraftKey;
     label: string;
     tab: DailyTab;
   }> = [

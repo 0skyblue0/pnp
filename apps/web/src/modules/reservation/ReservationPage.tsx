@@ -165,6 +165,14 @@ function timePart(value: string): string {
   return value.slice(11, 16) || "11:00";
 }
 
+function quickTimeLabel(time: string): string {
+  const hour = Number(time.slice(0, 2));
+  if (hour <= 12) {
+    return `${hour}시`;
+  }
+  return `${hour - 12}시`;
+}
+
 function combineDateTime(date: string, time: string): string {
   return `${date}T${time}`;
 }
@@ -637,7 +645,7 @@ export function ReservationPage() {
 
             <div className="mb-2">
               <div className="mb-[5px] text-[11px] text-muted">픽업 시간</div>
-              <div className="mb-2 flex flex-wrap gap-[6px]">
+              <div aria-label="픽업 시간 빠른 선택" className="mb-2 grid grid-cols-10 gap-1">
                 {modalQuickTimes.map((time) => {
                   const isSelected = timePart(form.pickupAt) === time;
                   return (
@@ -645,12 +653,12 @@ export function ReservationPage() {
                       key={time}
                       type="button"
                       className={[
-                        "rounded-[8px] px-3 py-[5px] text-[12px] font-semibold transition",
+                        "rounded-[8px] px-1 py-[5px] text-[12px] font-semibold transition",
                         isSelected ? "bg-bread text-white" : "bg-cream text-cocoa hover:bg-[#EFE6DA]"
                       ].join(" ")}
                       onClick={() => setQuickTime(time)}
                     >
-                      {time}
+                      {quickTimeLabel(time)}
                     </button>
                   );
                 })}

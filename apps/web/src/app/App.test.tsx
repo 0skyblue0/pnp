@@ -383,8 +383,16 @@ describe("App", () => {
     expect(within(modal).getByLabelText("픽업 날짜")).toHaveAttribute("type", "date");
     expect(within(modal).getByLabelText("픽업 날짜")).not.toHaveClass("sr-only");
 
-    expect(within(modal).getByRole("button", { name: "10:00" })).toBeInTheDocument();
-    expect(within(modal).getByRole("button", { name: "19:00" })).toBeInTheDocument();
+    const quickTimeGroup = within(modal).getByLabelText("픽업 시간 빠른 선택");
+    expect(quickTimeGroup).toHaveClass("grid-cols-10");
+    expect(quickTimeGroup).not.toHaveClass("flex-wrap");
+    expect(within(quickTimeGroup).getByRole("button", { name: "10시" })).toBeInTheDocument();
+    expect(within(quickTimeGroup).getByRole("button", { name: "11시" })).toBeInTheDocument();
+    expect(within(quickTimeGroup).getByRole("button", { name: "1시" })).toBeInTheDocument();
+    expect(within(quickTimeGroup).getByRole("button", { name: "7시" })).toBeInTheDocument();
+    expect(within(modal).queryByRole("button", { name: "11:00" })).not.toBeInTheDocument();
+    expect(within(modal).queryByRole("button", { name: "13:00" })).not.toBeInTheDocument();
+    expect(within(modal).queryByRole("button", { name: "19:00" })).not.toBeInTheDocument();
     expect(within(modal).queryByRole("button", { name: "09:00" })).not.toBeInTheDocument();
     expect(within(modal).queryByRole("button", { name: "12:30" })).not.toBeInTheDocument();
     expect(within(modal).queryByRole("button", { name: "19:30" })).not.toBeInTheDocument();

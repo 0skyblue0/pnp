@@ -39,8 +39,18 @@ type LedgerForm = {
 type SharedUseForm = {
   name: string;
   phoneLast4: string;
+  limit: string;
   amount: string;
   note: string;
+};
+
+type SharedUsageSummary = {
+  key: string;
+  name: string;
+  phoneLast4: string;
+  total: number;
+  count: number;
+  lastUsedAt: string;
 };
 
 type MemoEditForm = {
@@ -51,6 +61,10 @@ type DetailMode = "DETAIL" | "CHARGE" | "USE";
 
 function emptyNewLedgerForm(): NewLedgerForm {
   return { customerName: "", contactPhone: "", amount: "", memo: "" };
+}
+
+function emptySharedUseForm(): SharedUseForm {
+  return { name: "", phoneLast4: "", limit: "", amount: "", note: "" };
 }
 
 function formatCurrency(value: number): string {
@@ -98,6 +112,61 @@ function lastTransactionText(customer: PrepaidCustomerDto): string {
   const last = customer.transactions[0];
   if (!last) return "거래 내역 없음";
   return `${formatLedgerDate(last.occurredAt)} ${transactionLabel(last.type)} ${transactionAmountLabel(last)}`;
+}
+
+function parseSharedLimitText(value: string | null | undefined): number {
+  if (!value) return 0;
+  const match = value.match(/(?:1인\s*한도|한도|각)\s*([0-9,]+)\s*원?/);
+  const amount = match?.[1];
+  return amount ? Number(amount.replace(/,/g, "")) : 0;
+}
+
+function suggestedSharedLimit(customer: PrepaidCustomerDto): number {
+  const memoLimit = parseSharedLimitText(customer.memo);
+  if (memoLimit > 0) return memoLimit;
+  for (const transaction of customer.transactions) {
+    const limit = parseSharedLimitText(transaction.note);
+    if (limit > 0) return limit;
+  }
+  return 0;
+}
+
+function parseSharedUseNote(note: string | null): { name: string; phoneLast4: string } | null {
+  if (!note?.includes("공동 사용")) return null;
+  const named = note.match(/공동 사용\s*-\s*(.+?)\((\d{4})\)/);
+  const namedUser = named?.[1];
+  const namedPhone = named?.[2];
+  if (namedUser && namedPhone) return { name: namedUser.trim(), phoneLast4: namedPhone };
+  const phoneOnly = note.match(/공동 사용\s*-\s*뒷자리\s*(\d{4})/);
+  const phoneOnlyLast4 = phoneOnly?.[1];
+  if (phoneOnlyLast4) return { name: "이름 없음", phoneLast4: phoneOnlyLast4 };
+  return null;
+}
+
+function sharedUsageSummaries(customer: PrepaidCustomerDto): SharedUsageSummary[] {
+  const summaries = new Map<string, SharedUsageSummary>();
+  for (const transaction of customer.transactions) {
+    if (transaction.type !== "USE") continue;
+    const parsed = parseSharedUseNote(transaction.note);
+    if (!parsed) continue;
+    const key = parsed.phoneLast4;
+    const current = summaries.get(key) ?? {
+      key,
+      name: parsed.name,
+      phoneLast4: parsed.phoneLast4,
+      total: 0,
+      count: 0,
+      lastUsedAt: transaction.occurredAt
+    };
+    current.name = parsed.name !== "이름 없음" ? parsed.name : current.name;
+    current.total += transaction.amount;
+    current.count += 1;
+    if (new Date(transaction.occurredAt).getTime() > new Date(current.lastUsedAt).getTime()) {
+      current.lastUsedAt = transaction.occurredAt;
+    }
+    summaries.set(key, current);
+  }
+  return [...summaries.values()].sort((left, right) => right.total - left.total);
 }
 
 export function PrepaidLedgerPage() {
@@ -162,16 +231,19 @@ export function PrepaidLedgerPage() {
   }
 
   function setSharedUseForm(customerId: string, next: Partial<SharedUseForm>) {
-    setSharedUseForms((current) => ({
-      ...current,
-      [customerId]: {
-        name: current[customerId]?.name ?? "",
-        phoneLast4: current[customerId]?.phoneLast4 ?? "",
-        amount: current[customerId]?.amount ?? "",
-        note: current[customerId]?.note ?? "",
-        ...next
-      }
-    }));
+    setSharedUseForms((current) => {
+      const previous = current[customerId] ?? emptySharedUseForm();
+      return {
+        ...current,
+        [customerId]: {
+          name: next.name ?? previous.name,
+          phoneLast4: next.phoneLast4 ?? previous.phoneLast4,
+          limit: next.limit ?? previous.limit,
+          amount: next.amount ?? previous.amount,
+          note: next.note ?? previous.note
+        }
+      };
+    });
   }
 
   function openCustomer(customer: PrepaidCustomerDto, mode: DetailMode) {
@@ -265,17 +337,29 @@ export function PrepaidLedgerPage() {
   async function useSharedBalance(customer: PrepaidCustomerDto) {
     setMessage(null);
     setError(null);
-    const form = sharedUseForms[customer.id] ?? { name: "", phoneLast4: "", amount: "", note: "" };
+    const form = sharedUseForms[customer.id] ?? emptySharedUseForm();
     const amount = digitsToNumber(form.amount);
+    const limit = digitsToNumber(form.limit) || suggestedSharedLimit(customer);
     const phoneLast4 = form.phoneLast4.replace(/\D/g, "").slice(-4);
+    if (limit <= 0) {
+      setError("공동 사용은 먼저 1인 한도를 입력해 주세요.");
+      return;
+    }
     if (amount <= 0 || phoneLast4.length < 4) {
       setError("공동 사용 금액과 휴대폰 뒷자리 4자리를 입력해 주세요.");
       return;
     }
+    const previousTotal = sharedUsageSummaries(customer).find((summary) => summary.phoneLast4 === phoneLast4)?.total ?? 0;
+    const remainingLimit = Math.max(limit - previousTotal, 0);
     const userLabel = form.name.trim() ? `${form.name.trim()}(${phoneLast4})` : `뒷자리 ${phoneLast4}`;
-    const note = [`공동 사용 - ${userLabel}`, form.note.trim()].filter(Boolean).join(" / ");
+    if (amount > remainingLimit) {
+      setError(`${userLabel}님 남은 한도는 ${formatCurrency(remainingLimit)}원입니다.`);
+      return;
+    }
+    const note = [`공동 사용 - ${userLabel}`, `1인 한도 ${formatCurrency(limit)}원`, form.note.trim()].filter(Boolean).join(" / ");
     const envelope = await apiPost<PrepaidCustomerDto, Record<string, unknown>>(`/prepaid-ledger/${customer.id}/use`, {
       amount,
+      maxAmount: remainingLimit,
       note
     });
     if (envelope.error) {
@@ -283,7 +367,7 @@ export function PrepaidLedgerPage() {
       return;
     }
     setMessage(`${userLabel} 공동 사용 처리 완료 #${customer.id}`);
-    setSharedUseForms((current) => ({ ...current, [customer.id]: { name: "", phoneLast4: "", amount: "", note: "" } }));
+    setSharedUseForms((current) => ({ ...current, [customer.id]: { ...emptySharedUseForm(), limit: form.limit } }));
     setDetailMode("DETAIL");
     await loadLedger();
   }
@@ -422,7 +506,7 @@ export function PrepaidLedgerPage() {
           mode={detailMode}
           chargeForm={chargeForms[selectedCustomer.id] ?? { amount: "", note: "" }}
           useForm={useForms[selectedCustomer.id] ?? { amount: "", note: "" }}
-          sharedUseForm={sharedUseForms[selectedCustomer.id] ?? { name: "", phoneLast4: "", amount: "", note: "" }}
+          sharedUseForm={sharedUseForms[selectedCustomer.id] ?? emptySharedUseForm()}
           memoForm={memoForms[selectedCustomer.id] ?? { memo: selectedCustomer.memo ?? "" }}
           setChargeForm={setChargeForm}
           setUseForm={setUseForm}
@@ -534,6 +618,14 @@ function SelectedCustomerDetail(props: {
     deleteTransaction
   } = props;
 
+  const sharedLimit = digitsToNumber(sharedUseForm.limit) || suggestedSharedLimit(customer);
+  const sharedSummaries = sharedUsageSummaries(customer);
+  const selectedSharedPhone = sharedUseForm.phoneLast4.replace(/\D/g, "").slice(-4);
+  const selectedSharedTotal = selectedSharedPhone
+    ? sharedSummaries.find((summary) => summary.phoneLast4 === selectedSharedPhone)?.total ?? 0
+    : 0;
+  const selectedSharedRemaining = sharedLimit > 0 ? Math.max(sharedLimit - selectedSharedTotal, 0) : 0;
+
   return (
     <article id="selected-prepaid-detail" aria-label={`${customer.customerName} 선결제 장부`} className="rounded-[14px] border border-latte bg-white p-5">
       <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[#EFE8DC] pb-4">
@@ -567,34 +659,47 @@ function SelectedCustomerDetail(props: {
           </div>
 
           <div className="mt-4 rounded-[12px] border border-[#E8D6C7] bg-white/70 p-4">
-            <div className="flex items-start gap-2">
-              <Users className="mt-0.5 h-4 w-4 text-cocoa" aria-hidden="true" />
-              <div>
-                <h4 className="text-sm font-extrabold text-ink">법인카드 공동 사용</h4>
-                <p className="mt-1 text-xs font-semibold text-muted">대표명으로 충전한 금액을 여러 사람이 나눠 쓸 때, 이름과 휴대폰 뒷자리로 차감 기록을 남깁니다.</p>
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-start gap-2">
+                <Users className="mt-0.5 h-4 w-4 text-cocoa" aria-hidden="true" />
+                <div>
+                  <h4 className="text-sm font-extrabold text-ink">공동 사용</h4>
+                  <p className="mt-1 text-xs font-semibold text-muted">1인 한도를 걸고, 휴대폰 뒷자리별로 남은 금액을 보며 차감합니다.</p>
+                </div>
               </div>
+              {sharedLimit > 0 ? <span className="rounded-full bg-cream px-3 py-1 text-xs font-extrabold text-cocoa">1인 한도 {formatCurrency(sharedLimit)}원</span> : null}
             </div>
-            <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-4 md:items-end">
+
+            <div className="mt-3 grid gap-2 md:grid-cols-[0.9fr_1fr_0.9fr_1fr_auto] md:items-end">
               <label className="grid gap-1">
-                <span className="text-xs font-semibold text-muted">사용자 이름</span>
+                <span className="text-xs font-semibold text-muted">1인 한도</span>
+                <input aria-label={`${customer.customerName} 공동 사용 1인 한도`} className="input text-right" inputMode="numeric" placeholder={sharedLimit ? formatCurrency(sharedLimit) : "30,000"} value={sharedUseForm.limit} onChange={(event) => setSharedUseForm(customer.id, { limit: formatAmountInput(event.target.value) })} />
+              </label>
+              <label className="grid gap-1">
+                <span className="text-xs font-semibold text-muted">이름</span>
                 <input aria-label={`${customer.customerName} 공동 사용자 이름`} className="input" placeholder="홍길동" value={sharedUseForm.name} onChange={(event) => setSharedUseForm(customer.id, { name: event.target.value })} />
               </label>
               <label className="grid gap-1">
-                <span className="text-xs font-semibold text-muted">휴대폰 뒷자리</span>
+                <span className="text-xs font-semibold text-muted">뒷자리</span>
                 <input aria-label={`${customer.customerName} 공동 사용자 휴대폰 뒷자리`} className="input text-center" inputMode="numeric" placeholder="1234" value={sharedUseForm.phoneLast4} onChange={(event) => setSharedUseForm(customer.id, { phoneLast4: event.target.value.replace(/\D/g, "").slice(0, 4) })} />
               </label>
               <label className="grid gap-1">
-                <span className="text-xs font-semibold text-muted">사용 금액</span>
-                <input aria-label={`${customer.customerName} 공동 사용 금액`} className="input text-right" inputMode="numeric" placeholder="30,000" value={sharedUseForm.amount} onChange={(event) => setSharedUseForm(customer.id, { amount: formatAmountInput(event.target.value) })} />
+                <span className="text-xs font-semibold text-muted">이번 사용</span>
+                <input aria-label={`${customer.customerName} 공동 사용 금액`} className="input text-right" inputMode="numeric" placeholder={selectedSharedRemaining ? formatCurrency(selectedSharedRemaining) : "30,000"} value={sharedUseForm.amount} onChange={(event) => setSharedUseForm(customer.id, { amount: formatAmountInput(event.target.value) })} />
               </label>
-              <label className="grid gap-1">
-                <span className="text-xs font-semibold text-muted">메모 <span className="font-normal">(선택)</span></span>
-                <input aria-label={`${customer.customerName} 공동 사용 메모`} className="input" placeholder="예: 법인카드 5명 중 1명" value={sharedUseForm.note} onChange={(event) => setSharedUseForm(customer.id, { note: event.target.value })} />
-              </label>
-              <button className="inline-flex min-h-10 items-center justify-center gap-2 rounded-control bg-ink px-4 text-sm font-bold text-white transition hover:bg-cocoa md:col-span-2 xl:col-span-4 xl:justify-self-end" type="button" onClick={() => void useSharedBalance(customer)}>
-                공동 사용 처리
+              <button className="inline-flex min-h-10 items-center justify-center gap-2 rounded-control bg-ink px-4 text-sm font-bold text-white transition hover:bg-cocoa" type="button" onClick={() => void useSharedBalance(customer)}>
+                차감
               </button>
             </div>
+            <label className="mt-2 grid gap-1">
+              <span className="text-xs font-semibold text-muted">메모 <span className="font-normal">(선택)</span></span>
+              <input aria-label={`${customer.customerName} 공동 사용 메모`} className="input" placeholder="예: 법인카드 5명 중 1명" value={sharedUseForm.note} onChange={(event) => setSharedUseForm(customer.id, { note: event.target.value })} />
+            </label>
+            <p className="mt-2 text-xs font-bold text-cocoa">
+              {selectedSharedPhone && sharedLimit > 0
+                ? `${selectedSharedPhone} 사용 ${formatCurrency(selectedSharedTotal)}원 · 남은 한도 ${formatCurrency(selectedSharedRemaining)}원`
+                : "뒷자리를 입력하면 이 사람이 이미 쓴 금액과 남은 한도를 바로 확인할 수 있습니다."}
+            </p>
           </div>
         </section>
       ) : null}
@@ -620,6 +725,28 @@ function SelectedCustomerDetail(props: {
       ) : null}
 
       <section className="mt-4">
+        {sharedSummaries.length > 0 ? (
+          <div className="mb-4 rounded-[12px] border border-[#E8D6C7] bg-[#FFFBF6] p-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h3 className="text-base font-extrabold text-ink">공동 사용 현황</h3>
+              {sharedLimit > 0 ? <p className="text-xs font-bold text-cocoa">1인 한도 {formatCurrency(sharedLimit)}원 기준</p> : null}
+            </div>
+            <div className="mt-3 grid grid-cols-[1fr_0.9fr_0.9fr_0.9fr] gap-2 border-b border-[#EFE8DC] px-1 py-2 text-[11.5px] font-bold text-muted">
+              <div>사용자</div>
+              <div>사용 합계</div>
+              <div>남은 한도</div>
+              <div>마지막</div>
+            </div>
+            {sharedSummaries.map((summary) => (
+              <div key={summary.key} className="grid grid-cols-[1fr_0.9fr_0.9fr_0.9fr] gap-2 border-b border-[#F5F0E7] px-1 py-2 text-sm last:border-b-0">
+                <div className="font-bold text-ink">{summary.name}({summary.phoneLast4})</div>
+                <div className="font-extrabold text-cocoa">{formatCurrency(summary.total)}원</div>
+                <div className="font-bold text-ink">{sharedLimit > 0 ? `${formatCurrency(Math.max(sharedLimit - summary.total, 0))}원` : "한도 없음"}</div>
+                <div className="text-muted">{formatLedgerDate(summary.lastUsedAt)}</div>
+              </div>
+            ))}
+          </div>
+        ) : null}
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h3 className="text-base font-extrabold text-ink">세부내역</h3>
           <p className="text-xs font-semibold text-muted">잘못 입력한 내역은 이곳에서 삭제합니다.</p>

@@ -2073,6 +2073,14 @@ describe("App", () => {
         note: "여섯번째 상세 내역",
         occurredAt: "2026-07-01T14:00:00.000Z",
         createdAt: "2026-07-01T14:00:00.000Z"
+      },
+      {
+        id: "t7",
+        type: "USE",
+        amount: 10000,
+        note: "공동 사용 - 이영희(5678) / 1인 한도 30,000원",
+        occurredAt: "2026-07-01T15:00:00.000Z",
+        createdAt: "2026-07-01T15:00:00.000Z"
       }
     ];
     const customer = {
@@ -2191,8 +2199,11 @@ describe("App", () => {
     expect(screen.getByText("현재 선택한 손님")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "세부내역" })).toBeInTheDocument();
     expect(screen.getByText("여섯번째 상세 내역")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "공동 사용 현황" })).toBeInTheDocument();
+    expect(screen.getByText("이영희(5678)")).toBeInTheDocument();
+    expect(screen.getByText("20,000원")).toBeInTheDocument();
     expect(screen.getByText("잘못 입력한 내역은 이곳에서 삭제합니다.")).toBeInTheDocument();
-    expect(screen.getAllByRole("button", { name: "내역 삭제" })).toHaveLength(6);
+    expect(screen.getAllByRole("button", { name: "내역 삭제" })).toHaveLength(7);
     fireEvent.click(screen.getAllByRole("button", { name: "내역 삭제" })[1]!);
     const deleteTransactionDialog = await screen.findByRole("alertdialog");
     fireEvent.click(within(deleteTransactionDialog).getByRole("button", { name: "삭제" }));
@@ -2235,8 +2246,8 @@ describe("App", () => {
     fireEvent.click(screen.getByRole("button", { name: "사용" }));
     expect(screen.getByRole("heading", { name: "사용" })).toBeInTheDocument();
     expect(screen.getByPlaceholderText("안 적어도 사용 처리 가능")).toBeInTheDocument();
-    expect(screen.getByText("법인카드 공동 사용")).toBeInTheDocument();
-    expect(screen.getByText("대표명으로 충전한 금액을 여러 사람이 나눠 쓸 때, 이름과 휴대폰 뒷자리로 차감 기록을 남깁니다.")).toBeInTheDocument();
+    expect(screen.getByText("공동 사용")).toBeInTheDocument();
+    expect(screen.getByText("1인 한도를 걸고, 휴대폰 뒷자리별로 남은 금액을 보며 차감합니다.")).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText("김선결 사용 금액"), { target: { value: "5000" } });
     fireEvent.click(screen.getByRole("button", { name: "김선결 사용 처리" }));
 
@@ -2245,14 +2256,19 @@ describe("App", () => {
     expect(await screen.findByText("사용 처리 완료 #1")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "사용" }));
+    expect(screen.getByText("1인 한도 30,000원")).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText("김선결 공동 사용자 이름"), { target: { value: "홍길동" } });
     fireEvent.change(screen.getByLabelText("김선결 공동 사용자 휴대폰 뒷자리"), { target: { value: "1234" } });
     fireEvent.change(screen.getByLabelText("김선결 공동 사용 금액"), { target: { value: "30000" } });
     fireEvent.change(screen.getByLabelText("김선결 공동 사용 메모"), { target: { value: "법인카드 5명 중 1명" } });
-    fireEvent.click(screen.getByRole("button", { name: "공동 사용 처리" }));
+    fireEvent.click(screen.getByRole("button", { name: "차감" }));
 
     await waitFor(() =>
-      expect(usedBodies[1]).toMatchObject({ amount: 30000, note: "공동 사용 - 홍길동(1234) / 법인카드 5명 중 1명" })
+      expect(usedBodies[1]).toMatchObject({
+        amount: 30000,
+        maxAmount: 30000,
+        note: "공동 사용 - 홍길동(1234) / 1인 한도 30,000원 / 법인카드 5명 중 1명"
+      })
     );
     expect(await screen.findByText("홍길동(1234) 공동 사용 처리 완료 #1")).toBeInTheDocument();
   });

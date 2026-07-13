@@ -136,6 +136,9 @@ export async function registerPrepaidLedgerRoutes(app: FastifyInstance): Promise
     if (input.amount > balance) {
       throw new HttpError(400, "PREPAID_BALANCE_NOT_ENOUGH", "남은 선결제 금액보다 큰 금액은 사용할 수 없습니다.");
     }
+    if (input.maxAmount !== undefined && input.amount > input.maxAmount) {
+      throw new HttpError(400, "PREPAID_SHARED_LIMIT_EXCEEDED", "이 사람에게 남은 공동 사용 한도보다 큰 금액은 사용할 수 없습니다.");
+    }
 
     const now = new Date();
     await app.prisma.prepaidTransaction.create({

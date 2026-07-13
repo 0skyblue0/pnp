@@ -22,6 +22,7 @@ export const createPrepaidCustomerSchema = z.object({
 
 export const usePrepaidBalanceSchema = z.object({
   amount: z.coerce.number().int().positive().max(99_999_999),
+  maxAmount: z.coerce.number().int().positive().max(99_999_999).optional(),
   note: z.string().trim().max(2000).optional()
 });
 

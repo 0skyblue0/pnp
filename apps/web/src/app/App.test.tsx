@@ -801,8 +801,8 @@ describe("App", () => {
     expect(screen.getByText("이번 기간 우선순위")).toBeInTheDocument();
     expect(screen.getByText("많이 반복된 내용 TOP 5")).toBeInTheDocument();
     expect(screen.getAllByText("“바게트 맛 불만 반복”").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("“청주에서 일부러 방문”").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("“식감 개선 필요”").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("“청주에서 일부러 방문”").length).toBe(1);
+    expect(screen.getAllByText("“식감 개선 필요”").length).toBe(1);
     expect(screen.getByText("손님이 직접 한 말")).toBeInTheDocument();
     expect(screen.getByText("직원 관찰이나 매출 메모가 아니라 손님 입에서 나온 말만 모았습니다.")).toBeInTheDocument();
     expect(screen.getByText("“청주에서 일부러 왔어요.”")).toBeInTheDocument();

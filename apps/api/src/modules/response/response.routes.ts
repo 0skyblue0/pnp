@@ -400,6 +400,36 @@ function isOperationalObservation(value: string): boolean {
   );
 }
 
+function indirectCustomerQuote(value: string): string | null {
+  const compact = trimQuoteText(value.replace(/\s+/g, " "));
+  if (
+    !compact ||
+    operationalReportWords.some((word) => compact.includes(word)) ||
+    /(?:예약|판매|품절|마감).{0,20}구매문의|구매문의\s*(?:많|있)/.test(compact)
+  ) {
+    return null;
+  }
+
+  const normalized = compact.replace(/^단골손님인\s*[^\s]+님이\s*/, "").trim();
+  const patterns = [
+    /^(.{2,120}?(?:문의|요청))(?:가|이|\s|$)/,
+    /^(.{2,120}?)(?:으로|로)\s*바꿨으면 하는 손님 의견/,
+    /^(.{2,120}?)(?:을|를)?\s*(?:원하는|원하시는|희망한|희망하시는)\s*손님/,
+    /^(.{2,120}?(?:달라는|달라고 하는|넣어달라는))\s*요청/,
+    /^(.{2,120}?(?:라고|다고|냐고))\s*(?:물어보|문의|말씀|하셨|했습니다|했|평|칭찬|남겨|요청)/
+  ];
+
+  for (const pattern of patterns) {
+    const match = normalized.match(pattern);
+    const quote = match?.[1] ? trimQuoteText(match[1]) : null;
+    if (quote && quote.length >= 3 && quote !== "구매문의") {
+      return quote.slice(0, 120);
+    }
+  }
+
+  return null;
+}
+
 function directCustomerQuote(response: ResponseWithRelations): string | null {
   const cleanedText = cleanResponseText(response.fullText) || cleanResponseText(response.shortSummary);
   const lines = cleanedText
@@ -419,6 +449,11 @@ function directCustomerQuote(response: ResponseWithRelations): string | null {
     }
 
     const compact = trimQuoteText(line.replace(/\s+/g, " "));
+    const indirectQuote = indirectCustomerQuote(compact);
+    if (indirectQuote) {
+      return indirectQuote;
+    }
+
     if (isOperationalObservation(compact)) {
       continue;
     }

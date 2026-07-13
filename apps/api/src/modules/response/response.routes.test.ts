@@ -620,6 +620,60 @@ describe("response stats route", () => {
     await app.close();
   });
 
+  it("keeps indirect customer wording when it is clearly from the customer", async () => {
+    const prisma = buildPrismaMock();
+    prisma.customerResponse.count.mockResolvedValue(2);
+    prisma.customerResponse.groupBy
+      .mockResolvedValueOnce([{ majorCriterionId: 200, _count: { _all: 2 } }])
+      .mockResolvedValueOnce([{ majorCriterionId: 200, middleCriterionId: 210, _count: { _all: 2 } }])
+      .mockResolvedValueOnce([
+        { majorCriterionId: 200, middleCriterionId: 210, minorCriterionId: 211, _count: { _all: 2 } }
+      ])
+      .mockResolvedValueOnce([{ date: new Date("2026-01-16T00:00:00.000Z"), _count: { _all: 2 } }]);
+    prisma.responseCriterion.findMany.mockResolvedValue([
+      { id: 200, parentId: null, depth: 1, name: "제품", sortOrder: 1 },
+      { id: 210, parentId: 200, depth: 2, name: "제품 문의", sortOrder: 1 },
+      { id: 211, parentId: 210, depth: 3, name: "기타 제품", sortOrder: 1 }
+    ]);
+    prisma.customerResponse.findMany.mockResolvedValue([
+      {
+        majorCriterionId: 200,
+        middleCriterionId: 210,
+        minorCriterionId: 211,
+        shortSummary: "호밀빵 모양 변동 여부 문의",
+        fullText: "호밀빵은 매번 모양이 다른거냐고 물어보시는 손님 계셨습니다.",
+        id: 101n,
+        date: new Date("2026-01-16T00:00:00.000Z")
+      },
+      {
+        majorCriterionId: 200,
+        middleCriterionId: 210,
+        minorCriterionId: 211,
+        shortSummary: "예약 영향으로 구매 문의 많음",
+        fullText: "예약 영향으로 구매문의 많았고, 예약으로 오후에 가져가신 손님 2분 계셨습니다.",
+        id: 102n,
+        date: new Date("2026-01-16T00:00:00.000Z")
+      }
+    ]);
+
+    const app = Fastify({ logger: false });
+    app.decorate("prisma", prisma as never);
+    await app.register(registerResponseRoutes, { prefix: "/response" });
+
+    const response = await app.inject({
+      method: "GET",
+      url: "/response/stats?from=2026-01-01&to=2026-01-31"
+    });
+
+    expect(response.statusCode).toBe(200);
+    const body = response.json<ApiEnvelope<ResponseStatsBody>>();
+    expect(body.data?.insights.directQuotes.map((quote) => quote.text)).toEqual([
+      "호밀빵은 매번 모양이 다른거냐고"
+    ]);
+
+    await app.close();
+  });
+
   it("counts check-needed responses from current criteria and risky wording", async () => {
     const prisma = buildPrismaMock();
     prisma.customerResponse.count.mockResolvedValue(4);

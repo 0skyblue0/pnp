@@ -288,7 +288,7 @@ export function PrepaidLedgerPage() {
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <h2 className="section-title">선결제 장부</h2>
-            <p className="mt-1 text-sm font-semibold text-cocoa">오늘 할 일: 손님 선택 → 사용 차감 또는 추가 충전</p>
+            <p className="mt-1 text-sm font-semibold text-cocoa">계산대 모드: 손님 찾고 바로 사용 차감</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <label className="sr-only" htmlFor="prepaid-search">손님 검색</label>
@@ -310,19 +310,33 @@ export function PrepaidLedgerPage() {
             </button>
           </div>
         </div>
-        <div className="mt-4 grid gap-3 md:grid-cols-3">
+        <div className="mt-4 grid gap-3 lg:grid-cols-[1fr_1fr_1fr]">
           <div className="rounded-[12px] border border-latte bg-cream/40 px-4 py-3">
-            <p className="text-xs font-bold text-muted">장부 요약</p>
-            <p className="mt-1 text-2xl font-extrabold text-ink">{formatCurrency(customers.length)}명</p>
+            <p className="text-xs font-bold text-muted">1. 손님 찾기</p>
+            <p className="mt-1 text-lg font-extrabold text-ink">이름/연락처 검색</p>
           </div>
           <div className="rounded-[12px] border border-latte bg-cream/40 px-4 py-3">
+            <p className="text-xs font-bold text-muted">2. 잔액에서 빼기</p>
+            <p className="mt-1 text-lg font-extrabold text-bread">사용 금액 입력</p>
+          </div>
+          <div className="rounded-[12px] border border-latte bg-cream/40 px-4 py-3">
+            <p className="text-xs font-bold text-muted">3. 필요하면 충전</p>
+            <p className="mt-1 text-lg font-extrabold text-cocoa">충전/되돌리기</p>
+          </div>
+        </div>
+        <div className="mt-3 grid gap-3 md:grid-cols-[1fr_1fr]">
+          <div className="rounded-[12px] border border-latte bg-white px-4 py-3">
+            <p className="text-xs font-bold text-muted">장부 인원</p>
+            <p className="mt-1 text-2xl font-extrabold text-ink">{formatCurrency(customers.length)}명</p>
+          </div>
+          <div className="rounded-[12px] border border-latte bg-white px-4 py-3">
             <p className="text-xs font-bold text-muted">총 남은 선결제</p>
             <p className="mt-1 text-2xl font-extrabold text-bread">{formatCurrency(totalBalance)}원</p>
           </div>
-          <div className="rounded-[12px] border border-latte bg-cream/40 px-4 py-3 text-sm font-bold leading-6 text-cocoa">
-            잘못 눌렀다면 최근 내역의 “되돌리기”를 누른 뒤 정확한 금액으로 다시 입력합니다.
-          </div>
         </div>
+        <p className="mt-3 rounded-[12px] border border-latte bg-[#FFF7EC] px-4 py-3 text-sm font-bold leading-6 text-cocoa">
+          잘못 눌렀다면 최근 내역의 “되돌리기”를 누른 뒤 정확한 금액으로 다시 입력합니다.
+        </p>
       </section>
 
       {message ? <div className="rounded-control border border-green/20 bg-green/10 px-3 py-2 text-sm font-semibold text-green">{message}</div> : null}
@@ -332,7 +346,7 @@ export function PrepaidLedgerPage() {
         <section className="grid content-start gap-3">
           <div className="rounded-[16px] border border-latte bg-white p-4">
             <div className="flex items-center justify-between gap-3">
-              <h3 className="text-base font-extrabold text-ink">손님 목록</h3>
+              <h3 className="text-base font-extrabold text-ink">선결제 손님</h3>
               <span className="text-xs font-bold text-muted">잔액 큰 순</span>
             </div>
             <div className="mt-3 grid gap-2">
@@ -485,7 +499,7 @@ function SelectedCustomerLedger(props: {
 
       <div className="grid gap-3 lg:grid-cols-2">
         <section className="rounded-[16px] border border-latte bg-white p-4">
-          <h3 className="text-base font-extrabold text-ink">빠른 사용 차감</h3>
+          <h3 className="text-base font-extrabold text-ink">사용 차감</h3>
           <p className="mt-1 text-xs font-semibold text-muted">손님이 제품을 가져가면 여기서 잔액을 뺍니다.</p>
           <div className="mt-3 grid gap-2">
             <label className="grid gap-1">

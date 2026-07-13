@@ -344,21 +344,30 @@ describe("App", () => {
     fireEvent.click(screen.getByRole("button", { name: "다음 달" }));
     expect(screen.getByRole("heading", { name: "2026년 7월" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "7.10 스케줄 입력" }));
+    expect(screen.getByRole("heading", { name: "7월 10일 일정판" })).toBeInTheDocument();
+    expect(screen.getByText("선택한 날짜에 이미 잡힌 일정을 확인하고 바로 새 일정을 입력합니다.")).toBeInTheDocument();
     expect(screen.getByRole("option", { name: "휴무" })).toBeInTheDocument();
     expect(screen.getByLabelText("스케줄 날짜")).toHaveValue("2026-07-10");
+    expect(screen.getByLabelText("일정 내용")).toBeInTheDocument();
+    expect(screen.getByLabelText("준비사항 / 참고 메모")).toBeInTheDocument();
+    expect(screen.queryByLabelText("스케줄 제목")).not.toBeInTheDocument();
     fireEvent.change(screen.getByLabelText("스케줄 구분"), { target: { value: "notice" } });
-    fireEvent.change(screen.getByLabelText("스케줄 제목"), { target: { value: "직원 교육" } });
-    fireEvent.change(screen.getByLabelText("스케줄 메모"), { target: { value: "오전 공유" } });
+    fireEvent.change(screen.getByLabelText("일정 내용"), { target: { value: "직원 교육" } });
+    fireEvent.change(screen.getByLabelText("준비사항 / 참고 메모"), { target: { value: "오전 공유" } });
     fireEvent.click(screen.getByRole("button", { name: "스케줄 저장" }));
     expect(await screen.findByText("스케줄 추가: 직원 교육")).toBeInTheDocument();
+    expect(screen.getByLabelText("7.10 스케줄 입력")).toHaveTextContent("방금 저장됨");
 
     fireEvent.click(screen.getByRole("button", { name: "이전 달" }));
     expect(screen.getByRole("heading", { name: "2026년 6월" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "6.30 스케줄 입력" }));
+    expect(screen.getByRole("heading", { name: "6월 30일 일정판" })).toBeInTheDocument();
+    expect(screen.getByText("이 날짜 일정 1건")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "여름 신메뉴 출시 수정" }));
-    fireEvent.change(screen.getByLabelText("스케줄 제목"), {
+    fireEvent.change(screen.getByLabelText("일정 내용"), {
       target: { value: "수정된 연간 일정" }
     });
-    fireEvent.change(screen.getByLabelText("스케줄 메모"), { target: { value: "수정 메모" } });
+    fireEvent.change(screen.getByLabelText("준비사항 / 참고 메모"), { target: { value: "수정 메모" } });
     fireEvent.change(screen.getByLabelText("스케줄 구분"), { target: { value: "close" } });
     fireEvent.click(screen.getByRole("button", { name: "스케줄 저장" }));
     expect(await screen.findByText("스케줄 수정 완료")).toBeInTheDocument();

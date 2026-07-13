@@ -276,6 +276,11 @@ function scheduleDateLabel(date: string): string {
   return `${Number(month)}.${Number(day)}`;
 }
 
+function scheduleDayPanelLabel(date: string): string {
+  const [, month, day] = date.split("-");
+  return `${Number(month)}월 ${Number(day)}일 일정판`;
+}
+
 function scheduleMonthLabel(monthKey: string): string {
   const [year, month] = monthKey.split("-");
   return `${year}년 ${Number(month)}월`;
@@ -330,6 +335,8 @@ export function ManagementPage() {
   const [editingGoalNoticeId, setEditingGoalNoticeId] = useState<string | null>(null);
   const [editingScheduleId, setEditingScheduleId] = useState<string | null>(null);
   const [selectedScheduleMonth, setSelectedScheduleMonth] = useState("");
+  const [selectedScheduleDate, setSelectedScheduleDate] = useState("");
+  const [recentlySavedScheduleDate, setRecentlySavedScheduleDate] = useState("");
   const [productSearchQuery, setProductSearchQuery] = useState("");
   const [draggedProductId, setDraggedProductId] = useState<number | null>(null);
   const [selectedMajorId, setSelectedMajorId] = useState<number | null>(null);
@@ -559,6 +566,7 @@ export function ManagementPage() {
 
   function openNewScheduleForm(date = "") {
     setEditingScheduleId(null);
+    setSelectedScheduleDate(date);
     setScheduleForm({ ...emptyScheduleForm, date });
     setIsScheduleFormOpen(true);
   }
@@ -566,6 +574,7 @@ export function ManagementPage() {
   function openScheduleEdit(schedule: AnnualScheduleDto) {
     setEditingScheduleId(schedule.id);
     setSelectedScheduleMonth(monthKeyFromDate(schedule.date));
+    setSelectedScheduleDate(schedule.date);
     setScheduleForm({
       date: schedule.date,
       title: schedule.title,
@@ -861,7 +870,7 @@ export function ManagementPage() {
     const tone = scheduleForm.tone || "notice";
 
     if (!date || !title) {
-      setError("스케줄 날짜와 제목을 입력하세요.");
+      setError("스케줄 날짜와 일정 내용을 입력하세요.");
       return;
     }
 
@@ -881,6 +890,7 @@ export function ManagementPage() {
 
     setSelectedScheduleMonth(monthKeyFromDate(envelope.data.date));
     setMessage(editingScheduleId === null ? `스케줄 추가: ${envelope.data.title}` : "스케줄 수정 완료");
+    setRecentlySavedScheduleDate(envelope.data.date);
     closeScheduleForm();
     await loadManagementData();
   }
@@ -1080,6 +1090,7 @@ export function ManagementPage() {
     },
     {}
   );
+  const selectedDateSchedules = selectedScheduleDate ? schedulesByDate[selectedScheduleDate] ?? [] : [];
   const scheduleCells = calendarDates(scheduleMonth);
 
   return (
@@ -1563,7 +1574,11 @@ export function ManagementPage() {
                     className="flex h-9 w-9 items-center justify-center rounded-full border border-latte bg-white text-lg font-extrabold text-cocoa hover:bg-[#EFE6DA]"
                     type="button"
                     aria-label="이전 달"
-                    onClick={() => setSelectedScheduleMonth((current) => shiftMonth(current || todayMonthKey(), -1))}
+                    onClick={() => {
+                      closeScheduleForm();
+                      setSelectedScheduleDate("");
+                      setSelectedScheduleMonth((current) => shiftMonth(current || todayMonthKey(), -1));
+                    }}
                   >
                     ‹
                   </button>
@@ -1572,41 +1587,96 @@ export function ManagementPage() {
                     className="flex h-9 w-9 items-center justify-center rounded-full border border-latte bg-white text-lg font-extrabold text-cocoa hover:bg-[#EFE6DA]"
                     type="button"
                     aria-label="다음 달"
-                    onClick={() => setSelectedScheduleMonth((current) => shiftMonth(current || todayMonthKey(), 1))}
+                    onClick={() => {
+                      closeScheduleForm();
+                      setSelectedScheduleDate("");
+                      setSelectedScheduleMonth((current) => shiftMonth(current || todayMonthKey(), 1));
+                    }}
                   >
                     ›
                   </button>
                 </div>
               </div>
 
-              {isScheduleFormOpen ? (
-                <div className="mt-4 rounded-[12px] border border-latte bg-cream/50 p-4">
-                  <div className="grid gap-3 lg:grid-cols-[11rem_8rem_minmax(0,1fr)_minmax(0,1fr)]">
-                    <label className="grid gap-2">
-                      <span className="field-label">날짜</span>
-                      <input className="input" aria-label="스케줄 날짜" type="date" value={scheduleForm.date} onChange={(event) => setScheduleForm((current) => ({ ...current, date: event.target.value }))} />
-                    </label>
-                    <label className="grid gap-2">
-                      <span className="field-label">구분</span>
-                      <select className="input" aria-label="스케줄 구분" value={scheduleForm.tone} onChange={(event) => setScheduleForm((current) => ({ ...current, tone: event.target.value as ScheduleForm["tone"] }))}>
-                        <option value="notice">공지</option>
-                        <option value="launch">출시</option>
-                        <option value="close">마감</option>
-                        <option value="holiday">휴무</option>
-                      </select>
-                    </label>
-                    <label className="grid gap-2">
-                      <span className="field-label">제목</span>
-                      <input className="input" aria-label="스케줄 제목" value={scheduleForm.title} onChange={(event) => setScheduleForm((current) => ({ ...current, title: event.target.value }))} />
-                    </label>
-                    <label className="grid gap-2">
-                      <span className="field-label">메모</span>
-                      <input className="input" aria-label="스케줄 메모" value={scheduleForm.note} onChange={(event) => setScheduleForm((current) => ({ ...current, note: event.target.value }))} />
-                    </label>
+              {selectedScheduleDate ? (
+                <div className="mx-auto mt-4 grid max-w-4xl gap-3 rounded-[12px] border border-bread/25 bg-cream/50 p-4 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.15fr)]">
+                  <div className="rounded-[10px] border border-latte bg-white p-3">
+                    <p className="text-[11px] font-bold text-muted">선택한 날짜</p>
+                    <h4 className="mt-1 text-lg font-extrabold text-ink">{scheduleDayPanelLabel(selectedScheduleDate)}</h4>
+                    <p className="mt-1 text-[12px] leading-5 text-muted">선택한 날짜에 이미 잡힌 일정을 확인하고 바로 새 일정을 입력합니다.</p>
+                    <p className="mt-3 rounded-full bg-cream px-3 py-1 text-xs font-bold text-cocoa">이 날짜 일정 {selectedDateSchedules.length}건</p>
+                    <div className="mt-3 grid gap-2">
+                      {selectedDateSchedules.map((schedule) => (
+                        <div key={schedule.id} className="rounded-[9px] border border-latte bg-cream/60 px-3 py-2">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0">
+                              <span className="rounded-full bg-white px-2 py-0.5 text-[10px] font-bold text-cocoa">{scheduleToneLabels[schedule.tone ?? "notice"]}</span>
+                              <p className="mt-1 break-words text-[13px] font-extrabold leading-5 text-ink">{schedule.title}</p>
+                            </div>
+                            <div className="flex shrink-0 gap-2">
+                              <button className="text-[11px] font-bold text-cocoa underline" type="button" aria-label={`일정판에서 ${schedule.title} 수정`} onClick={() => openScheduleEdit(schedule)}>수정</button>
+                              <button className="text-[11px] font-bold text-red underline" type="button" aria-label={`일정판에서 ${schedule.title} 삭제`} onClick={() => void deleteSchedule(schedule)}>삭제</button>
+                            </div>
+                          </div>
+                          {schedule.note ? <p className="mt-1 break-words text-[12px] leading-5 text-muted">{schedule.note}</p> : null}
+                        </div>
+                      ))}
+                      {selectedDateSchedules.length === 0 ? <p className="rounded-[9px] border border-dashed border-latte bg-white px-3 py-5 text-center text-sm text-muted">아직 이 날짜에 등록된 일정이 없습니다.</p> : null}
+                    </div>
                   </div>
-                  <div className="mt-3 flex justify-end gap-2">
-                    <button className="rounded-control border border-stone-300 bg-white px-4 py-2 font-bold text-cocoa" type="button" onClick={closeScheduleForm}>취소</button>
-                    <button className="rounded-control bg-bread px-4 py-2 font-bold text-white" type="button" onClick={() => void saveSchedule()}>스케줄 저장</button>
+
+                  <div className="rounded-[10px] border border-latte bg-white p-3">
+                    {isScheduleFormOpen ? (
+                      <>
+                        <div className="mb-3 flex items-start justify-between gap-3">
+                          <div>
+                            <p className="text-[11px] font-bold text-muted">{editingScheduleId === null ? "새 일정 입력" : "일정 수정"}</p>
+                            <p className="mt-1 text-sm font-extrabold text-ink">{scheduleDayPanelLabel(scheduleForm.date || selectedScheduleDate)}</p>
+                          </div>
+                          <button className="rounded-full border border-latte bg-cream px-3 py-1 text-xs font-bold text-cocoa" type="button" onClick={closeScheduleForm}>닫기</button>
+                        </div>
+                        <div className="grid gap-3">
+                          <label className="grid gap-2">
+                            <span className="field-label">일정 내용</span>
+                            <input className="input" aria-label="일정 내용" value={scheduleForm.title} onChange={(event) => setScheduleForm((current) => ({ ...current, title: event.target.value }))} />
+                          </label>
+                          <div className="grid gap-3 sm:grid-cols-[11rem_minmax(0,1fr)]">
+                            <label className="grid gap-2">
+                              <span className="field-label">날짜</span>
+                              <input className="input" aria-label="스케줄 날짜" type="date" value={scheduleForm.date} onChange={(event) => {
+                                setScheduleForm((current) => ({ ...current, date: event.target.value }));
+                                setSelectedScheduleDate(event.target.value);
+                                if (event.target.value) {
+                                  setSelectedScheduleMonth(monthKeyFromDate(event.target.value));
+                                }
+                              }} />
+                            </label>
+                            <label className="grid gap-2">
+                              <span className="field-label">일정 종류</span>
+                              <select className="input" aria-label="스케줄 구분" value={scheduleForm.tone} onChange={(event) => setScheduleForm((current) => ({ ...current, tone: event.target.value as ScheduleForm["tone"] }))}>
+                                <option value="notice">공지</option>
+                                <option value="launch">출시</option>
+                                <option value="close">마감</option>
+                                <option value="holiday">휴무</option>
+                              </select>
+                            </label>
+                          </div>
+                          <label className="grid gap-2">
+                            <span className="field-label">준비사항 / 참고 메모</span>
+                            <input className="input" aria-label="준비사항 / 참고 메모" value={scheduleForm.note} onChange={(event) => setScheduleForm((current) => ({ ...current, note: event.target.value }))} />
+                          </label>
+                        </div>
+                        <div className="mt-3 flex justify-end gap-2">
+                          <button className="rounded-control border border-stone-300 bg-white px-4 py-2 font-bold text-cocoa" type="button" onClick={closeScheduleForm}>취소</button>
+                          <button className="rounded-control bg-bread px-4 py-2 font-bold text-white" type="button" onClick={() => void saveSchedule()}>스케줄 저장</button>
+                        </div>
+                      </>
+                    ) : (
+                      <button className="flex min-h-[12rem] w-full flex-col items-center justify-center rounded-[10px] border border-dashed border-latte bg-cream/50 px-4 text-center text-cocoa hover:bg-[#EFE6DA]" type="button" onClick={() => openNewScheduleForm(selectedScheduleDate)}>
+                        <span className="text-lg font-extrabold">+ 이 날짜에 일정 추가</span>
+                        <span className="mt-2 text-sm text-muted">일정을 더 넣으려면 여기를 누르세요.</span>
+                      </button>
+                    )}
                   </div>
                 </div>
               ) : null}
@@ -1620,6 +1690,8 @@ export function ManagementPage() {
                 <div className="grid grid-cols-7">
                   {scheduleCells.map((cell) => {
                     const daySchedules = cell.day === null ? [] : schedulesByDate[cell.date] ?? [];
+                    const isSelectedScheduleDate = cell.date === selectedScheduleDate;
+                    const isRecentlySavedScheduleDate = cell.date === recentlySavedScheduleDate;
                     return (
                       <div
                         key={cell.date}
@@ -1639,14 +1711,16 @@ export function ManagementPage() {
                         }
                         className={[
                           "min-h-[5.75rem] border-r border-b border-[#F5F0E7] p-1.5 text-left last:border-r-0",
-                          cell.day === null ? "bg-stone-50/60" : "cursor-pointer bg-white hover:bg-cream/40 focus:outline focus:outline-2 focus:outline-bread"
+                          cell.day === null ? "bg-stone-50/60" : "cursor-pointer bg-white hover:bg-cream/40 focus:outline focus:outline-2 focus:outline-bread",
+                          isSelectedScheduleDate ? "bg-cream/70 ring-2 ring-inset ring-bread/40" : "",
+                          isRecentlySavedScheduleDate ? "bg-green/10" : ""
                         ].join(" ")}
                       >
                         {cell.day !== null ? (
                           <>
                             <div className="mb-1 flex items-center justify-between gap-2">
                               <span className="text-xs font-extrabold text-ink">{cell.day}</span>
-                              <span className="text-[9px] font-bold text-muted">입력</span>
+                              <span className="text-[9px] font-bold text-muted">{isRecentlySavedScheduleDate ? "방금 저장됨" : "+ 일정"}</span>
                             </div>
                             <div className="grid gap-1">
                               {daySchedules.map((schedule) => (

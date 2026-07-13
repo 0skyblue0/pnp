@@ -2087,6 +2087,7 @@ describe("App", () => {
     let createdBody: unknown = null;
     let usedBody: unknown = null;
     let chargedBody: unknown = null;
+    let deletedTransactionPath: string | null = null;
 
 
     vi.mocked(fetch).mockImplementation(async (input, init) => {
@@ -2139,6 +2140,17 @@ describe("App", () => {
         );
       }
 
+      if (url.endsWith("/prepaid-ledger/1/transactions/t2") && init?.method === "DELETE") {
+        deletedTransactionPath = new URL(url, "http://localhost").pathname;
+        return new Response(
+          JSON.stringify({
+            data: { ...customer, balance: 50000, transactions: transactions.filter((item) => item.id !== "t2") },
+            error: null
+          }),
+          { headers: { "Content-Type": "application/json" } }
+        );
+      }
+
       return new Response(
         JSON.stringify({ data: { items: [], total: 0, page: 1, size: 0 }, error: null }),
         {
@@ -2179,7 +2191,13 @@ describe("App", () => {
     expect(screen.getByText("현재 선택한 손님")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "세부내역" })).toBeInTheDocument();
     expect(screen.getByText("여섯번째 상세 내역")).toBeInTheDocument();
-    expect(screen.getByText("내역은 확인만 가능합니다.")).toBeInTheDocument();
+    expect(screen.getByText("잘못 입력한 내역은 이곳에서 삭제합니다.")).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "내역 삭제" })).toHaveLength(6);
+    fireEvent.click(screen.getAllByRole("button", { name: "내역 삭제" })[1]!);
+    const deleteTransactionDialog = await screen.findByRole("alertdialog");
+    fireEvent.click(within(deleteTransactionDialog).getByRole("button", { name: "삭제" }));
+    await waitFor(() => expect(deletedTransactionPath).toBe("/api/v1/prepaid-ledger/1/transactions/t2"));
+    expect(await screen.findByText("사용 12,000원 내역 삭제 완료 #1")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "신규 등록" }));
     const newLedgerDialog = await screen.findByRole("dialog", { name: "신규 등록" });

@@ -263,6 +263,27 @@ export function PrepaidLedgerPage() {
     await loadLedger();
   }
 
+  async function deleteTransaction(customer: PrepaidCustomerDto, transaction: PrepaidTransactionDto) {
+    const label = `${transactionLabel(transaction.type)} ${formatCurrency(transaction.amount)}원`;
+    const confirmed = await confirm({
+      title: "내역 삭제",
+      message: `${customer.customerName}님 ${label} 내역을 삭제할까요?\n잘못 입력한 내역만 삭제하고, 필요하면 정확한 금액으로 다시 입력해 주세요.`,
+      confirmLabel: "삭제",
+      tone: "danger"
+    });
+    if (!confirmed) return;
+    setMessage(null);
+    setError(null);
+    const envelope = await apiDelete<PrepaidCustomerDto>(`/prepaid-ledger/${customer.id}/transactions/${transaction.id}`);
+    if (envelope.error) {
+      setError(envelope.error.message);
+      return;
+    }
+    setMessage(`${label} 내역 삭제 완료 #${customer.id}`);
+    setDetailMode("DETAIL");
+    await loadLedger();
+  }
+
   return (
     <div className="mx-auto grid max-w-7xl gap-4">
       <section>
@@ -361,6 +382,7 @@ export function PrepaidLedgerPage() {
           chargeBalance={chargeBalance}
           useBalance={useBalance}
           saveMemo={saveMemo}
+          deleteTransaction={deleteTransaction}
         />
       ) : null}
     </div>
@@ -439,6 +461,7 @@ function SelectedCustomerDetail(props: {
   chargeBalance: (customer: PrepaidCustomerDto) => Promise<void>;
   useBalance: (customer: PrepaidCustomerDto) => Promise<void>;
   saveMemo: (customer: PrepaidCustomerDto) => Promise<void>;
+  deleteTransaction: (customer: PrepaidCustomerDto, transaction: PrepaidTransactionDto) => Promise<void>;
 }) {
   const {
     customer,
@@ -451,7 +474,8 @@ function SelectedCustomerDetail(props: {
     setMemoForms,
     chargeBalance,
     useBalance,
-    saveMemo
+    saveMemo,
+    deleteTransaction
   } = props;
 
   return (
@@ -511,20 +535,24 @@ function SelectedCustomerDetail(props: {
       <section className="mt-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h3 className="text-base font-extrabold text-ink">세부내역</h3>
-          <p className="text-xs font-semibold text-muted">내역은 확인만 가능합니다.</p>
+          <p className="text-xs font-semibold text-muted">잘못 입력한 내역은 이곳에서 삭제합니다.</p>
         </div>
-        <div className="mt-3 grid grid-cols-[0.8fr_0.8fr_1fr_2fr] gap-2 border-b border-[#EFE8DC] px-1 py-2 text-[11.5px] font-bold text-muted">
+        <div className="mt-3 grid grid-cols-[0.7fr_0.8fr_0.9fr_2fr_auto] gap-2 border-b border-[#EFE8DC] px-1 py-2 text-[11.5px] font-bold text-muted">
           <div>구분</div>
           <div>금액</div>
           <div>날짜</div>
           <div>내용</div>
+          <div>관리</div>
         </div>
         {customer.transactions.map((transaction) => (
-          <div key={transaction.id} className="grid grid-cols-[0.8fr_0.8fr_1fr_2fr] gap-2 border-b border-[#F5F0E7] px-1 py-3 text-sm last:border-b-0">
+          <div key={transaction.id} className="grid grid-cols-[0.7fr_0.8fr_0.9fr_2fr_auto] items-center gap-2 border-b border-[#F5F0E7] px-1 py-3 text-sm last:border-b-0">
             <div><span className={`rounded-full px-2 py-1 text-xs font-extrabold ${transactionToneClass(transaction.type)}`}>{transactionLabel(transaction.type)}</span></div>
             <div className="font-extrabold text-ink">{transactionAmountLabel(transaction)}원</div>
             <div className="text-muted">{formatLedgerDate(transaction.occurredAt)}</div>
             <div className="text-cocoa">{transaction.note || "-"}</div>
+            <button type="button" className="rounded-[8px] bg-red/10 px-3 py-1.5 text-xs font-bold text-red" onClick={() => void deleteTransaction(customer, transaction)}>
+              내역 삭제
+            </button>
           </div>
         ))}
         {customer.transactions.length === 0 ? <p className="py-8 text-center text-sm font-semibold text-muted">내역 없음</p> : null}

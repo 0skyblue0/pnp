@@ -775,6 +775,9 @@ describe("App", () => {
     expect(screen.getAllByText("주의 신호").length).toBeGreaterThan(0);
     expect(screen.getByText("이번 기간 우선순위")).toBeInTheDocument();
     expect(screen.getByText("많이 반복된 내용 TOP 5")).toBeInTheDocument();
+    expect(screen.getAllByText("“바게트 맛 불만 반복”").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("“청주에서 일부러 방문”").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("“식감 개선 필요”").length).toBeGreaterThan(0);
     expect(screen.queryByText("손님이 직접 한 말")).not.toBeInTheDocument();
     expect(screen.queryByText("주요 반응 근거")).not.toBeInTheDocument();
     expect(

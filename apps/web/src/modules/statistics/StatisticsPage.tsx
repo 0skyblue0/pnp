@@ -286,6 +286,11 @@ function displayHeadline(headline: string): string {
   return headline.replaceAll("즉시 확인을", "주의 신호를").replaceAll("즉시 확인", "주의 신호");
 }
 
+function representativeOriginalText(topic: ResponseInsightTopicDto | undefined): string | null {
+  const text = topic?.items?.find((item) => item.text.trim().length > 0)?.text.trim();
+  return text || null;
+}
+
 export function StatisticsPage() {
   const today = todayInStoreTime();
   const [range, setRange] = useState<DateRange>(recentThirtyDays(today));
@@ -534,6 +539,7 @@ export function StatisticsPage() {
           <div className="grid gap-2 md:grid-cols-3">
             {topPriorityBuckets.map((bucket, index) => {
               const topTopic = bucket.topics[0];
+              const originalText = representativeOriginalText(topTopic);
               return (
                 <Link
                   key={bucket.key}
@@ -555,6 +561,11 @@ export function StatisticsPage() {
                   <div className="mt-1 text-[12px] font-semibold leading-5 text-muted">
                     {topTopic ? topTopic.label : "대표 주제 없음"}
                   </div>
+                  {originalText ? (
+                    <div className="mt-2 truncate rounded-[8px] bg-cream px-2 py-1 text-[11px] font-bold text-cocoa">
+                      “{originalText}”
+                    </div>
+                  ) : null}
                 </Link>
               );
             })}
@@ -647,6 +658,7 @@ function ExecutiveBucketCard({
 }) {
   const percent = total > 0 ? Math.round((bucket.count / total) * 100) : 0;
   const topTopic = bucket.topics[0];
+  const originalText = representativeOriginalText(topTopic);
 
   return (
     <section className="dc-card-pad">
@@ -681,6 +693,11 @@ function ExecutiveBucketCard({
             대표 주제 · {topTopic.count.toLocaleString("ko-KR")}건
           </div>
           <div className="mt-0.5 text-[12.5px] font-bold text-ink">{topTopic.label}</div>
+          {originalText ? (
+            <p className="mt-2 truncate rounded-[8px] border border-latte bg-white px-2 py-1 text-[11.5px] font-bold text-cocoa">
+              “{originalText}”
+            </p>
+          ) : null}
           <Link
             className="mt-2 inline-flex text-[11px] font-extrabold text-blue hover:underline"
             to={bucketDetailLink(range, bucket.key)}

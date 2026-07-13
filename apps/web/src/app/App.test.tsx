@@ -274,8 +274,9 @@ describe("App", () => {
     expect(await screen.findByText("홈 공지 삭제 완료")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "연간 스케줄 관리" }));
-    expect(screen.getByText("연간 스케줄 등록 및 수정")).toBeInTheDocument();
-    expect(screen.getByText("여름 신메뉴 출시")).toBeInTheDocument();
+    expect(screen.getByText("연간 스케줄 달력 관리")).toBeInTheDocument();
+    expect(screen.getByLabelText("스케줄 월 선택")).toBeInTheDocument();
+    expect(await screen.findByText("여름 신메뉴 출시")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "스케줄 추가" }));
     fireEvent.change(screen.getByLabelText("스케줄 날짜"), { target: { value: "2026-07-10" } });
     fireEvent.change(screen.getByLabelText("스케줄 구분"), { target: { value: "notice" } });

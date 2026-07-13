@@ -263,6 +263,56 @@ function criterionRowClass(isSelected: boolean) {
   ].join(" ");
 }
 
+function monthKeyFromDate(date: string): string {
+  return date.slice(0, 7);
+}
+
+function todayMonthKey(): string {
+  const today = new Date();
+  return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function scheduleDateLabel(date: string): string {
+  const [, month, day] = date.split("-");
+  return `${Number(month)}.${Number(day)}`;
+}
+
+function scheduleMonthLabel(monthKey: string): string {
+  const [year, month] = monthKey.split("-");
+  return `${year}년 ${Number(month)}월`;
+}
+
+function scheduleMonthOptions(schedules: AnnualScheduleDto[], selectedMonth: string): string[] {
+  return Array.from(
+    new Set([selectedMonth, todayMonthKey(), ...schedules.map((schedule) => monthKeyFromDate(schedule.date))])
+  )
+    .filter(Boolean)
+    .sort();
+}
+
+function calendarDates(monthKey: string): Array<{ date: string; day: number | null }> {
+  if (!/^\d{4}-\d{2}$/.test(monthKey)) {
+    return [];
+  }
+  const [yearText, monthText] = monthKey.split("-");
+  const year = Number(yearText);
+  const monthIndex = Number(monthText) - 1;
+  const firstDay = new Date(year, monthIndex, 1).getDay();
+  const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
+  const cells: Array<{ date: string; day: number | null }> = [];
+
+  for (let index = 0; index < firstDay; index += 1) {
+    cells.push({ date: `blank-${index}`, day: null });
+  }
+  for (let day = 1; day <= daysInMonth; day += 1) {
+    cells.push({ date: `${monthKey}-${String(day).padStart(2, "0")}`, day });
+  }
+  while (cells.length % 7 !== 0) {
+    cells.push({ date: `blank-end-${cells.length}`, day: null });
+  }
+  return cells;
+}
+
 export function ManagementPage() {
   const confirm = useConfirm();
   const [products, setProducts] = useState<ProductDto[]>([]);
@@ -278,6 +328,7 @@ export function ManagementPage() {
   const [editingCriterionId, setEditingCriterionId] = useState<number | null>(null);
   const [editingGoalNoticeId, setEditingGoalNoticeId] = useState<string | null>(null);
   const [editingScheduleId, setEditingScheduleId] = useState<string | null>(null);
+  const [selectedScheduleMonth, setSelectedScheduleMonth] = useState("");
   const [selectedMajorId, setSelectedMajorId] = useState<number | null>(null);
   const [selectedMiddleId, setSelectedMiddleId] = useState<number | null>(null);
   const [criterionParentId, setCriterionParentId] = useState<number | null>(null);
@@ -339,6 +390,22 @@ export function ManagementPage() {
   useEffect(() => {
     void loadManagementData();
   }, [loadManagementData]);
+
+  useEffect(() => {
+    const currentMonth = todayMonthKey();
+    const selectedMonthHasSchedule = annualSchedules.some(
+      (schedule) => monthKeyFromDate(schedule.date) === selectedScheduleMonth
+    );
+    if (selectedScheduleMonth && (selectedScheduleMonth !== currentMonth || selectedMonthHasSchedule)) {
+      return;
+    }
+    const monthWithSchedule = annualSchedules.find(
+      (schedule) => monthKeyFromDate(schedule.date) === currentMonth
+    );
+    setSelectedScheduleMonth(
+      monthWithSchedule ? currentMonth : monthKeyFromDate(annualSchedules[0]?.date ?? currentMonth)
+    );
+  }, [annualSchedules, selectedScheduleMonth]);
 
   useEffect(() => {
     if (
@@ -490,14 +557,15 @@ export function ManagementPage() {
     setIsGoalNoticeFormOpen(false);
   }
 
-  function openNewScheduleForm() {
+  function openNewScheduleForm(date = "") {
     setEditingScheduleId(null);
-    setScheduleForm(emptyScheduleForm);
+    setScheduleForm({ ...emptyScheduleForm, date });
     setIsScheduleFormOpen(true);
   }
 
   function openScheduleEdit(schedule: AnnualScheduleDto) {
     setEditingScheduleId(schedule.id);
+    setSelectedScheduleMonth(monthKeyFromDate(schedule.date));
     setScheduleForm({
       date: schedule.date,
       title: schedule.title,
@@ -742,6 +810,7 @@ export function ManagementPage() {
       return;
     }
 
+    setSelectedScheduleMonth(monthKeyFromDate(envelope.data.date));
     setMessage(editingScheduleId === null ? `스케줄 추가: ${envelope.data.title}` : "스케줄 수정 완료");
     closeScheduleForm();
     await loadManagementData();
@@ -922,6 +991,19 @@ export function ManagementPage() {
       : responseCriteria.find((criterion) => criterion.id === criterionParentId);
   const criterionFormDepth =
     editingCriterion?.depth ?? (criterionFormParent ? criterionFormParent.depth + 1 : 1);
+  const scheduleMonth = selectedScheduleMonth || todayMonthKey();
+  const scheduleOptions = scheduleMonthOptions(annualSchedules, scheduleMonth);
+  const monthlySchedules = annualSchedules.filter(
+    (schedule) => monthKeyFromDate(schedule.date) === scheduleMonth
+  );
+  const schedulesByDate = monthlySchedules.reduce<Record<string, AnnualScheduleDto[]>>(
+    (grouped, schedule) => {
+      grouped[schedule.date] = [...(grouped[schedule.date] ?? []), schedule];
+      return grouped;
+    },
+    {}
+  );
+  const scheduleCells = calendarDates(scheduleMonth);
 
   return (
     <div className="mx-auto grid max-w-7xl gap-4">
@@ -1145,8 +1227,8 @@ export function ManagementPage() {
                 </div>
               ) : null}
 
-              <div className="mt-4 rounded-[12px] border border-latte bg-white px-4 py-2">
-                <div className="grid grid-cols-[minmax(7rem,1.4fr)_minmax(5rem,0.8fr)_minmax(4rem,0.6fr)_minmax(8rem,1fr)_8rem] gap-2 border-b border-[#EFE8DC] py-2 text-[11px] font-semibold text-muted">
+              <div className="mt-4 max-h-[460px] overflow-y-auto rounded-[12px] border border-latte bg-white px-4 py-2">
+                <div className="sticky top-0 z-10 grid grid-cols-[minmax(7rem,1.4fr)_minmax(5rem,0.8fr)_minmax(4rem,0.6fr)_minmax(8rem,1fr)_8rem] gap-2 border-b border-[#EFE8DC] bg-white py-2 text-[11px] font-semibold text-muted">
                   <div>제품명</div><div>카테고리</div><div>시즌</div><div>기간</div><div>수정·삭제</div>
                 </div>
                 {visibleProducts.map((product) => (
@@ -1341,12 +1423,41 @@ export function ManagementPage() {
             <div className="rounded-[14px] border border-latte bg-white px-5 py-[18px]">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <h3 className="text-[15px] font-bold text-ink">연간 스케줄 등록 및 수정</h3>
-                  <p className="mt-1 text-[12.5px] text-muted">홈 연간 스케줄에 표시되는 행사, 출시, 마감 일정을 관리합니다.</p>
+                  <h3 className="text-[15px] font-bold text-ink">연간 스케줄 달력 관리</h3>
+                  <p className="mt-1 text-[12.5px] text-muted">다이어리처럼 날짜 칸을 눌러 행사, 출시, 마감 일정을 바로 기입하고 관리합니다.</p>
                 </div>
-                <button className="rounded-[9px] bg-bread px-4 py-2 text-[12.5px] font-bold text-white" type="button" onClick={openNewScheduleForm}>
+                <button className="rounded-[9px] bg-bread px-4 py-2 text-[12.5px] font-bold text-white" type="button" onClick={() => openNewScheduleForm(`${scheduleMonth}-01`)}>
                   스케줄 추가
                 </button>
+              </div>
+
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-[12px] border border-latte bg-cream/50 px-4 py-3">
+                <div>
+                  <p className="text-[11px] font-bold text-muted">선택한 달</p>
+                  <p className="mt-1 text-lg font-extrabold text-ink">{scheduleMonthLabel(scheduleMonth)}</p>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <label className="grid gap-1 text-xs font-bold text-muted">
+                    월 선택
+                    <select
+                      className="input min-h-10 min-w-[9rem] bg-white text-sm"
+                      aria-label="스케줄 월 선택"
+                      value={scheduleMonth}
+                      onChange={(event) => setSelectedScheduleMonth(event.target.value)}
+                    >
+                      {scheduleOptions.map((month) => (
+                        <option key={month} value={month}>{scheduleMonthLabel(month)}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <input
+                    className="input min-h-10 w-[9rem] bg-white text-sm"
+                    aria-label="스케줄 월 직접 입력"
+                    type="month"
+                    value={scheduleMonth}
+                    onChange={(event) => setSelectedScheduleMonth(event.target.value)}
+                  />
+                </div>
               </div>
 
               {isScheduleFormOpen ? (
@@ -1380,23 +1491,60 @@ export function ManagementPage() {
                 </div>
               ) : null}
 
-              <div className="mt-4 rounded-[12px] border border-latte bg-white px-4 py-2">
-                <div className="grid grid-cols-[8rem_6rem_minmax(0,1fr)_minmax(0,1fr)_8.5rem] gap-2 border-b border-[#EFE8DC] py-2 text-[11px] font-semibold text-muted">
-                  <div>날짜</div><div>구분</div><div>제목</div><div>메모</div><div>수정·삭제</div>
+              <div className="mt-4 overflow-hidden rounded-[12px] border border-latte bg-white">
+                <div className="grid grid-cols-7 border-b border-[#EFE8DC] bg-cream/60 text-center text-[11px] font-extrabold text-cocoa">
+                  {["일", "월", "화", "수", "목", "금", "토"].map((day) => (
+                    <div key={day} className="border-r border-[#EFE8DC] py-2 last:border-r-0">{day}</div>
+                  ))}
                 </div>
-                {annualSchedules.map((schedule) => (
-                  <div key={schedule.id} className="grid grid-cols-[8rem_6rem_minmax(0,1fr)_minmax(0,1fr)_8.5rem] items-center gap-2 border-b border-[#F5F0E7] py-3 text-[13px] last:border-b-0">
-                    <div className="font-semibold text-ink">{schedule.date}</div>
-                    <div><span className="rounded-full bg-cream px-2 py-1 text-xs font-bold text-cocoa">{scheduleToneLabels[schedule.tone ?? "notice"]}</span></div>
-                    <div className="font-semibold text-ink">{schedule.title}</div>
-                    <div className="text-muted">{schedule.note || "-"}</div>
-                    <div className="flex flex-wrap gap-1.5">
-                      <button className="rounded-[8px] border border-latte px-2 py-1 text-xs font-bold text-cocoa" type="button" aria-label={`${schedule.title} 수정`} onClick={() => openScheduleEdit(schedule)}>수정</button>
-                      <button className="rounded-[8px] border border-red/30 bg-white px-2 py-1 text-xs font-bold text-red" type="button" aria-label={`${schedule.title} 삭제`} onClick={() => void deleteSchedule(schedule)}>삭제</button>
-                    </div>
-                  </div>
-                ))}
-                {!isLoading && annualSchedules.length === 0 ? <div className="py-8 text-center text-sm text-muted">등록된 스케줄 없음</div> : null}
+                <div className="grid grid-cols-7">
+                  {scheduleCells.map((cell) => {
+                    const daySchedules = cell.day === null ? [] : schedulesByDate[cell.date] ?? [];
+                    return (
+                      <div
+                        key={cell.date}
+                        className={[
+                          "min-h-[8.5rem] border-r border-b border-[#F5F0E7] p-2 last:border-r-0",
+                          cell.day === null ? "bg-stone-50/60" : "bg-white"
+                        ].join(" ")}
+                      >
+                        {cell.day !== null ? (
+                          <>
+                            <div className="mb-2 flex items-center justify-between gap-2">
+                              <span className="text-sm font-extrabold text-ink">{cell.day}</span>
+                              <button
+                                className="rounded-full border border-latte bg-cream px-2 py-0.5 text-[10px] font-bold text-cocoa hover:bg-[#EFE6DA]"
+                                type="button"
+                                aria-label={`${scheduleDateLabel(cell.date)} 스케줄 추가`}
+                                onClick={() => openNewScheduleForm(cell.date)}
+                              >
+                                추가
+                              </button>
+                            </div>
+                            <div className="grid gap-1.5">
+                              {daySchedules.map((schedule) => (
+                                <div key={schedule.id} className="rounded-[8px] border border-latte bg-cream/60 px-2 py-1.5">
+                                  <div className="flex items-start justify-between gap-1">
+                                    <div className="min-w-0">
+                                      <span className="rounded-full bg-white px-1.5 py-0.5 text-[10px] font-bold text-cocoa">{scheduleToneLabels[schedule.tone ?? "notice"]}</span>
+                                      <p className="mt-1 break-words text-[12px] font-extrabold leading-4 text-ink">{schedule.title}</p>
+                                    </div>
+                                    <div className="flex shrink-0 gap-1">
+                                      <button className="text-[10px] font-bold text-cocoa underline" type="button" aria-label={`${schedule.title} 수정`} onClick={() => openScheduleEdit(schedule)}>수정</button>
+                                      <button className="text-[10px] font-bold text-red underline" type="button" aria-label={`${schedule.title} 삭제`} onClick={() => void deleteSchedule(schedule)}>삭제</button>
+                                    </div>
+                                  </div>
+                                  {schedule.note ? <p className="mt-1 break-words text-[11px] leading-4 text-muted">{schedule.note}</p> : null}
+                                </div>
+                              ))}
+                            </div>
+                          </>
+                        ) : null}
+                      </div>
+                    );
+                  })}
+                </div>
+                {!isLoading && monthlySchedules.length === 0 ? <div className="px-4 py-8 text-center text-sm text-muted">선택한 달에 등록된 스케줄 없음</div> : null}
               </div>
             </div>
           ) : null}

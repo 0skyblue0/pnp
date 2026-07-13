@@ -8,8 +8,10 @@ import { AppProviders } from "./providers/AppProviders.js";
 import { ManagementPage } from "../modules/admin/ManagementPage.js";
 import { DailyLogPage, type DailyOperationSavedRecord } from "../modules/daily-log/DailyLogPage.js";
 import { providedDailyOperationRecords } from "../modules/daily-log/providedDailyOperationRecords.js";
+import { RegularCustomerPage } from "../modules/regular-customer/RegularCustomerPage.js";
 import { ResponseEntryPage } from "../modules/response/ResponseEntryPage.js";
 import { ResponseInquiryPage } from "../modules/response/ResponseInquiryPage.js";
+import { SalesAnalysisPage } from "../modules/sales-analysis/SalesAnalysisPage.js";
 import { todayInStoreTime } from "../shared/time/storeTime.js";
 import { ConfirmProvider } from "../shared/ui/ConfirmDialog.js";
 import { ToastProvider } from "../shared/ui/Toast.js";
@@ -75,11 +77,67 @@ describe("App", () => {
       within(navigation)
         .getAllByRole("link")
         .map((link) => link.textContent)
-    ).toEqual(["홈", "일일 운영", "손님 반응", "예약", "선결제 장부", "관리"]);
+    ).toEqual(["홈", "일일 운영", "매출 분석", "손님 반응", "예약", "단골손님", "선결제 장부", "관리"]);
     expect(screen.getByRole("link", { name: "Paul & Paulina 홈" })).toHaveAttribute(
       "href",
       "/home"
     );
+  });
+
+  it("shows yearly sales analysis with visual monthly bars", async () => {
+    vi.mocked(fetch).mockImplementation(async (input) => {
+      const url = input instanceof Request ? input.url : String(input);
+      if (url.includes("/sales-analysis/summary")) {
+        return new Response(JSON.stringify({
+          data: {
+            year: 2026,
+            totalSales: 350000,
+            totalCount: 35,
+            averageTicket: 10000,
+            dailyAverageSales: 175000,
+            targetAmount: 700000,
+            targetProgressRate: 0.5,
+            monthly: [
+              { month: "2026-01", sales: 150000, count: 15, targetAmount: 300000, targetProgressRate: 0.5 },
+              { month: "2026-02", sales: 200000, count: 20, targetAmount: 400000, targetProgressRate: 0.5 }
+            ],
+            channels: [{ name: "POS", amount: 300000, count: 30, ratio: 0.85 }],
+            productTop: [{ productName: "바게트", soldQty: 14, lossQty: 3, tastingQty: 0 }],
+            lossTop: [{ productName: "바게트", soldQty: 14, lossQty: 3, tastingQty: 0 }],
+            visual: { maxMonthlySales: 200000, maxDailySales: 200000 }
+          },
+          error: null
+        }), { headers: { "Content-Type": "application/json" } });
+      }
+      return new Response(JSON.stringify({ data: { items: [], total: 0, page: 1, size: 0 }, error: null }), { headers: { "Content-Type": "application/json" } });
+    });
+
+    render(<SalesAnalysisPage />);
+
+    expect(await screen.findByRole("heading", { name: "매출 분석" })).toBeInTheDocument();
+    expect(screen.getByText("350,000원")).toBeInTheDocument();
+    expect(screen.getByText("월별 매출 그래프")).toBeInTheDocument();
+    expect(screen.getAllByText("바게트").length).toBeGreaterThan(0);
+  });
+
+  it("shows regular customer list and staff-confirmed candidates", async () => {
+    vi.mocked(fetch).mockImplementation(async (input) => {
+      const url = input instanceof Request ? input.url : String(input);
+      if (url.includes("/regular-customer/candidates")) {
+        return new Response(JSON.stringify({ data: { items: [{ customerName: "예약단골", contactPhone: "010-9999-0000", maskedPhone: "010-9999-****", source: "RESERVATION", reason: "예약 3회", fixedMemo: "깜빠뉴" }] }, error: null }), { headers: { "Content-Type": "application/json" } });
+      }
+      if (url.includes("/regular-customer")) {
+        return new Response(JSON.stringify({ data: { items: [{ id: "1", customerName: "김단골", contactPhone: "010-1234-5678", maskedPhone: "010-1234-****", fixedMemo: "바게트 선호" }], total: 1, page: 1, size: 1 }, error: null }), { headers: { "Content-Type": "application/json" } });
+      }
+      return new Response(JSON.stringify({ data: { items: [], total: 0, page: 1, size: 0 }, error: null }), { headers: { "Content-Type": "application/json" } });
+    });
+
+    render(<RegularCustomerPage />);
+
+    expect(await screen.findByRole("heading", { name: "단골손님 리스트" })).toBeInTheDocument();
+    expect(screen.getByText("김단골님")).toBeInTheDocument();
+    expect(screen.getByText("예약단골님")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "단골로 저장" })).toBeInTheDocument();
   });
 
   it("lets staff manage home goal and sales notices from the management tab", async () => {

@@ -118,6 +118,21 @@ const channelNameMap = new Map([["배 민", "배민"]]);
 
 export function parseDailyOperationWorkbook(path: string): ParsedDailyOperationWorkbook {
   const workbook = XLSX.readFile(path, { cellDates: false });
+  return parseDailyOperationWorkbookData(workbook, path.split(/[\\/]/).pop() ?? path);
+}
+
+export function parseDailyOperationWorkbookFromBuffer(
+  buffer: Buffer,
+  fileName: string
+): ParsedDailyOperationWorkbook {
+  const workbook = XLSX.read(buffer, { type: "buffer", cellDates: false });
+  return parseDailyOperationWorkbookData(workbook, fileName);
+}
+
+function parseDailyOperationWorkbookData(
+  workbook: XLSX.WorkBook,
+  fileName: string
+): ParsedDailyOperationWorkbook {
   const workbookYearMonth = inferWorkbookYearMonth(workbook);
   const importedAt = new Date().toISOString();
   const records: ParsedDailyOperationRecord[] = [];
@@ -147,7 +162,7 @@ export function parseDailyOperationWorkbook(path: string): ParsedDailyOperationW
       continue;
     }
 
-    const record = parseDailySheet({ sheet, sheetName, fileName: path.split(/[\\/]/).pop() ?? path, importedAt, date });
+    const record = parseDailySheet({ sheet, sheetName, fileName, importedAt, date });
     records.push(record);
 
     if (!record.checks.salesMatched) {

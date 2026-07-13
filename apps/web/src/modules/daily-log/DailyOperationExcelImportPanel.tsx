@@ -1,0 +1,153 @@
+import { useState } from "react";
+
+import { apiPost } from "../../shared/api/client.js";
+
+export type DailyOperationExcelPreview = {
+  fileName: string;
+  records: Array<{
+    date: string;
+    existing: boolean;
+    productRowCount: number;
+    totalSales: number;
+    customerResponseCandidateCount: number;
+  }>;
+  customerResponseCandidates: Array<{ date: string; shortSummary: string; fullText: string }>;
+  warnings: Array<{ sheetName: string; code: string; message: string }>;
+  skippedSheets: Array<{ sheetName: string; reason: string }>;
+};
+
+type ApplyResult = {
+  dailyOperationSavedCount: number;
+  responseSavedCount: number;
+};
+
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
+  let binary = "";
+  const bytes = new Uint8Array(buffer);
+  for (const byte of bytes) {
+    binary += String.fromCharCode(byte);
+  }
+  return window.btoa(binary);
+}
+
+export function DailyOperationExcelImportPanel() {
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [fileBase64, setFileBase64] = useState("");
+  const [preview, setPreview] = useState<DailyOperationExcelPreview | null>(null);
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+
+  async function readFile(file: File) {
+    const buffer = await file.arrayBuffer();
+    return arrayBufferToBase64(buffer);
+  }
+
+  async function previewFile(file: File) {
+    setIsLoading(true);
+    setError("");
+    setMessage("");
+    setPreview(null);
+    const base64 = await readFile(file);
+    setFileBase64(base64);
+    const envelope = await apiPost<DailyOperationExcelPreview, { fileName: string; fileBase64: string }>(
+      "/import/daily-operation-excel/preview",
+      { fileName: file.name, fileBase64: base64 }
+    );
+    setIsLoading(false);
+    if (envelope.error) {
+      setError(envelope.error.message);
+      return;
+    }
+    setPreview(envelope.data);
+    setMessage("엑셀 미리보기를 만들었습니다. 날짜와 손님 반응 후보를 확인한 뒤 저장하세요.");
+  }
+
+  async function applyImport() {
+    if (!selectedFile || !fileBase64) {
+      setError("먼저 엑셀 파일을 선택해 주세요.");
+      return;
+    }
+    setIsLoading(true);
+    setError("");
+    const envelope = await apiPost<ApplyResult, { fileName: string; fileBase64: string }>(
+      "/import/daily-operation-excel/apply",
+      { fileName: selectedFile.name, fileBase64 }
+    );
+    setIsLoading(false);
+    if (envelope.error) {
+      setError(envelope.error.message);
+      return;
+    }
+    setMessage(
+      `일일 운영 ${envelope.data.dailyOperationSavedCount}일, 손님 반응 ${envelope.data.responseSavedCount}건을 저장했습니다.`
+    );
+  }
+
+  return (
+    <section className="mb-4 rounded-[14px] border border-latte bg-white px-4 py-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h3 className="text-sm font-extrabold text-ink">일일업무보고서 엑셀 불러오기</h3>
+          <p className="mt-1 text-xs leading-5 text-muted">
+            엑셀을 바로 저장하지 않고 먼저 날짜·제품·손님 반응 후보를 미리 보여줍니다.
+          </p>
+        </div>
+        <label className="inline-flex min-h-10 cursor-pointer items-center rounded-control border border-latte bg-cream px-4 text-sm font-bold text-cocoa">
+          엑셀 선택
+          <input
+            className="sr-only"
+            type="file"
+            accept=".xlsx,.xlsm"
+            onChange={(event) => {
+              const file = event.target.files?.[0] ?? null;
+              setSelectedFile(file);
+              if (file) {
+                void previewFile(file);
+              }
+            }}
+          />
+        </label>
+      </div>
+      {message ? <p className="mt-3 rounded-control bg-green/10 px-3 py-2 text-sm font-bold text-green">{message}</p> : null}
+      {error ? <p className="mt-3 rounded-control bg-red/10 px-3 py-2 text-sm font-bold text-red">{error}</p> : null}
+      {isLoading ? <p className="mt-3 text-sm font-bold text-muted">엑셀을 확인하는 중입니다.</p> : null}
+      {preview ? (
+        <div className="mt-4 grid gap-3 lg:grid-cols-[1fr_1fr]">
+          <div className="rounded-[12px] border border-latte bg-cream/40 p-3">
+            <p className="text-xs font-bold text-muted">읽은 날짜</p>
+            <p className="mt-1 text-xl font-extrabold text-ink">{preview.records.length}일</p>
+            <div className="mt-3 grid gap-2">
+              {preview.records.slice(0, 5).map((record) => (
+                <div key={record.date} className="rounded-[9px] bg-white px-3 py-2 text-sm">
+                  <b>{record.date}</b> · {record.totalSales.toLocaleString("ko-KR")}원 · 제품 {record.productRowCount}줄
+                  {record.existing ? <span className="ml-2 text-red">기존 기록 있음</span> : null}
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="rounded-[12px] border border-latte bg-cream/40 p-3">
+            <p className="text-xs font-bold text-muted">손님 반응 후보</p>
+            <p className="mt-1 text-xl font-extrabold text-ink">{preview.customerResponseCandidates.length}건</p>
+            <div className="mt-3 grid gap-2">
+              {preview.customerResponseCandidates.slice(0, 3).map((candidate, index) => (
+                <p key={`${candidate.date}-${index}`} className="rounded-[9px] bg-white px-3 py-2 text-sm leading-5 text-cocoa">
+                  {candidate.date} · {candidate.shortSummary}
+                </p>
+              ))}
+              {preview.customerResponseCandidates.length === 0 ? <p className="text-sm text-muted">손님 반응으로 보이는 내용이 없습니다.</p> : null}
+            </div>
+          </div>
+          <div className="lg:col-span-2 flex flex-wrap items-center justify-between gap-3 rounded-[12px] border border-latte bg-white p-3">
+            <p className="text-sm leading-6 text-muted">
+              경고 {preview.warnings.length}건 · 건너뜀 {preview.skippedSheets.length}개 시트. 저장 전 날짜와 후보를 확인하세요.
+            </p>
+            <button className="rounded-control bg-bread px-4 py-2 text-sm font-bold text-white" type="button" onClick={() => void applyImport()}>
+              확인한 내용 저장
+            </button>
+          </div>
+        </div>
+      ) : null}
+    </section>
+  );
+}

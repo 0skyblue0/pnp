@@ -13,12 +13,15 @@ import { registerAnnualGoalNoticeRoutes } from "./modules/annual-goal-notice/ann
 import { registerAnnualScheduleRoutes } from "./modules/annual-schedule/annual-schedule.routes.js";
 import { registerAuthRoutes } from "./modules/auth/auth.routes.js";
 import { registerDailyOperationRoutes } from "./modules/daily-log/daily-operation.routes.js";
+import { registerDailyOperationImportRoutes } from "./modules/daily-log/excel-import/daily-operation-import.routes.js";
 import { registerDailyLogRoutes } from "./modules/daily-log/daily-log.routes.js";
 import { registerNotificationRoutes } from "./modules/notification/notification.routes.js";
 import { registerPrepaidLedgerRoutes } from "./modules/prepaid-ledger/prepaid-ledger.routes.js";
 import { registerProductionLotRoutes } from "./modules/production-lot/production-lot.routes.js";
 import { registerReservationRoutes } from "./modules/reservation/reservation.routes.js";
 import { registerResponseRoutes } from "./modules/response/response.routes.js";
+import { registerRegularCustomerRoutes } from "./modules/regular-customer/regular-customer.routes.js";
+import { registerSalesAnalysisRoutes } from "./modules/sales-analysis/sales-analysis.routes.js";
 
 declare module "fastify" {
   interface FastifyInstance {
@@ -70,12 +73,15 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Fas
   await app.register(registerAdminRoutes, { prefix: "/api/v1" });
   await app.register(registerAnnualGoalNoticeRoutes, { prefix: "/api/v1" });
   await app.register(registerAnnualScheduleRoutes, { prefix: "/api/v1" });
+  await app.register(registerDailyOperationImportRoutes, { prefix: "/api/v1/import/daily-operation-excel" });
   await app.register(registerDailyOperationRoutes, { prefix: "/api/v1/daily-operation" });
   await app.register(registerDailyLogRoutes, { prefix: "/api/v1" });
   await app.register(registerProductionLotRoutes, { prefix: "/api/v1/production-lot" });
   await app.register(registerPrepaidLedgerRoutes, { prefix: "/api/v1/prepaid-ledger" });
+  await app.register(registerRegularCustomerRoutes, { prefix: "/api/v1/regular-customer" });
   await app.register(registerReservationRoutes, { prefix: "/api/v1/reservation" });
   await app.register(registerResponseRoutes, { prefix: "/api/v1/response" });
+  await app.register(registerSalesAnalysisRoutes, { prefix: "/api/v1/sales-analysis" });
   await app.register(registerNotificationRoutes, { prefix: "/api/v1/notification" });
 
   return app;

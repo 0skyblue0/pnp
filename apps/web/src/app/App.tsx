@@ -7,9 +7,11 @@ import { DailyLogPage } from "../modules/daily-log/DailyLogPage.js";
 import { HomePage } from "../modules/home/HomePage.js";
 import { NotificationPage } from "../modules/notification/NotificationPage.js";
 import { PrepaidLedgerPage } from "../modules/prepaid-ledger/PrepaidLedgerPage.js";
+import { RegularCustomerPage } from "../modules/regular-customer/RegularCustomerPage.js";
 import { ReservationPage } from "../modules/reservation/ReservationPage.js";
 import { ResponseEntryPage } from "../modules/response/ResponseEntryPage.js";
 import { ResponseInquiryPage } from "../modules/response/ResponseInquiryPage.js";
+import { SalesAnalysisPage } from "../modules/sales-analysis/SalesAnalysisPage.js";
 
 export function App() {
   return (
@@ -22,6 +24,8 @@ export function App() {
           <Route path="/response" element={<ResponseInquiryPage />} />
           <Route path="/response/new" element={<ResponseEntryPage />} />
           <Route path="/statistics" element={<Navigate to="/response?tab=stats" replace />} />
+          <Route path="/sales-analysis" element={<SalesAnalysisPage />} />
+          <Route path="/regular-customer" element={<RegularCustomerPage />} />
           <Route path="/prepaid-ledger" element={<PrepaidLedgerPage />} />
           <Route path="/reservation" element={<ReservationPage />} />
           <Route path="/daily-log/today" element={<DailyLogPage />} />

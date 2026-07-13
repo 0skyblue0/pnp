@@ -1,4 +1,3 @@
-import { Bell } from "lucide-react";
 import { useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 
@@ -8,8 +7,10 @@ import type { ListEnvelope } from "../../shared/api/types.js";
 const navItems = [
   { to: "/home", label: "홈" },
   { to: "/daily-log/today", label: "일일 운영" },
+  { to: "/sales-analysis", label: "매출 분석" },
   { to: "/response", label: "손님 반응" },
   { to: "/reservation", label: "예약" },
+  { to: "/regular-customer", label: "단골손님" },
   { to: "/prepaid-ledger", label: "선결제 장부" },
   { to: "/staff", label: "관리" }
 ];
@@ -96,17 +97,6 @@ export function AppLayout() {
                 <span className="absolute right-0 top-0 grid h-4 min-w-4 place-items-center rounded-full bg-red px-0.5 text-[9px] font-bold text-white">
                   {unreadCount > 9 ? "9+" : unreadCount}
                 </span>
-              ) : null}
-            </NavLink>
-            <NavLink
-              to="/notification"
-              className="relative grid h-8 w-8 place-items-center rounded-full bg-[#F4E3D8] text-xs font-bold text-cocoa transition hover:bg-[#ead3c5]"
-              title="알림"
-            >
-              <Bell className="h-4 w-4 sm:hidden" aria-hidden="true" />
-              <span className="hidden sm:inline">김</span>
-              {unreadCount > 0 ? (
-                <span className="absolute right-0 top-0 h-2.5 w-2.5 rounded-full bg-red sm:hidden" />
               ) : null}
             </NavLink>
           </div>

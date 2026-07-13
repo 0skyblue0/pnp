@@ -7,6 +7,7 @@ import { todayInStoreTime } from "../../shared/time/storeTime.js";
 import { Button } from "../../shared/ui/Button.js";
 import { useConfirm } from "../../shared/ui/ConfirmDialog.js";
 import { productLineup } from "../../shared/productLineup.js";
+import { DailyOperationExcelImportPanel } from "./DailyOperationExcelImportPanel.js";
 import { providedDailyOperationDefaultMonth } from "./providedDailyOperationRecords.js";
 
 type DailyTab = "basic" | "products" | "sales" | "notes";
@@ -747,6 +748,7 @@ export function DailyLogPage() {
             </button>
           ))}
         </div>
+        {viewMode === "entry" ? <DailyOperationExcelImportPanel /> : null}
         {message ? (
           <div className="mb-4 rounded-control border border-green/20 bg-green/10 px-3 py-2 text-sm font-semibold text-green">
             {message}

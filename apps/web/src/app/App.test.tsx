@@ -773,6 +773,8 @@ describe("App", () => {
     expect(screen.getAllByText("제품 점검").length).toBeGreaterThan(0);
     expect(screen.getAllByText("방문 흐름").length).toBeGreaterThan(0);
     expect(screen.getAllByText("주의 신호").length).toBeGreaterThan(0);
+    expect(screen.getByText("이번 기간 우선순위")).toBeInTheDocument();
+    expect(screen.getByText("많이 반복된 내용 TOP 5")).toBeInTheDocument();
     expect(screen.queryByText("손님이 직접 한 말")).not.toBeInTheDocument();
     expect(screen.queryByText("주요 반응 근거")).not.toBeInTheDocument();
     expect(
@@ -786,7 +788,7 @@ describe("App", () => {
       "false"
     );
     expect(screen.getByRole("button", { name: "2026년 6월" })).toBeInTheDocument();
-    expect(screen.getByText("반복 주제 TOP 5")).toBeInTheDocument();
+    expect(screen.queryByText("반복 주제 TOP 5")).not.toBeInTheDocument();
     expect(screen.queryByText("월별 핵심 보기")).not.toBeInTheDocument();
     expect(screen.queryByText("상세 내용 바로 열기")).not.toBeInTheDocument();
     expect(screen.queryByText("선택 기간 일별 추이")).not.toBeInTheDocument();

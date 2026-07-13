@@ -349,6 +349,14 @@ export function StatisticsPage() {
   const displayTotal = stats.total;
   const displayRepeated = stats.insights.repeatedTopics.slice(0, 5);
   const displayBuckets = stats.insights.executiveBuckets ?? [];
+  const visibleBuckets = displayBuckets.filter(
+    (bucket) => bucket.count > 0 || bucket.key !== "serviceRisk"
+  );
+  const attentionBucket = displayBuckets.find((bucket) => bucket.key === "serviceRisk");
+  const topPriorityBuckets = displayBuckets
+    .filter((bucket) => bucket.count > 0)
+    .sort((left, right) => right.count - left.count)
+    .slice(0, 3);
   const checkNeededCount = stats.insights.checkNeededCount ?? 0;
   const maxRepeated = Math.max(...displayRepeated.map((item) => item.count), 1);
   const colors = ["#B5654A", "#3E6EA5", "#B8862B", "#3E7A55", "#B8AEA2"];
@@ -498,6 +506,11 @@ export function StatisticsPage() {
                 확인 필요 {checkNeededCount.toLocaleString("ko-KR")}건
               </Link>
             ) : null}
+            {attentionBucket && attentionBucket.count === 0 ? (
+              <span className="mt-3 inline-flex rounded-full bg-green/10 px-3 py-1 text-xs font-extrabold text-green">
+                주의 신호 특이사항 없음
+              </span>
+            ) : null}
           </div>
           <div className="rounded-full bg-cream px-3 py-1 text-xs font-bold text-cocoa">
             {periodLabel} · 총 {displayTotal.toLocaleString("ko-KR")}건
@@ -505,8 +518,56 @@ export function StatisticsPage() {
         </div>
       </section>
 
+      <section className="dc-card-pad">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <p className="dc-eyebrow">이번 기간 우선순위</p>
+            <p className="mt-1 text-xs font-semibold text-muted">
+              많이 쌓인 신호부터 바로 확인합니다.
+            </p>
+          </div>
+          <span className="rounded-full bg-cream px-3 py-1 text-xs font-bold text-cocoa">
+            상위 {topPriorityBuckets.length.toLocaleString("ko-KR")}개
+          </span>
+        </div>
+        {topPriorityBuckets.length > 0 ? (
+          <div className="grid gap-2 md:grid-cols-3">
+            {topPriorityBuckets.map((bucket, index) => {
+              const topTopic = bucket.topics[0];
+              return (
+                <Link
+                  key={bucket.key}
+                  className="rounded-[12px] border border-[#F1EAE0] bg-white px-3 py-3 transition hover:bg-cream"
+                  to={bucketDetailLink(range, bucket.key)}
+                  aria-label={`${displayBucketTitle(bucket.title)} ${bucket.count.toLocaleString("ko-KR")}건 우선 확인`}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="rounded-full bg-bread px-2 py-0.5 text-[11px] font-extrabold text-white">
+                      {index + 1}
+                    </span>
+                    <span className="text-[11px] font-extrabold text-muted">
+                      {bucket.count.toLocaleString("ko-KR")}건
+                    </span>
+                  </div>
+                  <div className="mt-2 text-[13px] font-extrabold text-ink">
+                    {displayBucketTitle(bucket.title)}
+                  </div>
+                  <div className="mt-1 text-[12px] font-semibold leading-5 text-muted">
+                    {topTopic ? topTopic.label : "대표 주제 없음"}
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        ) : (
+          <p className="rounded-[10px] bg-cream px-3 py-4 text-sm font-semibold text-muted">
+            조회 기간에 우선 확인할 반응이 없습니다.
+          </p>
+        )}
+      </section>
+
       <div className="grid gap-3 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
-        {displayBuckets.map((bucket) => (
+        {visibleBuckets.map((bucket) => (
           <ExecutiveBucketCard
             key={bucket.key}
             bucket={bucket}
@@ -520,7 +581,10 @@ export function StatisticsPage() {
         <section className="dc-card-pad">
           <div className="mb-3 flex items-center justify-between gap-3">
             <div>
-              <div className="dc-eyebrow">반복 주제 TOP 5</div>
+              <div className="dc-eyebrow">많이 반복된 내용 TOP 5</div>
+              <p className="mt-1 text-xs font-semibold text-muted">
+                같은 이야기가 반복되는 항목만 모았습니다.
+              </p>
             </div>
             {stats.insights.checkNeededCount ? (
               <Link

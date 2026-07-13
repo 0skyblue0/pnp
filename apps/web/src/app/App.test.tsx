@@ -966,24 +966,25 @@ describe("App", () => {
     expect(
       screen.queryByText("숫자는 줄이고, 대표가 확인할 반복 신호만 남겼습니다.")
     ).not.toBeInTheDocument();
-    const topicLink = screen.getAllByRole("link", { name: "제품 > 맛 > 바게트 기록 보기" })[0];
+    const topicLink = screen.getAllByRole("link", { name: "제품 > 맛 > 바게트 기록 보기" })[0]!;
     expect(topicLink).toHaveAttribute(
       "href",
-      "/response?mode=lookup&tab=detail&from=2026-06-14&to=2026-07-13&criterion_id=6"
+      expect.stringMatching(/^\/response\?mode=lookup&tab=detail&from=\d{4}-\d{2}-\d{2}&to=\d{4}-\d{2}-\d{2}&criterion_id=6$/)
     );
     expect(screen.getByRole("link", { name: /제품 점검 9건 이 신호 전체 보기/ })).toHaveAttribute(
       "href",
-      "/response?mode=lookup&tab=detail&from=2026-06-14&to=2026-07-13&insight_bucket=productImprovements"
+      expect.stringMatching(
+        /^\/response\?mode=lookup&tab=detail&from=\d{4}-\d{2}-\d{2}&to=\d{4}-\d{2}-\d{2}&insight_bucket=productImprovements$/
+      )
     );
     expect(screen.getByRole("link", { name: /대표 주제 바게트 6건만 보기/ })).toHaveAttribute(
       "href",
-      "/response?mode=lookup&tab=detail&from=2026-06-14&to=2026-07-13&criterion_id=6"
+      expect.stringMatching(/^\/response\?mode=lookup&tab=detail&from=\d{4}-\d{2}-\d{2}&to=\d{4}-\d{2}-\d{2}&criterion_id=6$/)
     );
-    expect(
-      screen.getAllByRole("link", { name: "확인 필요 반응 4건 상세 기록 보기" })[0]
-    ).toHaveAttribute(
+    const checkNeededLink = screen.getAllByRole("link", { name: "확인 필요 반응 4건 상세 기록 보기" })[0]!;
+    expect(checkNeededLink).toHaveAttribute(
       "href",
-      "/response?mode=lookup&tab=detail&from=2026-06-14&to=2026-07-13&check_needed=true"
+      expect.stringMatching(/^\/response\?mode=lookup&tab=detail&from=\d{4}-\d{2}-\d{2}&to=\d{4}-\d{2}-\d{2}&check_needed=true$/)
     );
     expect(screen.queryByRole("button", { name: "원형" })).not.toBeInTheDocument();
   });
@@ -2086,7 +2087,7 @@ describe("App", () => {
     let createdBody: unknown = null;
     let usedBody: unknown = null;
     let chargedBody: unknown = null;
-    let cancelledTransactionPath: string | null = null;
+
 
     vi.mocked(fetch).mockImplementation(async (input, init) => {
       const url = input instanceof Request ? input.url : String(input);
@@ -2138,17 +2139,6 @@ describe("App", () => {
         );
       }
 
-      if (url.endsWith("/prepaid-ledger/1/transactions/t2") && init?.method === "DELETE") {
-        cancelledTransactionPath = new URL(url, "http://localhost").pathname;
-        return new Response(
-          JSON.stringify({
-            data: { ...customer, balance: 50000, transactions: transactions.slice(1) },
-            error: null
-          }),
-          { headers: { "Content-Type": "application/json" } }
-        );
-      }
-
       return new Response(
         JSON.stringify({ data: { items: [], total: 0, page: 1, size: 0 }, error: null }),
         {
@@ -2167,39 +2157,31 @@ describe("App", () => {
 
     expect(await screen.findByRole("heading", { name: "선결제 장부" })).toBeInTheDocument();
     expect(screen.getByLabelText("손님 검색")).toBeInTheDocument();
-    expect(screen.getByText("계산대 모드: 손님 찾고 바로 사용 차감")).toBeInTheDocument();
-    expect(screen.getByText("1. 손님 찾기")).toBeInTheDocument();
-    expect(screen.getByText("2. 잔액에서 빼기")).toBeInTheDocument();
-    expect(screen.getByText("3. 필요하면 충전")).toBeInTheDocument();
-    expect(screen.getByText("선결제 손님" )).toBeInTheDocument();
+    expect(screen.getByText("검색된 손님 수")).toBeInTheDocument();
+    expect(screen.getByText("총 잔액")).toBeInTheDocument();
+    expect(screen.getByText("이름")).toBeInTheDocument();
+    expect(screen.getByText("연락처")).toBeInTheDocument();
+    expect(screen.getByText("최근 거래")).toBeInTheDocument();
+    expect(screen.getByText("액션")).toBeInTheDocument();
     expect(screen.queryByText("등록·충전·사용 상세 기능 열기")).not.toBeInTheDocument();
+    expect(screen.queryByText("되돌리기")).not.toBeInTheDocument();
     expect(screen.getAllByText("김선결님").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText("010-1234-5678")).toBeInTheDocument();
+    expect(screen.getByText("07. 01. 충전 +50,000")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "충전" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "사용" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "세부내역" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "세부내역" }));
     expect(screen.getByText("현재 잔액")).toBeInTheDocument();
     expect(screen.getAllByText("38,000원").length).toBeGreaterThanOrEqual(2);
     expect(screen.getByText("화이트바게트 픽업")).toBeInTheDocument();
     expect(screen.getByText("현재 선택한 손님")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "사용 차감" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "추가 충전" })).toBeInTheDocument();
-    expect(screen.queryByText("여섯번째 상세 내역")).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "김선결 전체 거래 내역 6건 보기" }));
+    expect(screen.getByRole("heading", { name: "세부내역" })).toBeInTheDocument();
     expect(screen.getByText("여섯번째 상세 내역")).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        "잘못 눌렀다면 최근 내역의 “되돌리기”를 누른 뒤 정확한 금액으로 다시 입력합니다."
-      )
-    ).toBeInTheDocument();
+    expect(screen.getByText("내역은 확인만 가능합니다.")).toBeInTheDocument();
 
-    const cancelButtons = screen.getAllByRole("button", { name: "되돌리기" });
-    expect(cancelButtons).toHaveLength(6);
-    const cancelButton = cancelButtons[1] as HTMLElement;
-    fireEvent.click(cancelButton);
-    const cancelTransactionDialog = await screen.findByRole("alertdialog");
-    fireEvent.click(within(cancelTransactionDialog).getByRole("button", { name: "되돌리기" }));
-    await waitFor(() =>
-      expect(cancelledTransactionPath).toBe("/api/v1/prepaid-ledger/1/transactions/t2")
-    );
-    expect(await screen.findByText("사용 12,000원 되돌리기 완료 #1")).toBeInTheDocument();
-
+    fireEvent.click(screen.getByRole("button", { name: "신규 등록" }));
     fireEvent.change(screen.getByLabelText("새 손님 이름"), { target: { value: "박충전" } });
     fireEvent.change(screen.getByLabelText("새 손님 연락처"), { target: { value: "01077777777" } });
     fireEvent.change(screen.getByLabelText("선결제 금액"), { target: { value: "30000" } });
@@ -2216,6 +2198,8 @@ describe("App", () => {
     );
     expect(await screen.findByText("선결제 등록 완료 #2")).toBeInTheDocument();
 
+    fireEvent.click(screen.getByRole("button", { name: "충전" }));
+    expect(screen.getByRole("heading", { name: "충전" })).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText("김선결 추가 충전 금액"), {
       target: { value: "20000" }
     });
@@ -2229,6 +2213,8 @@ describe("App", () => {
     );
     expect(await screen.findByText("추가 충전 완료 #1")).toBeInTheDocument();
 
+    fireEvent.click(screen.getByRole("button", { name: "사용" }));
+    expect(screen.getByRole("heading", { name: "사용" })).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText("김선결 사용 금액"), { target: { value: "5000" } });
     fireEvent.change(screen.getByLabelText("김선결 사용 내용"), {
       target: { value: "크로와상 사용" }

@@ -50,6 +50,14 @@ function lastUsedAt(transactions: Array<{ type: string; occurredAt: Date }>) {
     .sort((left, right) => right.occurredAt.getTime() - left.occurredAt.getTime())[0]?.occurredAt;
 }
 
+function chargeNoteWithPointStatus(
+  note: string | undefined,
+  pointsEarned: boolean | undefined,
+  fallback: string
+) {
+  const baseNote = note?.trim() || fallback;
+  return pointsEarned ? `${baseNote} / 포인트 적립 완료` : baseNote;
+}
 function participantUsedAmount(participantId: bigint, transactions: PrepaidTransactionLite[]) {
   return transactions
     .filter(
@@ -176,7 +184,7 @@ export async function registerPrepaidLedgerRoutes(app: FastifyInstance): Promise
         create: {
           type: "CHARGE",
           amount: input.amount,
-          note: input.memo || "선결제 등록",
+          note: chargeNoteWithPointStatus(input.memo, input.pointsEarned, "선결제 등록"),
           occurredAt: now
         }
       }
@@ -338,7 +346,7 @@ export async function registerPrepaidLedgerRoutes(app: FastifyInstance): Promise
         customerId: params.id,
         type: "CHARGE",
         amount: input.amount,
-        note: input.note || "추가 충전",
+        note: chargeNoteWithPointStatus(input.note, input.pointsEarned, "추가 충전"),
         occurredAt: now
       }
     });

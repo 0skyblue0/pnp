@@ -53,11 +53,13 @@ type NewLedgerForm = {
   sharedLimit: string;
   participantsText: string;
   memo: string;
+  pointsEarned: boolean;
 };
 
 type LedgerForm = {
   amount: string;
   note: string;
+  pointsEarned: boolean;
 };
 
 type SharedUseForm = {
@@ -90,7 +92,8 @@ function emptyNewLedgerForm(): NewLedgerForm {
     amount: "",
     sharedLimit: "",
     participantsText: "",
-    memo: ""
+    memo: "",
+    pointsEarned: false
   };
 }
 
@@ -286,7 +289,8 @@ export function PrepaidLedgerPage() {
       [customerId]: {
         amount: current[customerId]?.amount ?? "",
         note: current[customerId]?.note ?? "",
-        ...next
+        ...next,
+        pointsEarned: next.pointsEarned ?? current[customerId]?.pointsEarned ?? false
       }
     }));
   }
@@ -297,7 +301,8 @@ export function PrepaidLedgerPage() {
       [customerId]: {
         amount: current[customerId]?.amount ?? "",
         note: current[customerId]?.note ?? "",
-        ...next
+        ...next,
+        pointsEarned: next.pointsEarned ?? current[customerId]?.pointsEarned ?? false
       }
     }));
   }
@@ -382,6 +387,7 @@ export function PrepaidLedgerPage() {
     };
     if (newForm.contactPhone) body.contactPhone = newForm.contactPhone;
     if (newForm.memo) body.memo = newForm.memo;
+    if (newForm.pointsEarned) body.pointsEarned = true;
     if (newForm.ledgerType === "SHARED") {
       body.sharedLimit = sharedLimit;
       const participants = parseParticipantLines(newForm.participantsText, sharedLimit);
@@ -406,7 +412,7 @@ export function PrepaidLedgerPage() {
   async function useBalance(customer: PrepaidCustomerDto) {
     setMessage(null);
     setError(null);
-    const form = useForms[customer.id] ?? { amount: "", note: "" };
+    const form = useForms[customer.id] ?? { amount: "", note: "", pointsEarned: false };
     const amount = digitsToNumber(form.amount);
     if (amount <= 0) {
       setError("사용 금액을 입력해 주세요.");
@@ -423,7 +429,10 @@ export function PrepaidLedgerPage() {
       return;
     }
     setMessage(`사용 처리 완료 #${customer.id}`);
-    setUseForms((current) => ({ ...current, [customer.id]: { amount: "", note: "" } }));
+    setUseForms((current) => ({
+      ...current,
+      [customer.id]: { amount: "", note: "", pointsEarned: false }
+    }));
     setDetailMode("DETAIL");
     await loadLedger();
   }
@@ -468,7 +477,7 @@ export function PrepaidLedgerPage() {
   async function chargeBalance(customer: PrepaidCustomerDto) {
     setMessage(null);
     setError(null);
-    const form = chargeForms[customer.id] ?? { amount: "", note: "" };
+    const form = chargeForms[customer.id] ?? { amount: "", note: "", pointsEarned: false };
     const amount = digitsToNumber(form.amount);
     if (amount <= 0) {
       setError("추가 충전 금액을 입력해 주세요.");
@@ -476,6 +485,7 @@ export function PrepaidLedgerPage() {
     }
     const body: Record<string, unknown> = { amount };
     if (form.note) body.note = form.note;
+    if (form.pointsEarned) body.pointsEarned = true;
     const envelope = await apiPost<PrepaidCustomerDto, Record<string, unknown>>(
       `/prepaid-ledger/${customer.id}/charge`,
       body
@@ -485,7 +495,10 @@ export function PrepaidLedgerPage() {
       return;
     }
     setMessage(`추가 충전 완료 #${customer.id}`);
-    setChargeForms((current) => ({ ...current, [customer.id]: { amount: "", note: "" } }));
+    setChargeForms((current) => ({
+      ...current,
+      [customer.id]: { amount: "", note: "", pointsEarned: false }
+    }));
     setDetailMode("DETAIL");
     await loadLedger();
   }
@@ -654,8 +667,10 @@ export function PrepaidLedgerPage() {
         <SelectedCustomerDetail
           customer={selectedCustomer}
           mode={detailMode}
-          chargeForm={chargeForms[selectedCustomer.id] ?? { amount: "", note: "" }}
-          useForm={useForms[selectedCustomer.id] ?? { amount: "", note: "" }}
+          chargeForm={
+            chargeForms[selectedCustomer.id] ?? { amount: "", note: "", pointsEarned: false }
+          }
+          useForm={useForms[selectedCustomer.id] ?? { amount: "", note: "", pointsEarned: false }}
           sharedUseForm={sharedUseForms[selectedCustomer.id] ?? emptySharedUseForm()}
           memoForm={memoForms[selectedCustomer.id] ?? { memo: selectedCustomer.memo ?? "" }}
           setChargeForm={setChargeForm}
@@ -818,6 +833,18 @@ function NewPrepaidForm(props: {
             value={form.memo}
             onChange={(event) => setForm((current) => ({ ...current, memo: event.target.value }))}
           />
+        </label>
+        <label className="mt-3 inline-flex items-center gap-2 text-sm font-extrabold text-cocoa">
+          <input
+            aria-label="포인트 적립 완료"
+            type="checkbox"
+            className="h-4 w-4 accent-bread"
+            checked={form.pointsEarned}
+            onChange={(event) =>
+              setForm((current) => ({ ...current, pointsEarned: event.target.checked }))
+            }
+          />
+          포인트 적립 완료
         </label>
         <div className="mt-4 flex justify-end gap-2">
           <button
@@ -1050,7 +1077,7 @@ function SelectedCustomerDetail(props: {
       {mode === "CHARGE" ? (
         <section className="mt-4 rounded-[12px] bg-[#EAF1F7] p-4">
           <h3 className="text-base font-extrabold text-ink">충전</h3>
-          <div className="mt-3 grid gap-2 md:grid-cols-[1fr_1.5fr_auto] md:items-end">
+          <div className="mt-3 grid gap-2 md:grid-cols-[1fr_1.5fr_auto_auto] md:items-end">
             <label className="grid gap-1">
               <span className="text-xs font-semibold text-muted">충전 금액</span>
               <input
@@ -1073,6 +1100,18 @@ function SelectedCustomerDetail(props: {
                 value={chargeForm.note}
                 onChange={(event) => setChargeForm(customer.id, { note: event.target.value })}
               />
+            </label>
+            <label className="inline-flex min-h-10 items-center gap-2 rounded-control border border-[#CADCEC] bg-white px-3 text-xs font-extrabold text-cocoa">
+              <input
+                aria-label={`${customer.customerName} 포인트 적립 완료`}
+                type="checkbox"
+                className="h-4 w-4 accent-bread"
+                checked={chargeForm.pointsEarned}
+                onChange={(event) =>
+                  setChargeForm(customer.id, { pointsEarned: event.target.checked })
+                }
+              />
+              포인트 적립
             </label>
             <button
               className="inline-flex min-h-10 items-center justify-center gap-2 rounded-control bg-bread px-4 text-sm font-bold text-white transition hover:bg-cocoa"

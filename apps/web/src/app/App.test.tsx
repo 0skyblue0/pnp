@@ -2385,6 +2385,8 @@ describe("App", () => {
     fireEvent.change(within(newLedgerDialog).getByLabelText("선결제 메모"), {
       target: { value: "식빵 선결제" }
     });
+    expect(within(newLedgerDialog).getByLabelText("포인트 적립 완료")).toBeInTheDocument();
+    fireEvent.click(within(newLedgerDialog).getByLabelText("포인트 적립 완료"));
     fireEvent.click(within(newLedgerDialog).getByRole("button", { name: "선결제 등록" }));
 
     await waitFor(() =>
@@ -2392,7 +2394,8 @@ describe("App", () => {
         customerName: "박충전",
         contactPhone: "010-7777-7777",
         amount: 30000,
-        memo: "식빵 선결제"
+        memo: "식빵 선결제",
+        pointsEarned: true
       })
     );
     expect(await screen.findByText("선결제 등록 완료 #2")).toBeInTheDocument();
@@ -2405,10 +2408,16 @@ describe("App", () => {
     fireEvent.change(screen.getByLabelText("김선결 추가 충전 메모"), {
       target: { value: "식빵 추가 충전" }
     });
+    expect(screen.getByLabelText("김선결 포인트 적립 완료")).toBeInTheDocument();
+    fireEvent.click(screen.getByLabelText("김선결 포인트 적립 완료"));
     fireEvent.click(screen.getByRole("button", { name: "김선결 추가 충전" }));
 
     await waitFor(() =>
-      expect(chargedBody).toMatchObject({ amount: 20000, note: "식빵 추가 충전" })
+      expect(chargedBody).toMatchObject({
+        amount: 20000,
+        note: "식빵 추가 충전",
+        pointsEarned: true
+      })
     );
     expect(await screen.findByText("추가 충전 완료 #1")).toBeInTheDocument();
 

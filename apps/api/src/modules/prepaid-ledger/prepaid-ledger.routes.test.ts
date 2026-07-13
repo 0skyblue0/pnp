@@ -29,6 +29,117 @@ function buildPrismaMock() {
 }
 
 describe("prepaid ledger routes", () => {
+  it("records point accrual on new prepaid charge transactions", async () => {
+    const prisma = buildPrismaMock();
+    prisma.prepaidCustomer.create.mockResolvedValue({
+      id: 1n,
+      customerName: "포인트손님",
+      contactPhone: null,
+      memo: "식빵 선결제",
+      ledgerType: "GENERAL",
+      sharedLimit: null,
+      isActive: true,
+      createdAt: now,
+      updatedAt: now,
+      participants: [],
+      transactions: [
+        {
+          id: 20n,
+          customerId: 1n,
+          participantId: null,
+          type: "CHARGE",
+          amount: 50000,
+          note: "식빵 선결제 / 포인트 적립 완료",
+          occurredAt: now,
+          createdAt: now
+        }
+      ]
+    });
+
+    const app = Fastify({ logger: false });
+    app.decorate("prisma", prisma as never);
+    await app.register(registerPrepaidLedgerRoutes);
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/",
+      payload: {
+        customerName: "포인트손님",
+        amount: 50000,
+        memo: "식빵 선결제",
+        pointsEarned: true
+      }
+    });
+
+    expect(response.statusCode).toBe(201);
+    const createArgs = prisma.prepaidCustomer.create.mock.calls[0]?.[0] as {
+      data?: { transactions?: { create?: { note?: string } } };
+    };
+    expect(createArgs.data?.transactions?.create?.note).toBe("식빵 선결제 / 포인트 적립 완료");
+
+    await app.close();
+  });
+
+  it("records point accrual on additional prepaid charge transactions", async () => {
+    const prisma = buildPrismaMock();
+    prisma.prepaidCustomer.findUnique.mockResolvedValue({
+      id: 1n,
+      customerName: "포인트손님",
+      contactPhone: null,
+      memo: null,
+      ledgerType: "GENERAL",
+      sharedLimit: null,
+      isActive: true,
+      createdAt: now,
+      updatedAt: now,
+      participants: [],
+      transactions: [
+        {
+          id: 20n,
+          customerId: 1n,
+          participantId: null,
+          type: "CHARGE",
+          amount: 50000,
+          note: "선결제 등록",
+          occurredAt: now,
+          createdAt: now
+        }
+      ]
+    });
+    prisma.prepaidTransaction.create.mockResolvedValue({});
+    prisma.prepaidCustomer.update.mockResolvedValue({
+      id: 1n,
+      customerName: "포인트손님",
+      contactPhone: null,
+      memo: null,
+      ledgerType: "GENERAL",
+      sharedLimit: null,
+      isActive: true,
+      createdAt: now,
+      updatedAt: now,
+      participants: [],
+      transactions: []
+    });
+
+    const app = Fastify({ logger: false });
+    app.decorate("prisma", prisma as never);
+    await app.register(registerPrepaidLedgerRoutes);
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/1/charge",
+      payload: { amount: 20000, note: "추가 충전", pointsEarned: true }
+    });
+
+    expect(response.statusCode).toBe(200);
+    const createArgs = prisma.prepaidTransaction.create.mock.calls[0]?.[0] as {
+      data?: { note?: string };
+    };
+    expect(createArgs.data?.note).toBe("추가 충전 / 포인트 적립 완료");
+
+    await app.close();
+  });
+
   it("blocks shared use when the participant would exceed their per-person limit", async () => {
     const prisma = buildPrismaMock();
     prisma.prepaidCustomer.findUnique.mockResolvedValue({
@@ -183,12 +294,11 @@ describe("prepaid ledger routes", () => {
       type: "USE",
       amount: 20000
     });
-    const body =
-      response.json<
-        ApiEnvelope<{
-          participants: Array<{ phoneLast4: string; usedAmount: number; remainingAmount: number }>;
-        }>
-      >();
+    const body = response.json<
+      ApiEnvelope<{
+        participants: Array<{ phoneLast4: string; usedAmount: number; remainingAmount: number }>;
+      }>
+    >();
     expect(body.data?.participants).toEqual([
       expect.objectContaining({ phoneLast4: "1234", usedAmount: 30000, remainingAmount: 0 })
     ]);

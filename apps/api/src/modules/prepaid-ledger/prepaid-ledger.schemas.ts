@@ -18,6 +18,7 @@ export const createPrepaidCustomerSchema = z.object({
   contactPhone: z.string().trim().max(40).optional(),
   amount: z.coerce.number().int().positive().max(99_999_999),
   memo: z.string().trim().max(2000).optional(),
+  pointsEarned: z.boolean().optional(),
   ledgerType: z.enum(["GENERAL", "SHARED"]).optional(),
   sharedLimit: z.coerce.number().int().positive().max(99_999_999).optional(),
   participants: z
@@ -53,7 +54,8 @@ export const usePrepaidBalanceSchema = z.object({
 
 export const chargePrepaidBalanceSchema = z.object({
   amount: z.coerce.number().int().positive().max(99_999_999),
-  note: z.string().trim().max(2000).optional()
+  note: z.string().trim().max(2000).optional(),
+  pointsEarned: z.boolean().optional()
 });
 
 export const updatePrepaidCustomerSchema = z.object({

@@ -1,5 +1,5 @@
 import { Pencil, Plus, RefreshCcw, Trash2, UserPlus, X } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type DragEvent } from "react";
 
 import { apiDelete, apiGet, apiPatch, apiPost } from "../../shared/api/client.js";
 import type { ListEnvelope } from "../../shared/api/types.js";
@@ -314,6 +314,7 @@ function calendarDates(monthKey: string): Array<{ date: string; day: number | nu
 
 export function ManagementPage() {
   const confirm = useConfirm();
+  const productListRef = useRef<HTMLDivElement | null>(null);
   const [products, setProducts] = useState<ProductDto[]>([]);
   const [staff, setStaff] = useState<StaffDto[]>([]);
   const [responseCriteria, setResponseCriteria] = useState<ResponseCriterionDto[]>([]);
@@ -659,28 +660,7 @@ export function ManagementPage() {
     await loadManagementData();
   }
 
-  async function moveProductBefore(targetProductId: number) {
-    if (draggedProductId === null || draggedProductId === targetProductId) {
-      setDraggedProductId(null);
-      return;
-    }
-
-    const currentOrder = sortProducts(products);
-    const fromIndex = currentOrder.findIndex((product) => product.id === draggedProductId);
-    const toIndex = currentOrder.findIndex((product) => product.id === targetProductId);
-    if (fromIndex < 0 || toIndex < 0) {
-      setDraggedProductId(null);
-      return;
-    }
-
-    const nextOrder = [...currentOrder];
-    const [movedProduct] = nextOrder.splice(fromIndex, 1);
-    if (!movedProduct) {
-      setDraggedProductId(null);
-      return;
-    }
-    nextOrder.splice(toIndex, 0, movedProduct);
-
+  async function saveProductOrder(nextOrder: ProductDto[]) {
     setProducts(nextOrder.map((product, index) => ({ ...product, sortOrder: (index + 1) * 10 })));
     setDraggedProductId(null);
     setMessage(null);
@@ -698,6 +678,55 @@ export function ManagementPage() {
 
     setProducts(envelope.data.items);
     setMessage("제품 순서 저장 완료");
+  }
+
+  async function moveProductToIndex(productId: number, targetIndex: number) {
+    const currentOrder = sortProducts(products);
+    const fromIndex = currentOrder.findIndex((product) => product.id === productId);
+    if (fromIndex < 0) {
+      return;
+    }
+
+    const nextOrder = [...currentOrder];
+    const [movedProduct] = nextOrder.splice(fromIndex, 1);
+    if (!movedProduct) {
+      return;
+    }
+    const boundedTargetIndex = Math.max(0, Math.min(targetIndex, nextOrder.length));
+    nextOrder.splice(boundedTargetIndex, 0, movedProduct);
+
+    await saveProductOrder(nextOrder);
+  }
+
+  async function moveProductBefore(targetProductId: number) {
+    if (draggedProductId === null || draggedProductId === targetProductId) {
+      setDraggedProductId(null);
+      return;
+    }
+
+    const currentOrder = sortProducts(products);
+    const toIndex = currentOrder.findIndex((product) => product.id === targetProductId);
+    if (toIndex < 0) {
+      setDraggedProductId(null);
+      return;
+    }
+
+    await moveProductToIndex(draggedProductId, toIndex);
+  }
+
+  function scrollProductListDuringDrag(event: DragEvent<HTMLElement>) {
+    event.preventDefault();
+    const list = productListRef.current;
+    if (!list) {
+      return;
+    }
+    const bounds = list.getBoundingClientRect();
+    const edgeSize = 72;
+    if (event.clientY > bounds.bottom - edgeSize) {
+      list.scrollBy({ top: 32, behavior: "auto" });
+    } else if (event.clientY < bounds.top + edgeSize) {
+      list.scrollBy({ top: -32, behavior: "auto" });
+    }
   }
 
   async function saveStaff() {
@@ -1174,7 +1203,7 @@ export function ManagementPage() {
                 </label>
                 <div className="text-right text-xs font-bold text-muted">
                   <p>표시 {visibleProducts.length.toLocaleString("ko-KR")}개 / 전체 {products.length.toLocaleString("ko-KR")}개</p>
-                  <p className="mt-1 text-[11px] font-semibold">왼쪽 손잡이를 드래그하면 순서가 저장됩니다. 비활성 제품은 회색으로 남겨 복구할 수 있습니다.</p>
+                  <p className="mt-1 text-[11px] font-semibold">손잡이를 드래그하면 목록이 자동으로 스크롤됩니다. 멀리 옮길 때는 맨위·맨아래 버튼을 쓰세요.</p>
                   {productSearchQuery ? (
                     <button className="mt-1 text-cocoa underline" type="button" onClick={() => setProductSearchQuery("")}>검색 초기화</button>
                   ) : null}
@@ -1298,8 +1327,8 @@ export function ManagementPage() {
                 </div>
               ) : null}
 
-              <div className="mt-4 max-h-[460px] overflow-y-auto rounded-[12px] border border-latte bg-white px-4 py-2">
-                <div className="sticky top-0 z-10 grid grid-cols-[2.8rem_minmax(7rem,1.4fr)_minmax(5rem,0.8fr)_minmax(4rem,0.6fr)_minmax(8rem,1fr)_8rem] gap-2 border-b border-[#EFE8DC] bg-white py-2 text-[11px] font-semibold text-muted">
+              <div ref={productListRef} className="mt-4 max-h-[460px] overflow-y-auto rounded-[12px] border border-latte bg-white px-4 py-2" onDragOver={scrollProductListDuringDrag}>
+                <div className="sticky top-0 z-10 grid grid-cols-[5.6rem_minmax(7rem,1.4fr)_minmax(5rem,0.8fr)_minmax(4rem,0.6fr)_minmax(8rem,1fr)_8rem] gap-2 border-b border-[#EFE8DC] bg-white py-2 text-[11px] font-semibold text-muted">
                   <div>순서</div><div>제품명</div><div>카테고리</div><div>시즌</div><div>기간</div><div>수정·삭제</div>
                 </div>
                 {visibleProducts.map((product) => (
@@ -1308,22 +1337,40 @@ export function ManagementPage() {
                     aria-label={`${product.name} 제품 행`}
                     draggable
                     onDragStart={() => setDraggedProductId(product.id)}
-                    onDragOver={(event) => event.preventDefault()}
+                    onDragOver={scrollProductListDuringDrag}
                     onDrop={() => void moveProductBefore(product.id)}
                     onDragEnd={() => setDraggedProductId(null)}
                     className={[
-                      "grid grid-cols-[2.8rem_minmax(7rem,1.4fr)_minmax(5rem,0.8fr)_minmax(4rem,0.6fr)_minmax(8rem,1fr)_8rem] items-center gap-2 border-b border-[#F5F0E7] py-3 text-[13px] last:border-b-0",
+                      "grid grid-cols-[5.6rem_minmax(7rem,1.4fr)_minmax(5rem,0.8fr)_minmax(4rem,0.6fr)_minmax(8rem,1fr)_8rem] items-center gap-2 border-b border-[#F5F0E7] py-3 text-[13px] last:border-b-0",
                       product.isActive ? "text-ink" : "bg-stone-50 text-muted"
                     ].join(" ")}
                   >
-                    <button
-                      className="cursor-grab rounded-[8px] border border-latte bg-cream px-2 py-1 text-xs font-extrabold text-cocoa active:cursor-grabbing"
-                      type="button"
-                      aria-label={`${product.name} 순서 드래그`}
-                      title="드래그해서 순서 변경"
-                    >
-                      ↕
-                    </button>
+                    <div className="flex flex-wrap gap-1">
+                      <button
+                        className="cursor-grab rounded-[8px] border border-latte bg-cream px-2 py-1 text-xs font-extrabold text-cocoa active:cursor-grabbing"
+                        type="button"
+                        aria-label={`${product.name} 순서 드래그`}
+                        title="드래그해서 순서 변경"
+                      >
+                        ↕
+                      </button>
+                      <button
+                        className="rounded-[8px] border border-latte bg-white px-1.5 py-1 text-[11px] font-bold text-cocoa"
+                        type="button"
+                        aria-label={`${product.name} 맨 위로 이동`}
+                        onClick={() => void moveProductToIndex(product.id, 0)}
+                      >
+                        맨위
+                      </button>
+                      <button
+                        className="rounded-[8px] border border-latte bg-white px-1.5 py-1 text-[11px] font-bold text-cocoa"
+                        type="button"
+                        aria-label={`${product.name} 맨 아래로 이동`}
+                        onClick={() => void moveProductToIndex(product.id, products.length - 1)}
+                      >
+                        맨아래
+                      </button>
+                    </div>
                     <div className="min-w-0">
                       <p className="truncate font-semibold">{product.name}</p>
                       <span className={statusBadge(product.isActive)}>

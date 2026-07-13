@@ -289,6 +289,15 @@ describe("App", () => {
         body: JSON.stringify({ productIds: [2, 1, 3] })
       })
     );
+    fireEvent.click(screen.getByRole("button", { name: "샌드위치 맨 아래로 이동" }));
+    expect(await screen.findByText("제품 순서 저장 완료")).toBeInTheDocument();
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringContaining("/product/reorder"),
+      expect.objectContaining({
+        method: "PATCH",
+        body: JSON.stringify({ productIds: [1, 3, 2] })
+      })
+    );
     fireEvent.click(screen.getByRole("button", { name: "반응 기준 관리" }));
     expect(
       screen.getByText(/대분류\(제품·서비스·응대·구매·운영·손님경험·기타\)/)

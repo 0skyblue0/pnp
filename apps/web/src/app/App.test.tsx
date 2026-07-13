@@ -334,17 +334,26 @@ describe("App", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "연간 스케줄 관리" }));
     expect(screen.getByText("연간 스케줄 달력 관리")).toBeInTheDocument();
-    expect(screen.getByLabelText("스케줄 월 선택")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "2026년 7월" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "이전 달" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "다음 달" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "스케줄 추가" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "이전 달" }));
+    expect(screen.getByRole("heading", { name: "2026년 6월" })).toBeInTheDocument();
     expect(await screen.findByText("여름 신메뉴 출시")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "스케줄 추가" }));
+    fireEvent.click(screen.getByRole("button", { name: "다음 달" }));
+    expect(screen.getByRole("heading", { name: "2026년 7월" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "7.10 스케줄 입력" }));
     expect(screen.getByRole("option", { name: "휴무" })).toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText("스케줄 날짜"), { target: { value: "2026-07-10" } });
+    expect(screen.getByLabelText("스케줄 날짜")).toHaveValue("2026-07-10");
     fireEvent.change(screen.getByLabelText("스케줄 구분"), { target: { value: "notice" } });
     fireEvent.change(screen.getByLabelText("스케줄 제목"), { target: { value: "직원 교육" } });
     fireEvent.change(screen.getByLabelText("스케줄 메모"), { target: { value: "오전 공유" } });
     fireEvent.click(screen.getByRole("button", { name: "스케줄 저장" }));
     expect(await screen.findByText("스케줄 추가: 직원 교육")).toBeInTheDocument();
 
+    fireEvent.click(screen.getByRole("button", { name: "이전 달" }));
+    expect(screen.getByRole("heading", { name: "2026년 6월" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "여름 신메뉴 출시 수정" }));
     fireEvent.change(screen.getByLabelText("스케줄 제목"), {
       target: { value: "수정된 연간 일정" }

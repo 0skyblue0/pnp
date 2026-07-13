@@ -96,12 +96,28 @@ describe("App", () => {
           JSON.stringify({
             data: {
               items: [
-                { id: 1, name: "바게트", category: "상시", isSeasonal: false, seasonStart: null, seasonEnd: null, isActive: true },
-                { id: 2, name: "샌드위치", category: "샌드위치", isSeasonal: false, seasonStart: null, seasonEnd: null, isActive: true }
+                { id: 1, name: "바게트", category: "상시", isSeasonal: false, seasonStart: null, seasonEnd: null, isActive: true, sortOrder: 10 },
+                { id: 2, name: "샌드위치", category: "샌드위치", isSeasonal: false, seasonStart: null, seasonEnd: null, isActive: true, sortOrder: 20 },
+                { id: 3, name: "비활성 테스트 제품", category: "숨김 확인", isSeasonal: false, seasonStart: null, seasonEnd: null, isActive: false, sortOrder: 30 }
               ],
-              total: 2,
+              total: 3,
               page: 1,
-              size: 2
+              size: 3
+            },
+            error: null
+          }),
+          { headers: { "Content-Type": "application/json" } }
+        );
+      }
+      if (url.endsWith("/product/reorder") && init?.method === "PATCH") {
+        return new Response(
+          JSON.stringify({
+            data: {
+              items: [
+                { id: 2, name: "샌드위치", category: "샌드위치", isSeasonal: false, seasonStart: null, seasonEnd: null, isActive: true, sortOrder: 10 },
+                { id: 1, name: "바게트", category: "상시", isSeasonal: false, seasonStart: null, seasonEnd: null, isActive: true, sortOrder: 20 },
+                { id: 3, name: "비활성 테스트 제품", category: "숨김 확인", isSeasonal: false, seasonStart: null, seasonEnd: null, isActive: false, sortOrder: 30 }
+              ]
             },
             error: null
           }),
@@ -254,10 +270,25 @@ describe("App", () => {
     expect(screen.getAllByText("상태").length).toBeGreaterThan(0);
     expect((await screen.findAllByText("바게트")).length).toBeGreaterThan(0);
     fireEvent.change(screen.getByLabelText("제품명 검색"), { target: { value: "샌드" } });
-    expect(screen.getByText("표시 1개 / 활성 2개")).toBeInTheDocument();
+    expect(screen.getByText("표시 1개 / 전체 3개")).toBeInTheDocument();
     expect(screen.getAllByText("샌드위치").length).toBeGreaterThan(0);
     fireEvent.click(screen.getByRole("button", { name: "검색 초기화" }));
-    expect(screen.getByText("표시 2개 / 활성 2개")).toBeInTheDocument();
+    expect(screen.getByText("표시 3개 / 전체 3개")).toBeInTheDocument();
+    expect(screen.getAllByText("비활성 테스트 제품").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("비활성").length).toBeGreaterThan(0);
+    const baguetteRow = screen.getByLabelText("바게트 제품 행");
+    const sandwichRow = screen.getByLabelText("샌드위치 제품 행");
+    fireEvent.dragStart(sandwichRow);
+    fireEvent.dragOver(baguetteRow);
+    fireEvent.drop(baguetteRow);
+    expect(await screen.findByText("제품 순서 저장 완료")).toBeInTheDocument();
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringContaining("/product/reorder"),
+      expect.objectContaining({
+        method: "PATCH",
+        body: JSON.stringify({ productIds: [2, 1, 3] })
+      })
+    );
     fireEvent.click(screen.getByRole("button", { name: "반응 기준 관리" }));
     expect(
       screen.getByText(/대분류\(제품·서비스·응대·구매·운영·손님경험·기타\)/)

@@ -15,6 +15,7 @@ type ProductDto = {
   seasonStart: string | null;
   seasonEnd: string | null;
   isActive: boolean;
+  sortOrder: number;
 };
 
 type StaffDto = {
@@ -229,13 +230,10 @@ function monthlyTargetsFromForm(form: GoalNoticeForm): MonthlyTargets {
 
 function sortProducts(products: ProductDto[]): ProductDto[] {
   return [...products].sort((left, right) => {
-    const leftOrder = productLineupOrder.get(left.name) ?? Number.MAX_SAFE_INTEGER;
-    const rightOrder = productLineupOrder.get(right.name) ?? Number.MAX_SAFE_INTEGER;
+    const leftOrder = left.sortOrder ?? productLineupOrder.get(left.name) ?? Number.MAX_SAFE_INTEGER;
+    const rightOrder = right.sortOrder ?? productLineupOrder.get(right.name) ?? Number.MAX_SAFE_INTEGER;
     if (leftOrder !== rightOrder) {
       return leftOrder - rightOrder;
-    }
-    if (left.isActive !== right.isActive) {
-      return left.isActive ? -1 : 1;
     }
     return left.name.localeCompare(right.name, "ko-KR");
   });
@@ -331,6 +329,7 @@ export function ManagementPage() {
   const [editingScheduleId, setEditingScheduleId] = useState<string | null>(null);
   const [selectedScheduleMonth, setSelectedScheduleMonth] = useState("");
   const [productSearchQuery, setProductSearchQuery] = useState("");
+  const [draggedProductId, setDraggedProductId] = useState<number | null>(null);
   const [selectedMajorId, setSelectedMajorId] = useState<number | null>(null);
   const [selectedMiddleId, setSelectedMiddleId] = useState<number | null>(null);
   const [criterionParentId, setCriterionParentId] = useState<number | null>(null);
@@ -660,6 +659,47 @@ export function ManagementPage() {
     await loadManagementData();
   }
 
+  async function moveProductBefore(targetProductId: number) {
+    if (draggedProductId === null || draggedProductId === targetProductId) {
+      setDraggedProductId(null);
+      return;
+    }
+
+    const currentOrder = sortProducts(products);
+    const fromIndex = currentOrder.findIndex((product) => product.id === draggedProductId);
+    const toIndex = currentOrder.findIndex((product) => product.id === targetProductId);
+    if (fromIndex < 0 || toIndex < 0) {
+      setDraggedProductId(null);
+      return;
+    }
+
+    const nextOrder = [...currentOrder];
+    const [movedProduct] = nextOrder.splice(fromIndex, 1);
+    if (!movedProduct) {
+      setDraggedProductId(null);
+      return;
+    }
+    nextOrder.splice(toIndex, 0, movedProduct);
+
+    setProducts(nextOrder.map((product, index) => ({ ...product, sortOrder: (index + 1) * 10 })));
+    setDraggedProductId(null);
+    setMessage(null);
+    setError(null);
+
+    const envelope = await apiPatch<{ items: ProductDto[] }, { productIds: number[] }>("/product/reorder", {
+      productIds: nextOrder.map((product) => product.id)
+    });
+
+    if (envelope.error) {
+      setError(envelope.error.message);
+      await loadManagementData();
+      return;
+    }
+
+    setProducts(envelope.data.items);
+    setMessage("제품 순서 저장 완료");
+  }
+
   async function saveStaff() {
     setMessage(null);
     setError(null);
@@ -985,9 +1025,6 @@ export function ManagementPage() {
   const sortedProducts = sortProducts(products);
   const normalizedProductSearch = productSearchQuery.trim().toLocaleLowerCase("ko-KR");
   const visibleProducts = sortedProducts.filter((product) => {
-    if (!product.isActive) {
-      return false;
-    }
     if (!normalizedProductSearch) {
       return true;
     }
@@ -1112,7 +1149,7 @@ export function ManagementPage() {
                 <div>
                   <h3 className="text-[15px] font-bold text-ink">제품명 등록 및 수정</h3>
                   <p className="mt-1 text-[12.5px] text-muted">
-                    일일 운영과 예약 입력에 보이는 제품명을 추가·수정·삭제합니다. 비활성 제품은 목록에서 숨겨 깔끔하게 유지합니다.
+                    일일 운영과 예약 입력에 보이는 제품명을 추가·수정·삭제합니다. 비활성 제품도 관리 목록에는 남겨두어 다시 활성화할 수 있습니다.
                   </p>
                 </div>
                 <button
@@ -1136,7 +1173,8 @@ export function ManagementPage() {
                   />
                 </label>
                 <div className="text-right text-xs font-bold text-muted">
-                  <p>표시 {visibleProducts.length.toLocaleString("ko-KR")}개 / 활성 {products.filter((product) => product.isActive).length.toLocaleString("ko-KR")}개</p>
+                  <p>표시 {visibleProducts.length.toLocaleString("ko-KR")}개 / 전체 {products.length.toLocaleString("ko-KR")}개</p>
+                  <p className="mt-1 text-[11px] font-semibold">왼쪽 손잡이를 드래그하면 순서가 저장됩니다. 비활성 제품은 회색으로 남겨 복구할 수 있습니다.</p>
                   {productSearchQuery ? (
                     <button className="mt-1 text-cocoa underline" type="button" onClick={() => setProductSearchQuery("")}>검색 초기화</button>
                   ) : null}
@@ -1261,14 +1299,31 @@ export function ManagementPage() {
               ) : null}
 
               <div className="mt-4 max-h-[460px] overflow-y-auto rounded-[12px] border border-latte bg-white px-4 py-2">
-                <div className="sticky top-0 z-10 grid grid-cols-[minmax(7rem,1.4fr)_minmax(5rem,0.8fr)_minmax(4rem,0.6fr)_minmax(8rem,1fr)_8rem] gap-2 border-b border-[#EFE8DC] bg-white py-2 text-[11px] font-semibold text-muted">
-                  <div>제품명</div><div>카테고리</div><div>시즌</div><div>기간</div><div>수정·삭제</div>
+                <div className="sticky top-0 z-10 grid grid-cols-[2.8rem_minmax(7rem,1.4fr)_minmax(5rem,0.8fr)_minmax(4rem,0.6fr)_minmax(8rem,1fr)_8rem] gap-2 border-b border-[#EFE8DC] bg-white py-2 text-[11px] font-semibold text-muted">
+                  <div>순서</div><div>제품명</div><div>카테고리</div><div>시즌</div><div>기간</div><div>수정·삭제</div>
                 </div>
                 {visibleProducts.map((product) => (
                   <div
                     key={product.id}
-                    className="grid grid-cols-[minmax(7rem,1.4fr)_minmax(5rem,0.8fr)_minmax(4rem,0.6fr)_minmax(8rem,1fr)_8rem] items-center gap-2 border-b border-[#F5F0E7] py-3 text-[13px] text-ink last:border-b-0"
+                    aria-label={`${product.name} 제품 행`}
+                    draggable
+                    onDragStart={() => setDraggedProductId(product.id)}
+                    onDragOver={(event) => event.preventDefault()}
+                    onDrop={() => void moveProductBefore(product.id)}
+                    onDragEnd={() => setDraggedProductId(null)}
+                    className={[
+                      "grid grid-cols-[2.8rem_minmax(7rem,1.4fr)_minmax(5rem,0.8fr)_minmax(4rem,0.6fr)_minmax(8rem,1fr)_8rem] items-center gap-2 border-b border-[#F5F0E7] py-3 text-[13px] last:border-b-0",
+                      product.isActive ? "text-ink" : "bg-stone-50 text-muted"
+                    ].join(" ")}
                   >
+                    <button
+                      className="cursor-grab rounded-[8px] border border-latte bg-cream px-2 py-1 text-xs font-extrabold text-cocoa active:cursor-grabbing"
+                      type="button"
+                      aria-label={`${product.name} 순서 드래그`}
+                      title="드래그해서 순서 변경"
+                    >
+                      ↕
+                    </button>
                     <div className="min-w-0">
                       <p className="truncate font-semibold">{product.name}</p>
                       <span className={statusBadge(product.isActive)}>

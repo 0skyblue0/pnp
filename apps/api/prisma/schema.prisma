@@ -15,6 +15,7 @@ model Product {
   seasonStart      DateTime?         @map("season_start") @db.Date
   seasonEnd        DateTime?         @map("season_end") @db.Date
   isActive         Boolean           @default(true) @map("is_active")
+  sortOrder        Int               @default(0) @map("sort_order")
   createdAt        DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt        DateTime          @default(now()) @map("updated_at") @db.Timestamptz(6)
   stockouts        StockoutLog[]
@@ -22,6 +23,7 @@ model Product {
   reservationItems ReservationItem[]
   productionLots   ProductionLot[]
 
+  @@index([sortOrder], map: "idx_product_sort_order")
   @@map("product")
 }
 

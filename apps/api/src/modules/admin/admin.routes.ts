@@ -10,6 +10,7 @@ import {
   listProductQuerySchema,
   listResponseCriterionQuerySchema,
   productSchema,
+  reorderProductsSchema,
   responseCriterionSchema,
   updateProductSchema,
   updateResponseCriterionSchema,
@@ -27,6 +28,7 @@ function buildCreateProductData(input: ProductInput): Prisma.ProductUncheckedCre
     seasonStart: input.seasonStart ? parseDateOnly(input.seasonStart) : null,
     seasonEnd: input.seasonEnd ? parseDateOnly(input.seasonEnd) : null,
     isActive: input.isActive,
+    ...(input.sortOrder !== undefined ? { sortOrder: input.sortOrder } : {}),
     updatedAt: new Date()
   };
 }
@@ -43,6 +45,7 @@ function buildUpdateProductData(input: UpdateProductInput): Prisma.ProductUnchec
       ? { seasonEnd: input.seasonEnd ? parseDateOnly(input.seasonEnd) : null }
       : {}),
     ...(input.isActive !== undefined ? { isActive: input.isActive } : {}),
+    ...(input.sortOrder !== undefined ? { sortOrder: input.sortOrder } : {}),
     updatedAt: new Date()
   };
 }
@@ -55,6 +58,7 @@ function toProductDto(product: {
   seasonStart: Date | null;
   seasonEnd: Date | null;
   isActive: boolean;
+  sortOrder: number;
   createdAt: Date;
   updatedAt: Date;
 }) {
@@ -66,6 +70,7 @@ function toProductDto(product: {
     seasonStart: formatDateOnly(product.seasonStart),
     seasonEnd: formatDateOnly(product.seasonEnd),
     isActive: product.isActive,
+    sortOrder: product.sortOrder,
     createdAt: product.createdAt.toISOString(),
     updatedAt: product.updatedAt.toISOString()
   };
@@ -274,7 +279,7 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
     const [items, total] = await app.prisma.$transaction([
       app.prisma.product.findMany({
         where,
-        orderBy: [{ isActive: "desc" }, { name: "asc" }],
+        orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
         take: 200
       }),
       app.prisma.product.count({ where })
@@ -290,11 +295,49 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
 
   app.post("/product", async (request, reply) => {
     const input = productSchema.parse(request.body);
+    const lastProduct = input.sortOrder === undefined
+      ? await app.prisma.product.findFirst({ orderBy: { sortOrder: "desc" }, select: { sortOrder: true } })
+      : null;
     const product = await app.prisma.product.create({
-      data: buildCreateProductData(input)
+      data: {
+        ...buildCreateProductData(input),
+        ...(input.sortOrder === undefined ? { sortOrder: (lastProduct?.sortOrder ?? 0) + 10 } : {})
+      }
     });
 
     return sendOk(reply, toProductDto(product), 201);
+  });
+
+  app.patch("/product/reorder", async (request, reply) => {
+    const input = reorderProductsSchema.parse(request.body);
+    const uniqueIds = Array.from(new Set(input.productIds));
+    if (uniqueIds.length !== input.productIds.length) {
+      throw new HttpError(400, "PRODUCT_REORDER_DUPLICATE", "Duplicate product ids are not allowed");
+    }
+
+    const existing = await app.prisma.product.findMany({
+      where: { id: { in: uniqueIds } },
+      select: { id: true }
+    });
+    if (existing.length !== uniqueIds.length) {
+      throw new HttpError(404, "PRODUCT_REORDER_NOT_FOUND", "Some products were not found");
+    }
+
+    await app.prisma.$transaction(
+      uniqueIds.map((id, index) =>
+        app.prisma.product.update({
+          where: { id },
+          data: { sortOrder: (index + 1) * 10, updatedAt: new Date() }
+        })
+      )
+    );
+
+    const items = await app.prisma.product.findMany({
+      orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+      take: 200
+    });
+
+    return sendOk(reply, { items: items.map(toProductDto) });
   });
 
   app.patch("/product/:id", async (request, reply) => {

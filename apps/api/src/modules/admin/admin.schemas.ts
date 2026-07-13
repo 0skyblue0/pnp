@@ -16,7 +16,8 @@ export const productSchema = z.object({
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/)
     .optional(),
-  isActive: z.coerce.boolean().default(true)
+  isActive: z.coerce.boolean().default(true),
+  sortOrder: z.coerce.number().int().optional()
 });
 
 export const updateProductSchema = z
@@ -34,9 +35,14 @@ export const updateProductSchema = z
       .regex(/^\d{4}-\d{2}-\d{2}$/)
       .nullable()
       .optional(),
-    isActive: z.coerce.boolean().optional()
+    isActive: z.coerce.boolean().optional(),
+    sortOrder: z.coerce.number().int().optional()
   })
   .refine((value) => Object.keys(value).length > 0, { message: "At least one field is required" });
+
+export const reorderProductsSchema = z.object({
+  productIds: z.array(z.number().int().positive()).min(1).max(200)
+});
 
 export const listProductQuerySchema = z.object({
   active: queryBooleanSchema.optional()
@@ -90,6 +96,7 @@ export const updateResponseCriterionSchema = z
 
 export type ProductInput = z.infer<typeof productSchema>;
 export type UpdateProductInput = z.infer<typeof updateProductSchema>;
+export type ReorderProductsInput = z.infer<typeof reorderProductsSchema>;
 export type CreateStaffInput = z.infer<typeof createStaffSchema>;
 export type UpdateStaffInput = z.infer<typeof updateStaffSchema>;
 export type ResponseCriterionInput = z.infer<typeof responseCriterionSchema>;

@@ -96,6 +96,15 @@ type ExecutiveBucketKey =
   | "visitFlow"
   | "serviceRisk";
 
+type DirectCustomerQuote = {
+  id: string;
+  date: string;
+  text: string;
+  summary: string;
+  criterionId: number;
+  path: ResponseCriterionPathItem[];
+};
+
 type ExecutiveBucket = {
   key: ExecutiveBucketKey;
   title: string;
@@ -365,6 +374,66 @@ function cleanResponseText(value: string | null | undefined): string {
     .filter((line) => line.length > 0 && !sourceLinePattern.test(line))
     .join("\n")
     .trim();
+}
+
+function trimQuoteText(value: string): string {
+  return value
+    .trim()
+    .replace(/^["'“”‘’「」『』]+|["'“”‘’「」『』]+$/g, "")
+    .trim();
+}
+
+function isOperationalObservation(value: string): boolean {
+  return (
+    operationalReportWords.some((word) => value.includes(word)) ||
+    [
+      "문의가",
+      "요청이",
+      "평을",
+      "반응이",
+      "계셨",
+      "있었습니다",
+      "많았습니다",
+      "하셨습니다",
+      "남겨주셨"
+    ].some((word) => value.includes(word))
+  );
+}
+
+function directCustomerQuote(response: ResponseWithRelations): string | null {
+  const cleanedText = cleanResponseText(response.fullText) || cleanResponseText(response.shortSummary);
+  const lines = cleanedText
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+
+  for (const line of lines) {
+    const speakerMatch = line.match(/^(?:손님|고객|손님 말|고객 말)\s*[:：]\s*(.+)$/);
+    if (speakerMatch?.[1]) {
+      return trimQuoteText(speakerMatch[1]).slice(0, 120);
+    }
+
+    const explicitQuoteMatch = line.match(/["“'‘「『]([^"”'’」』]{2,120})["”'’」』]/);
+    if (explicitQuoteMatch?.[1]) {
+      return trimQuoteText(explicitQuoteMatch[1]).slice(0, 120);
+    }
+
+    const compact = trimQuoteText(line.replace(/\s+/g, " "));
+    if (isOperationalObservation(compact)) {
+      continue;
+    }
+
+    if (
+      compact.length >= 4 &&
+      compact.length <= 120 &&
+      (compact.endsWith("?") ||
+        /(?:요|어요|아요|예요|이에요|네요|싶었어요|좋겠어요|불편했어요)[.!?]?$/.test(compact))
+    ) {
+      return compact;
+    }
+  }
+
+  return null;
 }
 
 function isLikelyCustomerVoice(value: string): boolean {
@@ -709,12 +778,33 @@ function buildResponseInsights(
   const checkNeededCount = responses.filter((response) =>
     responseNeedsCheck(response, responsePathFromIds(response, criteriaById))
   ).length;
+  const directQuotes: DirectCustomerQuote[] = responses
+    .map((response) => {
+      const text = directCustomerQuote(response);
+      if (!text) {
+        return null;
+      }
+
+      const criterionId = responseCriterionId(response);
+      const criterion = criteriaById.get(criterionId);
+      return {
+        id: response.id?.toString() ?? "",
+        date: response.date ? formatDateOnly(response.date) : "",
+        text,
+        summary: cleanResponseText(response.shortSummary) || "요약 없음",
+        criterionId,
+        path: criterion ? buildPathFromCriteria(criteriaById, criterion) : responsePathFromIds(response, criteriaById)
+      };
+    })
+    .filter((quote): quote is DirectCustomerQuote => quote !== null)
+    .slice(0, 5);
 
   return {
     headline: executiveHeadline(total, executiveBuckets, fallbackHeadline),
     checkNeededCount,
     executiveBuckets,
     repeatedTopics,
+    directQuotes,
     keyNotes: [
       ...(checkNeededCount > 0
         ? [`확인 필요 반응 ${checkNeededCount.toLocaleString("ko-KR")}건`]

@@ -61,6 +61,14 @@ type ResponseStatsBody = {
       ratio: number;
       sampleSummaries: string[];
     }>;
+    directQuotes: Array<{
+      id: string;
+      date: string;
+      text: string;
+      summary: string;
+      criterionId: number;
+      path: Array<{ id: number; name: string }>;
+    }>;
     keyNotes: string[];
   };
 };
@@ -596,6 +604,18 @@ describe("response stats route", () => {
           topic.sampleSummaries[0] === "줄이 너무 길어서 불편했어요."
       )
     ).toBe(true);
+    expect(body.data?.insights.directQuotes.map((quote) => quote.text)).toEqual(
+      expect.arrayContaining([
+        "청주에서 일부러 왔어요.",
+        "인스타 보고 꼭 와보고 싶었어요.",
+        "쌀빵도 있으면 좋겠어요.",
+        "건강빵은 없나요?",
+        "줄이 너무 길어서 불편했어요."
+      ])
+    );
+    expect(
+      body.data?.insights.directQuotes.some((quote) => quote.text.includes("치즈 치아바타가 짜다는 평"))
+    ).toBe(false);
 
     await app.close();
   });

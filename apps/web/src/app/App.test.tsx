@@ -717,6 +717,31 @@ describe("App", () => {
                   "가장 반복된 세부 내용은 제품 > 맛 > 바게트입니다.",
                   "대표님 보고에는 상위 반복 내용 2개만 먼저 보이면 충분합니다."
                 ],
+                directQuotes: [
+                  {
+                    id: "203",
+                    date: "2026-07-12",
+                    text: "청주에서 일부러 왔어요.",
+                    summary: "청주에서 일부러 방문",
+                    criterionId: 9,
+                    path: [
+                      { id: 8, name: "손님경험" },
+                      { id: 9, name: "장거리손님" }
+                    ]
+                  },
+                  {
+                    id: "204",
+                    date: "2026-07-12",
+                    text: "줄이 너무 길어서 불편했어요.",
+                    summary: "식감 개선 필요",
+                    criterionId: 7,
+                    path: [
+                      { id: 1, name: "제품" },
+                      { id: 3, name: "맛" },
+                      { id: 7, name: "식감" }
+                    ]
+                  }
+                ],
                 repeatedTopics: [
                   {
                     criterionId: 6,
@@ -778,7 +803,10 @@ describe("App", () => {
     expect(screen.getAllByText("“바게트 맛 불만 반복”").length).toBeGreaterThan(0);
     expect(screen.getAllByText("“청주에서 일부러 방문”").length).toBeGreaterThan(0);
     expect(screen.getAllByText("“식감 개선 필요”").length).toBeGreaterThan(0);
-    expect(screen.queryByText("손님이 직접 한 말")).not.toBeInTheDocument();
+    expect(screen.getByText("손님이 직접 한 말")).toBeInTheDocument();
+    expect(screen.getByText("직원 관찰이나 매출 메모가 아니라 손님 입에서 나온 말만 모았습니다.")).toBeInTheDocument();
+    expect(screen.getByText("“청주에서 일부러 왔어요.”")).toBeInTheDocument();
+    expect(screen.getByText("“줄이 너무 길어서 불편했어요.”")).toBeInTheDocument();
     expect(screen.queryByText("주요 반응 근거")).not.toBeInTheDocument();
     expect(
       screen.queryByText("실제 기록 예시는 아래 주요 반응 근거에서 확인합니다.")

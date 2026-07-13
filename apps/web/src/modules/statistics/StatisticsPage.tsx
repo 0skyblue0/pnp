@@ -45,11 +45,21 @@ type ResponseExecutiveBucketDto = {
   topics: ResponseInsightTopicDto[];
 };
 
+type DirectCustomerQuoteDto = {
+  id: string;
+  date: string;
+  text: string;
+  summary: string;
+  criterionId: number;
+  path: Array<{ id: number; name: string }>;
+};
+
 type ResponseInsightsDto = {
   headline: string;
   checkNeededCount?: number;
   executiveBuckets?: ResponseExecutiveBucketDto[];
   repeatedTopics: ResponseInsightTopicDto[];
+  directQuotes?: DirectCustomerQuoteDto[];
   keyNotes: string[];
 };
 
@@ -95,6 +105,7 @@ const emptyStats: NormalizedStats = {
     checkNeededCount: 0,
     executiveBuckets: [],
     repeatedTopics: [],
+    directQuotes: [],
     keyNotes: ["기록이 쌓이면 상위 반복 내용과 주의 사항이 자동으로 표시됩니다."]
   }
 };
@@ -233,7 +244,11 @@ function normalizeStats(data: ResponseStatsDto): NormalizedStats {
     middle: normalizeMiddle(data.middle ?? []),
     minor: normalizeMinor(data.minor ?? []),
     daily: (data.daily ?? []).map((item) => ({ date: item.date, count: Number(item.count) || 0 })),
-    insights: data.insights ?? emptyStats.insights
+    insights: {
+      ...emptyStats.insights,
+      ...(data.insights ?? {}),
+      directQuotes: data.insights?.directQuotes ?? []
+    }
   };
 }
 
@@ -353,6 +368,7 @@ export function StatisticsPage() {
 
   const displayTotal = stats.total;
   const displayRepeated = stats.insights.repeatedTopics.slice(0, 5);
+  const directQuotes = (stats.insights.directQuotes ?? []).slice(0, 3);
   const displayBuckets = stats.insights.executiveBuckets ?? [];
   const visibleBuckets = displayBuckets.filter(
     (bucket) => bucket.count > 0 || bucket.key !== "serviceRisk"
@@ -521,6 +537,41 @@ export function StatisticsPage() {
             {periodLabel} · 총 {displayTotal.toLocaleString("ko-KR")}건
           </div>
         </div>
+      </section>
+
+      <section className="dc-card-pad">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <p className="dc-eyebrow">손님이 직접 한 말</p>
+            <p className="mt-1 text-xs font-semibold text-muted">
+              직원 관찰이나 매출 메모가 아니라 손님 입에서 나온 말만 모았습니다.
+            </p>
+          </div>
+          <span className="rounded-full bg-cream px-3 py-1 text-xs font-bold text-cocoa">
+            {directQuotes.length > 0 ? `최대 ${directQuotes.length.toLocaleString("ko-KR")}개` : "직접 발화만"}
+          </span>
+        </div>
+        {directQuotes.length > 0 ? (
+          <div className="grid gap-2 md:grid-cols-3">
+            {directQuotes.map((quote) => (
+              <Link
+                key={quote.id}
+                className="rounded-[12px] border border-[#F1EAE0] bg-white px-3 py-3 transition hover:bg-cream"
+                to={detailLink(range, quote.criterionId)}
+                aria-label={`${quote.text} 직접 발화 기록 보기`}
+              >
+                <p className="truncate text-[13px] font-extrabold text-ink">“{quote.text}”</p>
+                <p className="mt-2 truncate text-[11px] font-bold text-muted">
+                  {quote.date.slice(5).replace("-", ".")} · {quote.path.map((item) => item.name).join(" > ")}
+                </p>
+              </Link>
+            ))}
+          </div>
+        ) : (
+          <p className="rounded-[10px] bg-cream px-3 py-4 text-sm font-semibold text-muted">
+            이 기간에는 손님이 직접 한 말로 확인되는 기록이 없습니다.
+          </p>
+        )}
       </section>
 
       <section className="dc-card-pad">

@@ -2167,13 +2167,17 @@ describe("App", () => {
 
     expect(await screen.findByRole("heading", { name: "선결제 장부" })).toBeInTheDocument();
     expect(screen.getByLabelText("손님 검색")).toBeInTheDocument();
-    expect(screen.getByText("검색 결과")).toBeInTheDocument();
-    expect(screen.getByText("총 잔액")).toBeInTheDocument();
-    expect(screen.getByText("김선결님")).toBeInTheDocument();
+    expect(screen.getByText("오늘 할 일: 손님 선택 → 사용 차감 또는 추가 충전")).toBeInTheDocument();
+    expect(screen.getByText("장부 요약")).toBeInTheDocument();
+    expect(screen.getByText("손님 목록")).toBeInTheDocument();
+    expect(screen.queryByText("등록·충전·사용 상세 기능 열기")).not.toBeInTheDocument();
+    expect(screen.getAllByText("김선결님").length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText("현재 잔액")).toBeInTheDocument();
-    expect(screen.getAllByText("38,000원")).toHaveLength(2);
+    expect(screen.getAllByText("38,000원").length).toBeGreaterThanOrEqual(2);
     expect(screen.getByText("화이트바게트 픽업")).toBeInTheDocument();
     expect(screen.getByText("현재 선택한 손님")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "빠른 사용 차감" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "추가 충전" })).toBeInTheDocument();
     expect(screen.queryByText("여섯번째 상세 내역")).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "김선결 전체 거래 내역 6건 보기" }));
     expect(screen.getByText("여섯번째 상세 내역")).toBeInTheDocument();

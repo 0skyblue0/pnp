@@ -656,15 +656,15 @@ export function StatisticsPage() {
         <section className="dc-card-pad">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
             <div>
-              <p className="dc-eyebrow">손님이 직접 한 말</p>
+              <p className="dc-eyebrow">손님이 직접 말한 원문</p>
               <p className="mt-1 text-xs font-semibold text-muted">
-                직원 관찰이나 매출 메모가 아니라 손님 입에서 나온 말만 모았습니다.
+                직원 관찰이나 매출 메모가 아니라 손님이 말한 내용을 그대로 모았습니다.
               </p>
             </div>
             <span className="rounded-full bg-cream px-3 py-1 text-xs font-bold text-cocoa">
               {directQuotes.length > 0
                 ? `최대 ${directQuotes.length.toLocaleString("ko-KR")}개`
-                : "직접 발화만"}
+                : "원문만"}
             </span>
           </div>
           {directQuotes.length > 0 ? (
@@ -674,10 +674,10 @@ export function StatisticsPage() {
                   key={quote.id}
                   className="block rounded-[10px] border border-[#F1EAE0] bg-white px-3 py-2 transition hover:bg-cream"
                   to={detailLink(range, quote.criterionId)}
-                  aria-label={`${quote.text} 직접 발화 기록 보기`}
+                  aria-label={`${quote.text} 원문 기록 보기`}
                 >
                   <div className="mb-1 text-[10.5px] font-extrabold text-bread">
-                    직접 발화 {index + 1}
+                    원문 {index + 1}
                   </div>
                   <p className="text-[13px] font-bold leading-5 text-ink">“{quote.text}”</p>
                   <p className="mt-1 text-[10.5px] font-semibold text-muted">

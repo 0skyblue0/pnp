@@ -803,8 +803,8 @@ describe("App", () => {
     expect(screen.getAllByText("“바게트 맛 불만 반복”").length).toBeGreaterThan(0);
     expect(screen.getAllByText("“청주에서 일부러 방문”").length).toBe(1);
     expect(screen.getAllByText("“식감 개선 필요”").length).toBe(1);
-    expect(screen.getByText("손님이 직접 한 말")).toBeInTheDocument();
-    expect(screen.getByText("직원 관찰이나 매출 메모가 아니라 손님 입에서 나온 말만 모았습니다.")).toBeInTheDocument();
+    expect(screen.getByText("손님이 직접 말한 원문")).toBeInTheDocument();
+    expect(screen.getByText("직원 관찰이나 매출 메모가 아니라 손님이 말한 내용을 그대로 모았습니다.")).toBeInTheDocument();
     expect(screen.getByText("“청주에서 일부러 왔어요.”")).toBeInTheDocument();
     expect(screen.getByText("“줄이 너무 길어서 불편했어요.”")).toBeInTheDocument();
     expect(screen.queryByText("주요 반응 근거")).not.toBeInTheDocument();

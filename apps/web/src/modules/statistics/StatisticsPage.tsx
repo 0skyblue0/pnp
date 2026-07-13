@@ -552,16 +552,19 @@ export function StatisticsPage() {
           </span>
         </div>
         {directQuotes.length > 0 ? (
-          <div className="grid gap-2 md:grid-cols-3">
-            {directQuotes.map((quote) => (
+          <div className="grid gap-2">
+            {directQuotes.map((quote, index) => (
               <Link
                 key={quote.id}
-                className="rounded-[12px] border border-[#F1EAE0] bg-white px-3 py-3 transition hover:bg-cream"
+                className="block rounded-[10px] border border-[#F1EAE0] bg-white px-3 py-2 transition hover:bg-cream"
                 to={detailLink(range, quote.criterionId)}
                 aria-label={`${quote.text} 직접 발화 기록 보기`}
               >
-                <p className="truncate text-[13px] font-extrabold text-ink">“{quote.text}”</p>
-                <p className="mt-2 truncate text-[11px] font-bold text-muted">
+                <div className="mb-1 text-[10.5px] font-extrabold text-bread">
+                  직접 발화 {index + 1}
+                </div>
+                <p className="text-[13px] font-bold leading-5 text-ink">“{quote.text}”</p>
+                <p className="mt-1 text-[10.5px] font-semibold text-muted">
                   {quote.date.slice(5).replace("-", ".")} · {quote.path.map((item) => item.name).join(" > ")}
                 </p>
               </Link>
@@ -739,7 +742,7 @@ function ExecutiveBucketCard({
           </div>
           <div className="mt-0.5 text-[12.5px] font-bold text-ink">{topTopic.label}</div>
           {originalText ? (
-            <p className="mt-1 truncate text-[11.5px] font-semibold text-muted">
+            <p className="mt-1 text-[11.5px] font-semibold leading-5 text-muted">
               “{originalText}”
             </p>
           ) : null}

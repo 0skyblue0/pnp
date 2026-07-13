@@ -2085,7 +2085,7 @@ describe("App", () => {
       transactions
     };
     let createdBody: unknown = null;
-    let usedBody: unknown = null;
+    const usedBodies: unknown[] = [];
     let chargedBody: unknown = null;
     let deletedTransactionPath: string | null = null;
 
@@ -2125,7 +2125,7 @@ describe("App", () => {
       }
 
       if (url.endsWith("/prepaid-ledger/1/use") && init?.method === "POST") {
-        usedBody = typeof init.body === "string" ? JSON.parse(init.body) : init.body;
+        usedBodies.push(typeof init.body === "string" ? JSON.parse(init.body) : init.body);
         return new Response(
           JSON.stringify({ data: { ...customer, balance: 33000 }, error: null }),
           { headers: { "Content-Type": "application/json" } }
@@ -2235,11 +2235,25 @@ describe("App", () => {
     fireEvent.click(screen.getByRole("button", { name: "사용" }));
     expect(screen.getByRole("heading", { name: "사용" })).toBeInTheDocument();
     expect(screen.getByPlaceholderText("안 적어도 사용 처리 가능")).toBeInTheDocument();
+    expect(screen.getByText("법인카드 공동 사용")).toBeInTheDocument();
+    expect(screen.getByText("대표명으로 충전한 금액을 여러 사람이 나눠 쓸 때, 이름과 휴대폰 뒷자리로 차감 기록을 남깁니다.")).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText("김선결 사용 금액"), { target: { value: "5000" } });
     fireEvent.click(screen.getByRole("button", { name: "김선결 사용 처리" }));
 
-    await waitFor(() => expect(usedBody).toMatchObject({ amount: 5000 }));
-    expect(usedBody).not.toHaveProperty("note");
+    await waitFor(() => expect(usedBodies[0]).toMatchObject({ amount: 5000 }));
+    expect(usedBodies[0]).not.toHaveProperty("note");
     expect(await screen.findByText("사용 처리 완료 #1")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "사용" }));
+    fireEvent.change(screen.getByLabelText("김선결 공동 사용자 이름"), { target: { value: "홍길동" } });
+    fireEvent.change(screen.getByLabelText("김선결 공동 사용자 휴대폰 뒷자리"), { target: { value: "1234" } });
+    fireEvent.change(screen.getByLabelText("김선결 공동 사용 금액"), { target: { value: "30000" } });
+    fireEvent.change(screen.getByLabelText("김선결 공동 사용 메모"), { target: { value: "법인카드 5명 중 1명" } });
+    fireEvent.click(screen.getByRole("button", { name: "공동 사용 처리" }));
+
+    await waitFor(() =>
+      expect(usedBodies[1]).toMatchObject({ amount: 30000, note: "공동 사용 - 홍길동(1234) / 법인카드 5명 중 1명" })
+    );
+    expect(await screen.findByText("홍길동(1234) 공동 사용 처리 완료 #1")).toBeInTheDocument();
   });
 });

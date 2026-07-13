@@ -1,4 +1,4 @@
-import { MinusCircle, Plus, UserPlus } from "lucide-react";
+import { MinusCircle, Plus, UserPlus, Users } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState, type Dispatch, type SetStateAction } from "react";
 
 import { apiDelete, apiGet, apiPatch, apiPost } from "../../shared/api/client.js";
@@ -32,6 +32,13 @@ type NewLedgerForm = {
 };
 
 type LedgerForm = {
+  amount: string;
+  note: string;
+};
+
+type SharedUseForm = {
+  name: string;
+  phoneLast4: string;
   amount: string;
   note: string;
 };
@@ -99,6 +106,7 @@ export function PrepaidLedgerPage() {
   const [query, setQuery] = useState("");
   const [newForm, setNewForm] = useState<NewLedgerForm>(() => emptyNewLedgerForm());
   const [useForms, setUseForms] = useState<Record<string, LedgerForm>>({});
+  const [sharedUseForms, setSharedUseForms] = useState<Record<string, SharedUseForm>>({});
   const [chargeForms, setChargeForms] = useState<Record<string, LedgerForm>>({});
   const [memoForms, setMemoForms] = useState<Record<string, MemoEditForm>>({});
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
@@ -150,6 +158,19 @@ export function PrepaidLedgerPage() {
     setChargeForms((current) => ({
       ...current,
       [customerId]: { amount: current[customerId]?.amount ?? "", note: current[customerId]?.note ?? "", ...next }
+    }));
+  }
+
+  function setSharedUseForm(customerId: string, next: Partial<SharedUseForm>) {
+    setSharedUseForms((current) => ({
+      ...current,
+      [customerId]: {
+        name: current[customerId]?.name ?? "",
+        phoneLast4: current[customerId]?.phoneLast4 ?? "",
+        amount: current[customerId]?.amount ?? "",
+        note: current[customerId]?.note ?? "",
+        ...next
+      }
     }));
   }
 
@@ -237,6 +258,32 @@ export function PrepaidLedgerPage() {
     }
     setMessage(`사용 처리 완료 #${customer.id}`);
     setUseForms((current) => ({ ...current, [customer.id]: { amount: "", note: "" } }));
+    setDetailMode("DETAIL");
+    await loadLedger();
+  }
+
+  async function useSharedBalance(customer: PrepaidCustomerDto) {
+    setMessage(null);
+    setError(null);
+    const form = sharedUseForms[customer.id] ?? { name: "", phoneLast4: "", amount: "", note: "" };
+    const amount = digitsToNumber(form.amount);
+    const phoneLast4 = form.phoneLast4.replace(/\D/g, "").slice(-4);
+    if (amount <= 0 || phoneLast4.length < 4) {
+      setError("공동 사용 금액과 휴대폰 뒷자리 4자리를 입력해 주세요.");
+      return;
+    }
+    const userLabel = form.name.trim() ? `${form.name.trim()}(${phoneLast4})` : `뒷자리 ${phoneLast4}`;
+    const note = [`공동 사용 - ${userLabel}`, form.note.trim()].filter(Boolean).join(" / ");
+    const envelope = await apiPost<PrepaidCustomerDto, Record<string, unknown>>(`/prepaid-ledger/${customer.id}/use`, {
+      amount,
+      note
+    });
+    if (envelope.error) {
+      setError(envelope.error.message);
+      return;
+    }
+    setMessage(`${userLabel} 공동 사용 처리 완료 #${customer.id}`);
+    setSharedUseForms((current) => ({ ...current, [customer.id]: { name: "", phoneLast4: "", amount: "", note: "" } }));
     setDetailMode("DETAIL");
     await loadLedger();
   }
@@ -375,12 +422,15 @@ export function PrepaidLedgerPage() {
           mode={detailMode}
           chargeForm={chargeForms[selectedCustomer.id] ?? { amount: "", note: "" }}
           useForm={useForms[selectedCustomer.id] ?? { amount: "", note: "" }}
+          sharedUseForm={sharedUseForms[selectedCustomer.id] ?? { name: "", phoneLast4: "", amount: "", note: "" }}
           memoForm={memoForms[selectedCustomer.id] ?? { memo: selectedCustomer.memo ?? "" }}
           setChargeForm={setChargeForm}
           setUseForm={setUseForm}
+          setSharedUseForm={setSharedUseForm}
           setMemoForms={setMemoForms}
           chargeBalance={chargeBalance}
           useBalance={useBalance}
+          useSharedBalance={useSharedBalance}
           saveMemo={saveMemo}
           deleteTransaction={deleteTransaction}
         />
@@ -433,7 +483,7 @@ function NewPrepaidForm(props: {
         </div>
         <label className="mt-3 grid gap-1">
           <span className="field-label">메모</span>
-          <textarea aria-label="선결제 메모" className="input min-h-20 resize-y" placeholder="예: 바게트 10개 선결제" value={form.memo} onChange={(event) => setForm((current) => ({ ...current, memo: event.target.value }))} />
+          <textarea aria-label="선결제 메모" className="input min-h-20 resize-y" placeholder="예: 법인카드 5명 각 30,000원 / 뒷자리 1234, 5678 확인" value={form.memo} onChange={(event) => setForm((current) => ({ ...current, memo: event.target.value }))} />
         </label>
         <div className="mt-4 flex justify-end gap-2">
           <button type="button" className="inline-flex min-h-10 items-center justify-center rounded-control border border-latte bg-white px-5 text-sm font-bold text-cocoa transition hover:bg-cream" onClick={onClose}>
@@ -454,12 +504,15 @@ function SelectedCustomerDetail(props: {
   mode: DetailMode;
   chargeForm: LedgerForm;
   useForm: LedgerForm;
+  sharedUseForm: SharedUseForm;
   memoForm: MemoEditForm;
   setChargeForm: (customerId: string, next: Partial<LedgerForm>) => void;
   setUseForm: (customerId: string, next: Partial<LedgerForm>) => void;
+  setSharedUseForm: (customerId: string, next: Partial<SharedUseForm>) => void;
   setMemoForms: Dispatch<SetStateAction<Record<string, MemoEditForm>>>;
   chargeBalance: (customer: PrepaidCustomerDto) => Promise<void>;
   useBalance: (customer: PrepaidCustomerDto) => Promise<void>;
+  useSharedBalance: (customer: PrepaidCustomerDto) => Promise<void>;
   saveMemo: (customer: PrepaidCustomerDto) => Promise<void>;
   deleteTransaction: (customer: PrepaidCustomerDto, transaction: PrepaidTransactionDto) => Promise<void>;
 }) {
@@ -468,12 +521,15 @@ function SelectedCustomerDetail(props: {
     mode,
     chargeForm,
     useForm,
+    sharedUseForm,
     memoForm,
     setChargeForm,
     setUseForm,
+    setSharedUseForm,
     setMemoForms,
     chargeBalance,
     useBalance,
+    useSharedBalance,
     saveMemo,
     deleteTransaction
   } = props;
@@ -495,7 +551,7 @@ function SelectedCustomerDetail(props: {
       {mode === "USE" ? (
         <section className="mt-4 rounded-[12px] bg-[#F4E3D8]/60 p-4">
           <h3 className="text-base font-extrabold text-ink">사용</h3>
-          <div className="mt-3 grid gap-2 md:grid-cols-[1fr_1.5fr_auto] md:items-end">
+          <div className="mt-3 grid gap-2 md:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)_auto] md:items-end">
             <label className="grid gap-1">
               <span className="text-xs font-semibold text-muted">사용 금액</span>
               <input aria-label={`${customer.customerName} 사용 금액`} className="input text-right" inputMode="numeric" placeholder="5,000" value={useForm.amount} onChange={(event) => setUseForm(customer.id, { amount: formatAmountInput(event.target.value) })} />
@@ -504,10 +560,41 @@ function SelectedCustomerDetail(props: {
               <span className="text-xs font-semibold text-muted">사용 내용 <span className="font-normal">(선택)</span></span>
               <input aria-label={`${customer.customerName} 사용 내용`} className="input" placeholder="안 적어도 사용 처리 가능" value={useForm.note} onChange={(event) => setUseForm(customer.id, { note: event.target.value })} />
             </label>
-            <button className="inline-flex min-h-10 items-center justify-center gap-2 rounded-control bg-cocoa px-4 text-sm font-bold text-white transition hover:bg-bread" type="button" onClick={() => void useBalance(customer)}>
+            <button className="inline-flex min-h-10 items-center justify-center gap-2 rounded-control bg-cocoa px-4 text-sm font-bold text-white transition hover:bg-bread md:col-span-2 lg:col-span-1" type="button" onClick={() => void useBalance(customer)}>
               <MinusCircle className="h-4 w-4" aria-hidden="true" />
               {customer.customerName} 사용 처리
             </button>
+          </div>
+
+          <div className="mt-4 rounded-[12px] border border-[#E8D6C7] bg-white/70 p-4">
+            <div className="flex items-start gap-2">
+              <Users className="mt-0.5 h-4 w-4 text-cocoa" aria-hidden="true" />
+              <div>
+                <h4 className="text-sm font-extrabold text-ink">법인카드 공동 사용</h4>
+                <p className="mt-1 text-xs font-semibold text-muted">대표명으로 충전한 금액을 여러 사람이 나눠 쓸 때, 이름과 휴대폰 뒷자리로 차감 기록을 남깁니다.</p>
+              </div>
+            </div>
+            <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-4 md:items-end">
+              <label className="grid gap-1">
+                <span className="text-xs font-semibold text-muted">사용자 이름</span>
+                <input aria-label={`${customer.customerName} 공동 사용자 이름`} className="input" placeholder="홍길동" value={sharedUseForm.name} onChange={(event) => setSharedUseForm(customer.id, { name: event.target.value })} />
+              </label>
+              <label className="grid gap-1">
+                <span className="text-xs font-semibold text-muted">휴대폰 뒷자리</span>
+                <input aria-label={`${customer.customerName} 공동 사용자 휴대폰 뒷자리`} className="input text-center" inputMode="numeric" placeholder="1234" value={sharedUseForm.phoneLast4} onChange={(event) => setSharedUseForm(customer.id, { phoneLast4: event.target.value.replace(/\D/g, "").slice(0, 4) })} />
+              </label>
+              <label className="grid gap-1">
+                <span className="text-xs font-semibold text-muted">사용 금액</span>
+                <input aria-label={`${customer.customerName} 공동 사용 금액`} className="input text-right" inputMode="numeric" placeholder="30,000" value={sharedUseForm.amount} onChange={(event) => setSharedUseForm(customer.id, { amount: formatAmountInput(event.target.value) })} />
+              </label>
+              <label className="grid gap-1">
+                <span className="text-xs font-semibold text-muted">메모 <span className="font-normal">(선택)</span></span>
+                <input aria-label={`${customer.customerName} 공동 사용 메모`} className="input" placeholder="예: 법인카드 5명 중 1명" value={sharedUseForm.note} onChange={(event) => setSharedUseForm(customer.id, { note: event.target.value })} />
+              </label>
+              <button className="inline-flex min-h-10 items-center justify-center gap-2 rounded-control bg-ink px-4 text-sm font-bold text-white transition hover:bg-cocoa md:col-span-2 xl:col-span-4 xl:justify-self-end" type="button" onClick={() => void useSharedBalance(customer)}>
+                공동 사용 처리
+              </button>
+            </div>
           </div>
         </section>
       ) : null}

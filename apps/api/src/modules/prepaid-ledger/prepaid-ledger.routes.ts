@@ -73,7 +73,9 @@ export async function registerPrepaidLedgerRoutes(app: FastifyInstance): Promise
         ? {
             OR: [
               { customerName: { contains: search, mode: "insensitive" } },
-              { contactPhone: { contains: search, mode: "insensitive" } }
+              { contactPhone: { contains: search, mode: "insensitive" } },
+              { memo: { contains: search, mode: "insensitive" } },
+              { transactions: { some: { note: { contains: search, mode: "insensitive" } } } }
             ]
           }
         : {})

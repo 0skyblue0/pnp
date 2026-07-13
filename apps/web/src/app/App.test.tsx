@@ -2373,6 +2373,14 @@ describe("App", () => {
     const newLedgerDialog = await screen.findByRole("dialog", { name: "신규 등록" });
     expect(within(newLedgerDialog).getByRole("button", { name: "일반" })).toBeInTheDocument();
     expect(within(newLedgerDialog).getByRole("button", { name: "공동" })).toBeInTheDocument();
+    const newLedgerMemo = within(newLedgerDialog).getByLabelText("선결제 메모");
+    expect(newLedgerMemo).toHaveAttribute("placeholder", "");
+    fireEvent.click(within(newLedgerDialog).getByRole("button", { name: "공동" }));
+    expect(newLedgerMemo).toHaveAttribute(
+      "placeholder",
+      "예: 법인카드 5명 각 30,000원 / 뒷자리 1234, 5678 확인"
+    );
+    fireEvent.click(within(newLedgerDialog).getByRole("button", { name: "일반" }));
     fireEvent.change(within(newLedgerDialog).getByLabelText("새 손님 이름"), {
       target: { value: "박충전" }
     });

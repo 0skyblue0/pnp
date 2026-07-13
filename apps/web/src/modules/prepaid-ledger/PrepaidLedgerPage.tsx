@@ -829,7 +829,11 @@ function NewPrepaidForm(props: {
           <textarea
             aria-label="선결제 메모"
             className="input min-h-20 resize-y"
-            placeholder="예: 법인카드 5명 각 30,000원 / 뒷자리 1234, 5678 확인"
+            placeholder={
+              form.ledgerType === "SHARED"
+                ? "예: 법인카드 5명 각 30,000원 / 뒷자리 1234, 5678 확인"
+                : ""
+            }
             value={form.memo}
             onChange={(event) => setForm((current) => ({ ...current, memo: event.target.value }))}
           />

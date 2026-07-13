@@ -451,7 +451,7 @@ function directCustomerQuote(response: ResponseWithRelations): string | null {
     const compact = trimQuoteText(line.replace(/\s+/g, " "));
     const indirectQuote = indirectCustomerQuote(compact);
     if (indirectQuote) {
-      return indirectQuote;
+      return compact.slice(0, 120);
     }
 
     if (isOperationalObservation(compact)) {

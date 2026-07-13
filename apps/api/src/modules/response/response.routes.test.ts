@@ -668,7 +668,7 @@ describe("response stats route", () => {
     expect(response.statusCode).toBe(200);
     const body = response.json<ApiEnvelope<ResponseStatsBody>>();
     expect(body.data?.insights.directQuotes.map((quote) => quote.text)).toEqual([
-      "호밀빵은 매번 모양이 다른거냐고"
+      "호밀빵은 매번 모양이 다른거냐고 물어보시는 손님 계셨습니다."
     ]);
 
     await app.close();

@@ -669,16 +669,13 @@ export function StatisticsPage() {
           </div>
           {directQuotes.length > 0 ? (
             <div className="grid gap-2">
-              {directQuotes.map((quote, index) => (
+              {directQuotes.map((quote) => (
                 <Link
                   key={quote.id}
                   className="block rounded-[10px] border border-[#F1EAE0] bg-white px-3 py-2 transition hover:bg-cream"
                   to={detailLink(range, quote.criterionId)}
                   aria-label={`${quote.text} 원문 기록 보기`}
                 >
-                  <div className="mb-1 text-[10.5px] font-extrabold text-bread">
-                    원문 {index + 1}
-                  </div>
                   <p className="text-[13px] font-bold leading-5 text-ink">“{quote.text}”</p>
                   <p className="mt-1 text-[10.5px] font-semibold text-muted">
                     {quote.date.slice(5).replace("-", ".")} · {quote.path.map((item) => item.name).join(" > ")}

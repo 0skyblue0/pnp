@@ -166,10 +166,13 @@ model PrepaidCustomer {
   customerName String               @map("customer_name") @db.VarChar(80)
   contactPhone String?              @map("contact_phone") @db.VarChar(40)
   memo         String?              @db.Text
+  ledgerType   String               @default("GENERAL") @map("ledger_type") @db.VarChar(20)
+  sharedLimit  Int?                 @map("shared_limit")
   isActive     Boolean              @default(true) @map("is_active")
   createdAt    DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt    DateTime             @default(now()) @map("updated_at") @db.Timestamptz(6)
   transactions PrepaidTransaction[]
+  participants PrepaidParticipant[]
 
   @@index([customerName, contactPhone], map: "idx_prepaid_customer_lookup")
   @@map("prepaid_customer")
@@ -178,15 +181,34 @@ model PrepaidCustomer {
 model PrepaidTransaction {
   id         BigInt          @id @default(autoincrement())
   customerId BigInt          @map("customer_id")
+  participantId BigInt?      @map("participant_id")
   type       String          @db.VarChar(10)
   amount     Int
   note       String?         @db.Text
   occurredAt DateTime        @default(now()) @map("occurred_at") @db.Timestamptz(6)
   createdAt  DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
   customer   PrepaidCustomer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  participant PrepaidParticipant? @relation(fields: [participantId], references: [id], onDelete: SetNull)
 
   @@index([customerId, occurredAt], map: "idx_prepaid_transaction_customer_date")
+  @@index([participantId], map: "idx_prepaid_transaction_participant")
   @@map("prepaid_transaction")
+}
+
+model PrepaidParticipant {
+  id              BigInt               @id @default(autoincrement())
+  customerId      BigInt               @map("customer_id")
+  participantName String               @map("participant_name") @db.VarChar(80)
+  phoneLast4      String               @map("phone_last4") @db.VarChar(4)
+  limitAmount     Int                  @map("limit_amount")
+  createdAt       DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime             @default(now()) @map("updated_at") @db.Timestamptz(6)
+  customer        PrepaidCustomer      @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  transactions    PrepaidTransaction[]
+
+  @@unique([customerId, phoneLast4], map: "uq_prepaid_participant_customer_phone")
+  @@index([customerId], map: "idx_prepaid_participant_customer")
+  @@map("prepaid_participant")
 }
 
 model ReservationItem {

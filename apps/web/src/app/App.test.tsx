@@ -77,7 +77,16 @@ describe("App", () => {
       within(navigation)
         .getAllByRole("link")
         .map((link) => link.textContent)
-    ).toEqual(["홈", "일일 운영", "매출 분석", "손님 반응", "예약", "단골손님", "선결제 장부", "관리"]);
+    ).toEqual([
+      "홈",
+      "일일 운영",
+      "매출 분석",
+      "손님 반응",
+      "예약",
+      "단골손님",
+      "선결제 장부",
+      "관리"
+    ]);
     expect(screen.getByRole("link", { name: "Paul & Paulina 홈" })).toHaveAttribute(
       "href",
       "/home"
@@ -88,28 +97,46 @@ describe("App", () => {
     vi.mocked(fetch).mockImplementation(async (input) => {
       const url = input instanceof Request ? input.url : String(input);
       if (url.includes("/sales-analysis/summary")) {
-        return new Response(JSON.stringify({
-          data: {
-            year: 2026,
-            totalSales: 350000,
-            totalCount: 35,
-            averageTicket: 10000,
-            dailyAverageSales: 175000,
-            targetAmount: 700000,
-            targetProgressRate: 0.5,
-            monthly: [
-              { month: "2026-01", sales: 150000, count: 15, targetAmount: 300000, targetProgressRate: 0.5 },
-              { month: "2026-02", sales: 200000, count: 20, targetAmount: 400000, targetProgressRate: 0.5 }
-            ],
-            channels: [{ name: "POS", amount: 300000, count: 30, ratio: 0.85 }],
-            productTop: [{ productName: "바게트", soldQty: 14, lossQty: 3, tastingQty: 0 }],
-            lossTop: [{ productName: "바게트", soldQty: 14, lossQty: 3, tastingQty: 0 }],
-            visual: { maxMonthlySales: 200000, maxDailySales: 200000 }
-          },
-          error: null
-        }), { headers: { "Content-Type": "application/json" } });
+        return new Response(
+          JSON.stringify({
+            data: {
+              year: 2026,
+              totalSales: 350000,
+              totalCount: 35,
+              averageTicket: 10000,
+              dailyAverageSales: 175000,
+              targetAmount: 700000,
+              targetProgressRate: 0.5,
+              monthly: [
+                {
+                  month: "2026-01",
+                  sales: 150000,
+                  count: 15,
+                  targetAmount: 300000,
+                  targetProgressRate: 0.5
+                },
+                {
+                  month: "2026-02",
+                  sales: 200000,
+                  count: 20,
+                  targetAmount: 400000,
+                  targetProgressRate: 0.5
+                }
+              ],
+              channels: [{ name: "POS", amount: 300000, count: 30, ratio: 0.85 }],
+              productTop: [{ productName: "바게트", soldQty: 14, lossQty: 3, tastingQty: 0 }],
+              lossTop: [{ productName: "바게트", soldQty: 14, lossQty: 3, tastingQty: 0 }],
+              visual: { maxMonthlySales: 200000, maxDailySales: 200000 }
+            },
+            error: null
+          }),
+          { headers: { "Content-Type": "application/json" } }
+        );
       }
-      return new Response(JSON.stringify({ data: { items: [], total: 0, page: 1, size: 0 }, error: null }), { headers: { "Content-Type": "application/json" } });
+      return new Response(
+        JSON.stringify({ data: { items: [], total: 0, page: 1, size: 0 }, error: null }),
+        { headers: { "Content-Type": "application/json" } }
+      );
     });
 
     render(<SalesAnalysisPage />);
@@ -124,12 +151,51 @@ describe("App", () => {
     vi.mocked(fetch).mockImplementation(async (input) => {
       const url = input instanceof Request ? input.url : String(input);
       if (url.includes("/regular-customer/candidates")) {
-        return new Response(JSON.stringify({ data: { items: [{ customerName: "예약단골", contactPhone: "010-9999-0000", maskedPhone: "010-9999-****", source: "RESERVATION", reason: "예약 3회", fixedMemo: "깜빠뉴" }] }, error: null }), { headers: { "Content-Type": "application/json" } });
+        return new Response(
+          JSON.stringify({
+            data: {
+              items: [
+                {
+                  customerName: "예약단골",
+                  contactPhone: "010-9999-0000",
+                  maskedPhone: "010-9999-****",
+                  source: "RESERVATION",
+                  reason: "예약 3회",
+                  fixedMemo: "깜빠뉴"
+                }
+              ]
+            },
+            error: null
+          }),
+          { headers: { "Content-Type": "application/json" } }
+        );
       }
       if (url.includes("/regular-customer")) {
-        return new Response(JSON.stringify({ data: { items: [{ id: "1", customerName: "김단골", contactPhone: "010-1234-5678", maskedPhone: "010-1234-****", fixedMemo: "바게트 선호" }], total: 1, page: 1, size: 1 }, error: null }), { headers: { "Content-Type": "application/json" } });
+        return new Response(
+          JSON.stringify({
+            data: {
+              items: [
+                {
+                  id: "1",
+                  customerName: "김단골",
+                  contactPhone: "010-1234-5678",
+                  maskedPhone: "010-1234-****",
+                  fixedMemo: "바게트 선호"
+                }
+              ],
+              total: 1,
+              page: 1,
+              size: 1
+            },
+            error: null
+          }),
+          { headers: { "Content-Type": "application/json" } }
+        );
       }
-      return new Response(JSON.stringify({ data: { items: [], total: 0, page: 1, size: 0 }, error: null }), { headers: { "Content-Type": "application/json" } });
+      return new Response(
+        JSON.stringify({ data: { items: [], total: 0, page: 1, size: 0 }, error: null }),
+        { headers: { "Content-Type": "application/json" } }
+      );
     });
 
     render(<RegularCustomerPage />);
@@ -154,9 +220,36 @@ describe("App", () => {
           JSON.stringify({
             data: {
               items: [
-                { id: 1, name: "바게트", category: "상시", isSeasonal: false, seasonStart: null, seasonEnd: null, isActive: true, sortOrder: 10 },
-                { id: 2, name: "샌드위치", category: "샌드위치", isSeasonal: false, seasonStart: null, seasonEnd: null, isActive: true, sortOrder: 20 },
-                { id: 3, name: "비활성 테스트 제품", category: "숨김 확인", isSeasonal: false, seasonStart: null, seasonEnd: null, isActive: false, sortOrder: 30 }
+                {
+                  id: 1,
+                  name: "바게트",
+                  category: "상시",
+                  isSeasonal: false,
+                  seasonStart: null,
+                  seasonEnd: null,
+                  isActive: true,
+                  sortOrder: 10
+                },
+                {
+                  id: 2,
+                  name: "샌드위치",
+                  category: "샌드위치",
+                  isSeasonal: false,
+                  seasonStart: null,
+                  seasonEnd: null,
+                  isActive: true,
+                  sortOrder: 20
+                },
+                {
+                  id: 3,
+                  name: "비활성 테스트 제품",
+                  category: "숨김 확인",
+                  isSeasonal: false,
+                  seasonStart: null,
+                  seasonEnd: null,
+                  isActive: false,
+                  sortOrder: 30
+                }
               ],
               total: 3,
               page: 1,
@@ -172,9 +265,36 @@ describe("App", () => {
           JSON.stringify({
             data: {
               items: [
-                { id: 2, name: "샌드위치", category: "샌드위치", isSeasonal: false, seasonStart: null, seasonEnd: null, isActive: true, sortOrder: 10 },
-                { id: 1, name: "바게트", category: "상시", isSeasonal: false, seasonStart: null, seasonEnd: null, isActive: true, sortOrder: 20 },
-                { id: 3, name: "비활성 테스트 제품", category: "숨김 확인", isSeasonal: false, seasonStart: null, seasonEnd: null, isActive: false, sortOrder: 30 }
+                {
+                  id: 2,
+                  name: "샌드위치",
+                  category: "샌드위치",
+                  isSeasonal: false,
+                  seasonStart: null,
+                  seasonEnd: null,
+                  isActive: true,
+                  sortOrder: 10
+                },
+                {
+                  id: 1,
+                  name: "바게트",
+                  category: "상시",
+                  isSeasonal: false,
+                  seasonStart: null,
+                  seasonEnd: null,
+                  isActive: true,
+                  sortOrder: 20
+                },
+                {
+                  id: 3,
+                  name: "비활성 테스트 제품",
+                  category: "숨김 확인",
+                  isSeasonal: false,
+                  seasonStart: null,
+                  seasonEnd: null,
+                  isActive: false,
+                  sortOrder: 30
+                }
               ]
             },
             error: null
@@ -411,7 +531,9 @@ describe("App", () => {
     expect(screen.queryByLabelText("스케줄 제목")).not.toBeInTheDocument();
     fireEvent.change(screen.getByLabelText("스케줄 구분"), { target: { value: "notice" } });
     fireEvent.change(screen.getByLabelText("일정 내용"), { target: { value: "직원 교육" } });
-    fireEvent.change(screen.getByLabelText("준비사항 / 참고 메모"), { target: { value: "오전 공유" } });
+    fireEvent.change(screen.getByLabelText("준비사항 / 참고 메모"), {
+      target: { value: "오전 공유" }
+    });
     fireEvent.click(screen.getByRole("button", { name: "스케줄 저장" }));
     expect(await screen.findByText("스케줄 추가: 직원 교육")).toBeInTheDocument();
     expect(screen.getByLabelText("7.10 스케줄 입력")).toHaveTextContent("방금 저장됨");
@@ -425,7 +547,9 @@ describe("App", () => {
     fireEvent.change(screen.getByLabelText("일정 내용"), {
       target: { value: "수정된 연간 일정" }
     });
-    fireEvent.change(screen.getByLabelText("준비사항 / 참고 메모"), { target: { value: "수정 메모" } });
+    fireEvent.change(screen.getByLabelText("준비사항 / 참고 메모"), {
+      target: { value: "수정 메모" }
+    });
     fireEvent.change(screen.getByLabelText("스케줄 구분"), { target: { value: "close" } });
     fireEvent.click(screen.getByRole("button", { name: "스케줄 저장" }));
     expect(await screen.findByText("스케줄 수정 완료")).toBeInTheDocument();
@@ -941,7 +1065,9 @@ describe("App", () => {
     expect(screen.getAllByText("“청주에서 일부러 방문”").length).toBe(1);
     expect(screen.getAllByText("“식감 개선 필요”").length).toBe(1);
     expect(screen.getByText("손님이 직접 말한 원문")).toBeInTheDocument();
-    expect(screen.getByText("직원 관찰이나 매출 메모가 아니라 손님이 말한 내용을 그대로 모았습니다.")).toBeInTheDocument();
+    expect(
+      screen.getByText("직원 관찰이나 매출 메모가 아니라 손님이 말한 내용을 그대로 모았습니다.")
+    ).toBeInTheDocument();
     expect(screen.getByText("“청주에서 일부러 왔어요.”")).toBeInTheDocument();
     expect(screen.getByText("“줄이 너무 길어서 불편했어요.”")).toBeInTheDocument();
     expect(screen.queryByText("주요 반응 근거")).not.toBeInTheDocument();
@@ -969,7 +1095,9 @@ describe("App", () => {
     const topicLink = screen.getAllByRole("link", { name: "제품 > 맛 > 바게트 기록 보기" })[0]!;
     expect(topicLink).toHaveAttribute(
       "href",
-      expect.stringMatching(/^\/response\?mode=lookup&tab=detail&from=\d{4}-\d{2}-\d{2}&to=\d{4}-\d{2}-\d{2}&criterion_id=6$/)
+      expect.stringMatching(
+        /^\/response\?mode=lookup&tab=detail&from=\d{4}-\d{2}-\d{2}&to=\d{4}-\d{2}-\d{2}&criterion_id=6$/
+      )
     );
     expect(screen.getByRole("link", { name: /제품 점검 9건 이 신호 전체 보기/ })).toHaveAttribute(
       "href",
@@ -979,12 +1107,18 @@ describe("App", () => {
     );
     expect(screen.getByRole("link", { name: /대표 주제 바게트 6건만 보기/ })).toHaveAttribute(
       "href",
-      expect.stringMatching(/^\/response\?mode=lookup&tab=detail&from=\d{4}-\d{2}-\d{2}&to=\d{4}-\d{2}-\d{2}&criterion_id=6$/)
+      expect.stringMatching(
+        /^\/response\?mode=lookup&tab=detail&from=\d{4}-\d{2}-\d{2}&to=\d{4}-\d{2}-\d{2}&criterion_id=6$/
+      )
     );
-    const checkNeededLink = screen.getAllByRole("link", { name: "확인 필요 반응 4건 상세 기록 보기" })[0]!;
+    const checkNeededLink = screen.getAllByRole("link", {
+      name: "확인 필요 반응 4건 상세 기록 보기"
+    })[0]!;
     expect(checkNeededLink).toHaveAttribute(
       "href",
-      expect.stringMatching(/^\/response\?mode=lookup&tab=detail&from=\d{4}-\d{2}-\d{2}&to=\d{4}-\d{2}-\d{2}&check_needed=true$/)
+      expect.stringMatching(
+        /^\/response\?mode=lookup&tab=detail&from=\d{4}-\d{2}-\d{2}&to=\d{4}-\d{2}-\d{2}&check_needed=true$/
+      )
     );
     expect(screen.queryByRole("button", { name: "원형" })).not.toBeInTheDocument();
   });
@@ -2088,15 +2222,27 @@ describe("App", () => {
       customerName: "김선결",
       contactPhone: "010-1234-5678",
       memo: "단골 선결제",
+      ledgerType: "SHARED",
+      sharedLimit: 30000,
       balance: 38000,
       lastUsedAt: "2026-07-01T10:00:00.000Z",
-      transactions
+      transactions,
+      participants: [
+        {
+          id: "p1",
+          participantName: "이영희",
+          phoneLast4: "5678",
+          limitAmount: 30000,
+          usedAmount: 10000,
+          remainingAmount: 20000,
+          lastUsedAt: "2026-07-01T15:00:00.000Z"
+        }
+      ]
     };
     let createdBody: unknown = null;
     const usedBodies: unknown[] = [];
     let chargedBody: unknown = null;
     let deletedTransactionPath: string | null = null;
-
 
     vi.mocked(fetch).mockImplementation(async (input, init) => {
       const url = input instanceof Request ? input.url : String(input);
@@ -2140,6 +2286,13 @@ describe("App", () => {
         );
       }
 
+      if (url.endsWith("/prepaid-ledger/1/shared-use") && init?.method === "POST") {
+        usedBodies.push(typeof init.body === "string" ? JSON.parse(init.body) : init.body);
+        return new Response(JSON.stringify({ data: { ...customer, balance: 8000 }, error: null }), {
+          headers: { "Content-Type": "application/json" }
+        });
+      }
+
       if (url.endsWith("/prepaid-ledger/1/charge") && init?.method === "POST") {
         chargedBody = typeof init.body === "string" ? JSON.parse(init.body) : init.body;
         return new Response(
@@ -2152,7 +2305,11 @@ describe("App", () => {
         deletedTransactionPath = new URL(url, "http://localhost").pathname;
         return new Response(
           JSON.stringify({
-            data: { ...customer, balance: 50000, transactions: transactions.filter((item) => item.id !== "t2") },
+            data: {
+              ...customer,
+              balance: 50000,
+              transactions: transactions.filter((item) => item.id !== "t2")
+            },
             error: null
           }),
           { headers: { "Content-Type": "application/json" } }
@@ -2201,21 +2358,33 @@ describe("App", () => {
     expect(screen.getByText("여섯번째 상세 내역")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "공동 사용 현황" })).toBeInTheDocument();
     expect(screen.getByText("이영희(5678)")).toBeInTheDocument();
-    expect(screen.getByText("20,000원")).toBeInTheDocument();
+    expect(screen.getByText("남은 한도 20,000원")).toBeInTheDocument();
     expect(screen.getByText("잘못 입력한 내역은 이곳에서 삭제합니다.")).toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: "내역 삭제" })).toHaveLength(7);
     fireEvent.click(screen.getAllByRole("button", { name: "내역 삭제" })[1]!);
     const deleteTransactionDialog = await screen.findByRole("alertdialog");
     fireEvent.click(within(deleteTransactionDialog).getByRole("button", { name: "삭제" }));
-    await waitFor(() => expect(deletedTransactionPath).toBe("/api/v1/prepaid-ledger/1/transactions/t2"));
+    await waitFor(() =>
+      expect(deletedTransactionPath).toBe("/api/v1/prepaid-ledger/1/transactions/t2")
+    );
     expect(await screen.findByText("사용 12,000원 내역 삭제 완료 #1")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "신규 등록" }));
     const newLedgerDialog = await screen.findByRole("dialog", { name: "신규 등록" });
-    fireEvent.change(within(newLedgerDialog).getByLabelText("새 손님 이름"), { target: { value: "박충전" } });
-    fireEvent.change(within(newLedgerDialog).getByLabelText("새 손님 연락처"), { target: { value: "01077777777" } });
-    fireEvent.change(within(newLedgerDialog).getByLabelText("선결제 금액"), { target: { value: "30000" } });
-    fireEvent.change(within(newLedgerDialog).getByLabelText("선결제 메모"), { target: { value: "식빵 선결제" } });
+    expect(within(newLedgerDialog).getByRole("button", { name: "일반" })).toBeInTheDocument();
+    expect(within(newLedgerDialog).getByRole("button", { name: "공동" })).toBeInTheDocument();
+    fireEvent.change(within(newLedgerDialog).getByLabelText("새 손님 이름"), {
+      target: { value: "박충전" }
+    });
+    fireEvent.change(within(newLedgerDialog).getByLabelText("새 손님 연락처"), {
+      target: { value: "01077777777" }
+    });
+    fireEvent.change(within(newLedgerDialog).getByLabelText("선결제 금액"), {
+      target: { value: "30000" }
+    });
+    fireEvent.change(within(newLedgerDialog).getByLabelText("선결제 메모"), {
+      target: { value: "식빵 선결제" }
+    });
     fireEvent.click(within(newLedgerDialog).getByRole("button", { name: "선결제 등록" }));
 
     await waitFor(() =>
@@ -2247,7 +2416,9 @@ describe("App", () => {
     expect(screen.getByRole("heading", { name: "사용" })).toBeInTheDocument();
     expect(screen.getByPlaceholderText("안 적어도 사용 처리 가능")).toBeInTheDocument();
     expect(screen.getByText("공동 사용")).toBeInTheDocument();
-    expect(screen.getByText("1인 한도를 걸고, 휴대폰 뒷자리별로 남은 금액을 보며 차감합니다.")).toBeInTheDocument();
+    expect(
+      screen.getByText("등록된 사람을 선택하고 남은 한도 안에서 차감합니다.")
+    ).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText("김선결 사용 금액"), { target: { value: "5000" } });
     fireEvent.click(screen.getByRole("button", { name: "김선결 사용 처리" }));
 
@@ -2256,18 +2427,28 @@ describe("App", () => {
     expect(await screen.findByText("사용 처리 완료 #1")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "사용" }));
-    expect(screen.getByText("1인 한도 30,000원")).toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText("김선결 공동 사용자 이름"), { target: { value: "홍길동" } });
-    fireEvent.change(screen.getByLabelText("김선결 공동 사용자 휴대폰 뒷자리"), { target: { value: "1234" } });
-    fireEvent.change(screen.getByLabelText("김선결 공동 사용 금액"), { target: { value: "30000" } });
-    fireEvent.change(screen.getByLabelText("김선결 공동 사용 메모"), { target: { value: "법인카드 5명 중 1명" } });
+    expect(screen.getByText("이영희(5678)")).toBeInTheDocument();
+    expect(screen.getByText("남은 한도 20,000원")).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("김선결 공동 사용자 이름"), {
+      target: { value: "홍길동" }
+    });
+    fireEvent.change(screen.getByLabelText("김선결 공동 사용자 휴대폰 뒷자리"), {
+      target: { value: "1234" }
+    });
+    fireEvent.change(screen.getByLabelText("김선결 공동 사용 금액"), {
+      target: { value: "30000" }
+    });
+    fireEvent.change(screen.getByLabelText("김선결 공동 사용 메모"), {
+      target: { value: "법인카드 5명 중 1명" }
+    });
     fireEvent.click(screen.getByRole("button", { name: "차감" }));
 
     await waitFor(() =>
       expect(usedBodies[1]).toMatchObject({
         amount: 30000,
-        maxAmount: 30000,
-        note: "공동 사용 - 홍길동(1234) / 1인 한도 30,000원 / 법인카드 5명 중 1명"
+        participantName: "홍길동",
+        phoneLast4: "1234",
+        note: "법인카드 5명 중 1명"
       })
     );
     expect(await screen.findByText("홍길동(1234) 공동 사용 처리 완료 #1")).toBeInTheDocument();

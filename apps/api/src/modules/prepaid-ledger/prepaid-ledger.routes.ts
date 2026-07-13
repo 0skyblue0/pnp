@@ -7,6 +7,7 @@ import {
   createPrepaidCustomerSchema,
   idParamsSchema,
   listPrepaidLedgerQuerySchema,
+  sharedUsePrepaidBalanceSchema,
   transactionParamsSchema,
   updatePrepaidCustomerSchema,
   usePrepaidBalanceSchema
@@ -15,8 +16,25 @@ import {
 type PrepaidCustomerWithTransactions = Prisma.PrepaidCustomerGetPayload<{
   include: {
     transactions: true;
+    participants: true;
   };
 }>;
+
+type PrepaidParticipantLite = {
+  id: bigint;
+  participantName: string;
+  phoneLast4: string;
+  limitAmount: number;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+type PrepaidTransactionLite = {
+  type: string;
+  amount: number;
+  participantId?: bigint | null;
+  occurredAt: Date;
+};
 
 function transactionDelta(transaction: { type: string; amount: number }) {
   return transaction.type === "USE" ? -transaction.amount : transaction.amount;
@@ -32,12 +50,43 @@ function lastUsedAt(transactions: Array<{ type: string; occurredAt: Date }>) {
     .sort((left, right) => right.occurredAt.getTime() - left.occurredAt.getTime())[0]?.occurredAt;
 }
 
+function participantUsedAmount(participantId: bigint, transactions: PrepaidTransactionLite[]) {
+  return transactions
+    .filter(
+      (transaction) => transaction.type === "USE" && transaction.participantId === participantId
+    )
+    .reduce((total, transaction) => total + transaction.amount, 0);
+}
+
+function toParticipantDto(
+  participant: PrepaidParticipantLite,
+  transactions: PrepaidTransactionLite[]
+) {
+  const usedAmount = participantUsedAmount(participant.id, transactions);
+  const lastUse = transactions
+    .filter(
+      (transaction) => transaction.type === "USE" && transaction.participantId === participant.id
+    )
+    .sort((left, right) => right.occurredAt.getTime() - left.occurredAt.getTime())[0]?.occurredAt;
+  return {
+    id: participant.id.toString(),
+    participantName: participant.participantName,
+    phoneLast4: participant.phoneLast4,
+    limitAmount: participant.limitAmount,
+    usedAmount,
+    remainingAmount: Math.max(participant.limitAmount - usedAmount, 0),
+    lastUsedAt: lastUse?.toISOString() ?? null
+  };
+}
+
 function toPrepaidCustomerDto(customer: PrepaidCustomerWithTransactions) {
   return {
     id: customer.id.toString(),
     customerName: customer.customerName,
     contactPhone: customer.contactPhone,
     memo: customer.memo,
+    ledgerType: customer.ledgerType,
+    sharedLimit: customer.sharedLimit,
     balance: calculateBalance(customer.transactions),
     lastUsedAt: lastUsedAt(customer.transactions)?.toISOString() ?? null,
     createdAt: customer.createdAt.toISOString(),
@@ -47,19 +96,24 @@ function toPrepaidCustomerDto(customer: PrepaidCustomerWithTransactions) {
       .sort((left, right) => right.occurredAt.getTime() - left.occurredAt.getTime())
       .map((transaction) => ({
         id: transaction.id.toString(),
+        participantId: transaction.participantId?.toString() ?? null,
         type: transaction.type,
         amount: transaction.amount,
         note: transaction.note,
         occurredAt: transaction.occurredAt.toISOString(),
         createdAt: transaction.createdAt.toISOString()
-      }))
+      })),
+    participants: customer.participants
+      .slice()
+      .sort((left, right) => left.participantName.localeCompare(right.participantName, "ko"))
+      .map((participant) => toParticipantDto(participant, customer.transactions))
   };
 }
 
 async function findPrepaidCustomer(app: FastifyInstance, id: bigint) {
   return app.prisma.prepaidCustomer.findUnique({
     where: { id },
-    include: { transactions: true }
+    include: { transactions: true, participants: true }
   });
 }
 
@@ -84,7 +138,7 @@ export async function registerPrepaidLedgerRoutes(app: FastifyInstance): Promise
     const [items, total] = await app.prisma.$transaction([
       app.prisma.prepaidCustomer.findMany({
         where,
-        include: { transactions: true },
+        include: { transactions: true, participants: true },
         orderBy: [{ updatedAt: "desc" }, { customerName: "asc" }],
         take: 100
       }),
@@ -101,23 +155,44 @@ export async function registerPrepaidLedgerRoutes(app: FastifyInstance): Promise
 
   app.post("/", async (request, reply) => {
     const input = createPrepaidCustomerSchema.parse(request.body);
+    const ledgerType = input.ledgerType ?? "GENERAL";
+    if (ledgerType === "SHARED" && !input.sharedLimit) {
+      throw new HttpError(
+        400,
+        "PREPAID_SHARED_LIMIT_REQUIRED",
+        "공동 선결제는 1인 한도를 입력해 주세요."
+      );
+    }
     const now = new Date();
-    const customer = await app.prisma.prepaidCustomer.create({
-      data: {
-        customerName: input.customerName,
-        contactPhone: input.contactPhone || null,
-        memo: input.memo || null,
-        updatedAt: now,
-        transactions: {
-          create: {
-            type: "CHARGE",
-            amount: input.amount,
-            note: input.memo || "선결제 등록",
-            occurredAt: now
-          }
+    const sharedLimit = ledgerType === "SHARED" ? (input.sharedLimit ?? null) : null;
+    const data: Prisma.PrepaidCustomerCreateInput = {
+      customerName: input.customerName,
+      contactPhone: input.contactPhone || null,
+      memo: input.memo || null,
+      ledgerType,
+      sharedLimit,
+      updatedAt: now,
+      transactions: {
+        create: {
+          type: "CHARGE",
+          amount: input.amount,
+          note: input.memo || "선결제 등록",
+          occurredAt: now
         }
-      },
-      include: { transactions: true }
+      }
+    };
+    if (input.participants?.length) {
+      data.participants = {
+        create: input.participants.map((participant) => ({
+          participantName: participant.participantName,
+          phoneLast4: participant.phoneLast4,
+          limitAmount: participant.limitAmount ?? sharedLimit ?? input.amount
+        }))
+      };
+    }
+    const customer = await app.prisma.prepaidCustomer.create({
+      data,
+      include: { transactions: true, participants: true }
     });
 
     return sendOk(reply, toPrepaidCustomerDto(customer), 201);
@@ -134,10 +209,18 @@ export async function registerPrepaidLedgerRoutes(app: FastifyInstance): Promise
 
     const balance = calculateBalance(existing.transactions);
     if (input.amount > balance) {
-      throw new HttpError(400, "PREPAID_BALANCE_NOT_ENOUGH", "남은 선결제 금액보다 큰 금액은 사용할 수 없습니다.");
+      throw new HttpError(
+        400,
+        "PREPAID_BALANCE_NOT_ENOUGH",
+        "남은 선결제 금액보다 큰 금액은 사용할 수 없습니다."
+      );
     }
     if (input.maxAmount !== undefined && input.amount > input.maxAmount) {
-      throw new HttpError(400, "PREPAID_SHARED_LIMIT_EXCEEDED", "이 사람에게 남은 공동 사용 한도보다 큰 금액은 사용할 수 없습니다.");
+      throw new HttpError(
+        400,
+        "PREPAID_SHARED_LIMIT_EXCEEDED",
+        "이 사람에게 남은 공동 사용 한도보다 큰 금액은 사용할 수 없습니다."
+      );
     }
 
     const now = new Date();
@@ -153,8 +236,89 @@ export async function registerPrepaidLedgerRoutes(app: FastifyInstance): Promise
     const customer = await app.prisma.prepaidCustomer.update({
       where: { id: params.id },
       data: { updatedAt: now },
-      include: { transactions: true }
+      include: { transactions: true, participants: true }
     });
+
+    return sendOk(reply, toPrepaidCustomerDto(customer));
+  });
+
+  app.post("/:id/shared-use", async (request, reply) => {
+    const params = idParamsSchema.parse(request.params);
+    const input = sharedUsePrepaidBalanceSchema.parse(request.body);
+    const existing = await findPrepaidCustomer(app, params.id);
+
+    if (!existing || !existing.isActive) {
+      throw new HttpError(404, "PREPAID_CUSTOMER_NOT_FOUND", "Prepaid customer not found");
+    }
+    if (existing.ledgerType !== "SHARED") {
+      throw new HttpError(
+        400,
+        "PREPAID_NOT_SHARED_LEDGER",
+        "공동 선결제 장부에서만 사용할 수 있습니다."
+      );
+    }
+
+    const balance = calculateBalance(existing.transactions);
+    if (input.amount > balance) {
+      throw new HttpError(
+        400,
+        "PREPAID_BALANCE_NOT_ENOUGH",
+        "남은 선결제 금액보다 큰 금액은 사용할 수 없습니다."
+      );
+    }
+
+    const now = new Date();
+    const participant =
+      existing.participants.find((item) => item.phoneLast4 === input.phoneLast4) ??
+      (await app.prisma.prepaidParticipant.create({
+        data: {
+          customerId: params.id,
+          participantName: input.participantName,
+          phoneLast4: input.phoneLast4,
+          limitAmount: existing.sharedLimit ?? input.amount,
+          updatedAt: now
+        }
+      }));
+
+    if (participant.participantName !== input.participantName) {
+      await app.prisma.prepaidParticipant.update({
+        where: { id: participant.id },
+        data: { participantName: input.participantName, updatedAt: now }
+      });
+      participant.participantName = input.participantName;
+    }
+
+    const usedAmount = participantUsedAmount(participant.id, existing.transactions);
+    const remainingAmount = Math.max(participant.limitAmount - usedAmount, 0);
+    if (input.amount > remainingAmount) {
+      throw new HttpError(
+        400,
+        "PREPAID_SHARED_LIMIT_EXCEEDED",
+        "이 사람에게 남은 공동 사용 한도보다 큰 금액은 사용할 수 없습니다."
+      );
+    }
+
+    await app.prisma.prepaidTransaction.create({
+      data: {
+        customerId: params.id,
+        participantId: participant.id,
+        type: "USE",
+        amount: input.amount,
+        note: [
+          `공동 사용 - ${input.participantName}(${input.phoneLast4})`,
+          `1인 한도 ${participant.limitAmount.toLocaleString("ko-KR")}원`,
+          input.note
+        ]
+          .filter(Boolean)
+          .join(" / "),
+        occurredAt: now
+      }
+    });
+    await app.prisma.prepaidCustomer.update({ where: { id: params.id }, data: { updatedAt: now } });
+
+    const customer = await findPrepaidCustomer(app, params.id);
+    if (!customer)
+      throw new HttpError(404, "PREPAID_CUSTOMER_NOT_FOUND", "Prepaid customer not found");
 
     return sendOk(reply, toPrepaidCustomerDto(customer));
   });
@@ -181,7 +345,7 @@ export async function registerPrepaidLedgerRoutes(app: FastifyInstance): Promise
     const customer = await app.prisma.prepaidCustomer.update({
       where: { id: params.id },
       data: { updatedAt: now },
-      include: { transactions: true }
+      include: { transactions: true, participants: true }
     });
 
     return sendOk(reply, toPrepaidCustomerDto(customer));
@@ -204,7 +368,7 @@ export async function registerPrepaidLedgerRoutes(app: FastifyInstance): Promise
         ...(input.memo !== undefined ? { memo: input.memo || null } : {}),
         updatedAt: new Date()
       },
-      include: { transactions: true }
+      include: { transactions: true, participants: true }
     });
 
     return sendOk(reply, toPrepaidCustomerDto(customer));
@@ -239,7 +403,9 @@ export async function registerPrepaidLedgerRoutes(app: FastifyInstance): Promise
       throw new HttpError(404, "PREPAID_TRANSACTION_NOT_FOUND", "Prepaid transaction not found");
     }
 
-    const remainingTransactions = existing.transactions.filter((item) => item.id !== params.transactionId);
+    const remainingTransactions = existing.transactions.filter(
+      (item) => item.id !== params.transactionId
+    );
     const nextBalance = calculateBalance(remainingTransactions);
     if (nextBalance < 0) {
       throw new HttpError(

@@ -50,7 +50,7 @@ type AnnualGoalNoticeDto = {
 type MonthKey = "01" | "02" | "03" | "04" | "05" | "06" | "07" | "08" | "09" | "10" | "11" | "12";
 type MonthlyTargets = Record<MonthKey, number>;
 
-type ScheduleTone = "launch" | "close" | "notice";
+type ScheduleTone = "launch" | "close" | "notice" | "holiday";
 
 type AnnualScheduleDto = {
   id: string;
@@ -173,7 +173,8 @@ const productLineupOrder = new Map<string, number>(
 const scheduleToneLabels: Record<ScheduleTone, string> = {
   notice: "공지",
   launch: "출시",
-  close: "마감"
+  close: "마감",
+  holiday: "휴무"
 };
 
 function roleLabel(role: StaffDto["role"]): string {
@@ -329,6 +330,7 @@ export function ManagementPage() {
   const [editingGoalNoticeId, setEditingGoalNoticeId] = useState<string | null>(null);
   const [editingScheduleId, setEditingScheduleId] = useState<string | null>(null);
   const [selectedScheduleMonth, setSelectedScheduleMonth] = useState("");
+  const [productSearchQuery, setProductSearchQuery] = useState("");
   const [selectedMajorId, setSelectedMajorId] = useState<number | null>(null);
   const [selectedMiddleId, setSelectedMiddleId] = useState<number | null>(null);
   const [criterionParentId, setCriterionParentId] = useState<number | null>(null);
@@ -981,7 +983,19 @@ export function ManagementPage() {
   const selectedMajor = majorCriteria.find((criterion) => criterion.id === selectedMajorId);
   const selectedMiddle = middleCriteria.find((criterion) => criterion.id === selectedMiddleId);
   const sortedProducts = sortProducts(products);
-  const visibleProducts = sortedProducts.filter((product) => product.isActive);
+  const normalizedProductSearch = productSearchQuery.trim().toLocaleLowerCase("ko-KR");
+  const visibleProducts = sortedProducts.filter((product) => {
+    if (!product.isActive) {
+      return false;
+    }
+    if (!normalizedProductSearch) {
+      return true;
+    }
+    return [product.name, product.category ?? ""]
+      .join(" ")
+      .toLocaleLowerCase("ko-KR")
+      .includes(normalizedProductSearch);
+  });
   const editingCriterion = responseCriteria.find(
     (criterion) => criterion.id === editingCriterionId
   );
@@ -1108,6 +1122,25 @@ export function ManagementPage() {
                 >
                   제품 추가
                 </button>
+              </div>
+
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-[12px] border border-latte bg-cream/50 px-4 py-3">
+                <label className="grid min-w-[16rem] flex-1 gap-1">
+                  <span className="field-label">제품명 검색</span>
+                  <input
+                    className="input bg-white"
+                    aria-label="제품명 검색"
+                    placeholder="예: 깜빠뉴, 바게트, 샌드위치"
+                    value={productSearchQuery}
+                    onChange={(event) => setProductSearchQuery(event.target.value)}
+                  />
+                </label>
+                <div className="text-right text-xs font-bold text-muted">
+                  <p>표시 {visibleProducts.length.toLocaleString("ko-KR")}개 / 활성 {products.filter((product) => product.isActive).length.toLocaleString("ko-KR")}개</p>
+                  {productSearchQuery ? (
+                    <button className="mt-1 text-cocoa underline" type="button" onClick={() => setProductSearchQuery("")}>검색 초기화</button>
+                  ) : null}
+                </div>
               </div>
 
               {isProductFormOpen ? (
@@ -1473,6 +1506,7 @@ export function ManagementPage() {
                         <option value="notice">공지</option>
                         <option value="launch">출시</option>
                         <option value="close">마감</option>
+                        <option value="holiday">휴무</option>
                       </select>
                     </label>
                     <label className="grid gap-2">

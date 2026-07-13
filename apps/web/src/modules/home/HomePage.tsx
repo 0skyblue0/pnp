@@ -55,7 +55,7 @@ type DailyOperationRecordDto = {
   }>;
 };
 
-type ScheduleTone = "launch" | "close" | "notice";
+type ScheduleTone = "launch" | "close" | "notice" | "holiday";
 
 type AnnualScheduleItem = {
   id?: string;
@@ -179,6 +179,9 @@ function scheduleBadgeLabel(tone: AnnualScheduleItem["tone"]): string {
   }
   if (tone === "close") {
     return "마감";
+  }
+  if (tone === "holiday") {
+    return "휴무";
   }
   return "공지";
 }

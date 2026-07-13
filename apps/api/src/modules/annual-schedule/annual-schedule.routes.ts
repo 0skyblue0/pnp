@@ -7,7 +7,7 @@ const createAnnualScheduleSchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   title: z.string().trim().min(1).max(120),
   note: z.string().trim().max(2000).optional(),
-  tone: z.enum(["notice", "launch", "close"])
+  tone: z.enum(["notice", "launch", "close", "holiday"])
 });
 
 const annualScheduleParamsSchema = z.object({

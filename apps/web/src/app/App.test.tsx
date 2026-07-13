@@ -91,11 +91,24 @@ describe("App", () => {
           headers: { "Content-Type": "application/json" }
         });
       }
-      if (
-        url.includes("/product") ||
-        url.includes("/staff") ||
-        url.includes("/response-criteria")
-      ) {
+      if (url.includes("/product")) {
+        return new Response(
+          JSON.stringify({
+            data: {
+              items: [
+                { id: 1, name: "바게트", category: "상시", isSeasonal: false, seasonStart: null, seasonEnd: null, isActive: true },
+                { id: 2, name: "샌드위치", category: "샌드위치", isSeasonal: false, seasonStart: null, seasonEnd: null, isActive: true }
+              ],
+              total: 2,
+              page: 1,
+              size: 2
+            },
+            error: null
+          }),
+          { headers: { "Content-Type": "application/json" } }
+        );
+      }
+      if (url.includes("/staff") || url.includes("/response-criteria")) {
         return new Response(
           JSON.stringify({ data: { items: [], total: 0, page: 1, size: 0 }, error: null }),
           { headers: { "Content-Type": "application/json" } }
@@ -239,6 +252,12 @@ describe("App", () => {
     expect(screen.getAllByText("시즌").length).toBeGreaterThan(0);
     expect(screen.getAllByText("기간").length).toBeGreaterThan(0);
     expect(screen.getAllByText("상태").length).toBeGreaterThan(0);
+    expect((await screen.findAllByText("바게트")).length).toBeGreaterThan(0);
+    fireEvent.change(screen.getByLabelText("제품명 검색"), { target: { value: "샌드" } });
+    expect(screen.getByText("표시 1개 / 활성 2개")).toBeInTheDocument();
+    expect(screen.getAllByText("샌드위치").length).toBeGreaterThan(0);
+    fireEvent.click(screen.getByRole("button", { name: "검색 초기화" }));
+    expect(screen.getByText("표시 2개 / 활성 2개")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "반응 기준 관리" }));
     expect(
       screen.getByText(/대분류\(제품·서비스·응대·구매·운영·손님경험·기타\)/)
@@ -278,6 +297,7 @@ describe("App", () => {
     expect(screen.getByLabelText("스케줄 월 선택")).toBeInTheDocument();
     expect(await screen.findByText("여름 신메뉴 출시")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "스케줄 추가" }));
+    expect(screen.getByRole("option", { name: "휴무" })).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText("스케줄 날짜"), { target: { value: "2026-07-10" } });
     fireEvent.change(screen.getByLabelText("스케줄 구분"), { target: { value: "notice" } });
     fireEvent.change(screen.getByLabelText("스케줄 제목"), { target: { value: "직원 교육" } });

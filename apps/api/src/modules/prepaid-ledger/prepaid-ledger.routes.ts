@@ -141,7 +141,7 @@ export async function registerPrepaidLedgerRoutes(app: FastifyInstance): Promise
         customerId: params.id,
         type: "USE",
         amount: input.amount,
-        note: input.note,
+        note: input.note || "사용",
         occurredAt: now
       }
     });

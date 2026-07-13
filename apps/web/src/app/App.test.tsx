@@ -2182,11 +2182,12 @@ describe("App", () => {
     expect(screen.getByText("내역은 확인만 가능합니다.")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "신규 등록" }));
-    fireEvent.change(screen.getByLabelText("새 손님 이름"), { target: { value: "박충전" } });
-    fireEvent.change(screen.getByLabelText("새 손님 연락처"), { target: { value: "01077777777" } });
-    fireEvent.change(screen.getByLabelText("선결제 금액"), { target: { value: "30000" } });
-    fireEvent.change(screen.getByLabelText("선결제 메모"), { target: { value: "식빵 선결제" } });
-    fireEvent.click(screen.getByRole("button", { name: "선결제 등록" }));
+    const newLedgerDialog = await screen.findByRole("dialog", { name: "신규 등록" });
+    fireEvent.change(within(newLedgerDialog).getByLabelText("새 손님 이름"), { target: { value: "박충전" } });
+    fireEvent.change(within(newLedgerDialog).getByLabelText("새 손님 연락처"), { target: { value: "01077777777" } });
+    fireEvent.change(within(newLedgerDialog).getByLabelText("선결제 금액"), { target: { value: "30000" } });
+    fireEvent.change(within(newLedgerDialog).getByLabelText("선결제 메모"), { target: { value: "식빵 선결제" } });
+    fireEvent.click(within(newLedgerDialog).getByRole("button", { name: "선결제 등록" }));
 
     await waitFor(() =>
       expect(createdBody).toMatchObject({
@@ -2215,13 +2216,12 @@ describe("App", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "사용" }));
     expect(screen.getByRole("heading", { name: "사용" })).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("안 적어도 사용 처리 가능")).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText("김선결 사용 금액"), { target: { value: "5000" } });
-    fireEvent.change(screen.getByLabelText("김선결 사용 내용"), {
-      target: { value: "크로와상 사용" }
-    });
     fireEvent.click(screen.getByRole("button", { name: "김선결 사용 처리" }));
 
-    await waitFor(() => expect(usedBody).toMatchObject({ amount: 5000, note: "크로와상 사용" }));
+    await waitFor(() => expect(usedBody).toMatchObject({ amount: 5000 }));
+    expect(usedBody).not.toHaveProperty("note");
     expect(await screen.findByText("사용 처리 완료 #1")).toBeInTheDocument();
   });
 });

@@ -224,14 +224,13 @@ export function PrepaidLedgerPage() {
     setError(null);
     const form = useForms[customer.id] ?? { amount: "", note: "" };
     const amount = digitsToNumber(form.amount);
-    if (amount <= 0 || !form.note.trim()) {
-      setError("사용 금액과 사용 내용을 입력해 주세요.");
+    if (amount <= 0) {
+      setError("사용 금액을 입력해 주세요.");
       return;
     }
-    const envelope = await apiPost<PrepaidCustomerDto, Record<string, unknown>>(`/prepaid-ledger/${customer.id}/use`, {
-      amount,
-      note: form.note
-    });
+    const body: Record<string, unknown> = { amount };
+    if (form.note.trim()) body.note = form.note;
+    const envelope = await apiPost<PrepaidCustomerDto, Record<string, unknown>>(`/prepaid-ledger/${customer.id}/use`, body);
     if (envelope.error) {
       setError(envelope.error.message);
       return;
@@ -308,7 +307,7 @@ export function PrepaidLedgerPage() {
       {error ? <div className="rounded-control border border-red/20 bg-red/10 px-3 py-2 text-sm font-semibold text-red">{error}</div> : null}
 
       {showNewForm ? (
-        <NewPrepaidForm form={newForm} setForm={setNewForm} createLedger={createLedger} />
+        <NewPrepaidForm form={newForm} setForm={setNewForm} createLedger={createLedger} onClose={() => setShowNewForm(false)} />
       ) : null}
 
       <section className="rounded-[14px] border border-latte bg-white px-5 py-3">
@@ -372,40 +371,59 @@ function NewPrepaidForm(props: {
   form: NewLedgerForm;
   setForm: Dispatch<SetStateAction<NewLedgerForm>>;
   createLedger: () => Promise<void>;
+  onClose: () => void;
 }) {
-  const { form, setForm, createLedger } = props;
+  const { form, setForm, createLedger, onClose } = props;
   return (
-    <section id="new-prepaid-form" className="rounded-[14px] border border-latte bg-white p-5">
-      <div className="flex items-center gap-2">
-        <UserPlus className="h-4 w-4 text-bread" aria-hidden="true" />
-        <h3 className="text-base font-extrabold text-ink">신규 등록</h3>
-      </div>
-      <div className="mt-4 grid gap-3 md:grid-cols-[1fr_1fr_1fr]">
-        <label className="grid gap-1">
-          <span className="field-label">손님 이름</span>
-          <input aria-label="새 손님 이름" className="input" placeholder="홍길동" value={form.customerName} onChange={(event) => setForm((current) => ({ ...current, customerName: event.target.value }))} />
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/35 px-4 py-6" role="presentation">
+      <section
+        id="new-prepaid-form"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="new-prepaid-title"
+        className="w-full max-w-3xl rounded-[18px] border border-latte bg-white p-5 shadow-xl"
+      >
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <UserPlus className="h-4 w-4 text-bread" aria-hidden="true" />
+            <h3 id="new-prepaid-title" className="text-base font-extrabold text-ink">신규 등록</h3>
+          </div>
+          <button type="button" className="rounded-full border border-latte bg-white px-3 py-1 text-xs font-extrabold text-cocoa hover:bg-cream" onClick={onClose}>
+            닫기
+          </button>
+        </div>
+        <div className="mt-4 grid gap-3 md:grid-cols-3">
+          <label className="grid gap-1">
+            <span className="field-label">손님 이름</span>
+            <input aria-label="새 손님 이름" className="input" placeholder="홍길동" value={form.customerName} onChange={(event) => setForm((current) => ({ ...current, customerName: event.target.value }))} />
+          </label>
+          <label className="grid gap-1">
+            <span className="field-label">연락처</span>
+            <input aria-label="새 손님 연락처" className="input" inputMode="numeric" placeholder="010-0000-0000" value={form.contactPhone} onChange={(event) => setForm((current) => ({ ...current, contactPhone: formatPhoneInput(event.target.value) }))} />
+          </label>
+          <label className="grid gap-1">
+            <span className="field-label whitespace-nowrap">선결제 금액</span>
+            <span className="relative block">
+              <input aria-label="선결제 금액" className="input w-full pr-8 text-right" inputMode="numeric" placeholder="50,000" value={form.amount} onChange={(event) => setForm((current) => ({ ...current, amount: formatAmountInput(event.target.value) }))} />
+              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-muted">원</span>
+            </span>
+          </label>
+        </div>
+        <label className="mt-3 grid gap-1">
+          <span className="field-label">메모</span>
+          <textarea aria-label="선결제 메모" className="input min-h-20 resize-y" placeholder="예: 바게트 10개 선결제" value={form.memo} onChange={(event) => setForm((current) => ({ ...current, memo: event.target.value }))} />
         </label>
-        <label className="grid gap-1">
-          <span className="field-label">연락처</span>
-          <input aria-label="새 손님 연락처" className="input" inputMode="numeric" placeholder="010-0000-0000" value={form.contactPhone} onChange={(event) => setForm((current) => ({ ...current, contactPhone: formatPhoneInput(event.target.value) }))} />
-        </label>
-        <label className="grid gap-1">
-          <span className="field-label">선결제 금액</span>
-          <span className="relative block">
-            <input aria-label="선결제 금액" className="input w-full pr-8 text-right" inputMode="numeric" placeholder="50,000" value={form.amount} onChange={(event) => setForm((current) => ({ ...current, amount: formatAmountInput(event.target.value) }))} />
-            <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-muted">원</span>
-          </span>
-        </label>
-      </div>
-      <label className="mt-3 grid gap-1">
-        <span className="field-label">메모</span>
-        <textarea aria-label="선결제 메모" className="input min-h-20 resize-y" placeholder="예: 바게트 10개 선결제" value={form.memo} onChange={(event) => setForm((current) => ({ ...current, memo: event.target.value }))} />
-      </label>
-      <button className="mt-3 inline-flex min-h-10 items-center justify-center gap-2 rounded-control bg-bread px-5 text-sm font-bold text-white transition hover:bg-cocoa" type="button" onClick={() => void createLedger()}>
-        <Plus className="h-4 w-4" aria-hidden="true" />
-        선결제 등록
-      </button>
-    </section>
+        <div className="mt-4 flex justify-end gap-2">
+          <button type="button" className="inline-flex min-h-10 items-center justify-center rounded-control border border-latte bg-white px-5 text-sm font-bold text-cocoa transition hover:bg-cream" onClick={onClose}>
+            취소
+          </button>
+          <button className="inline-flex min-h-10 items-center justify-center gap-2 rounded-control bg-bread px-5 text-sm font-bold text-white transition hover:bg-cocoa" type="button" onClick={() => void createLedger()}>
+            <Plus className="h-4 w-4" aria-hidden="true" />
+            선결제 등록
+          </button>
+        </div>
+      </section>
+    </div>
   );
 }
 
@@ -459,8 +477,8 @@ function SelectedCustomerDetail(props: {
               <input aria-label={`${customer.customerName} 사용 금액`} className="input text-right" inputMode="numeric" placeholder="5,000" value={useForm.amount} onChange={(event) => setUseForm(customer.id, { amount: formatAmountInput(event.target.value) })} />
             </label>
             <label className="grid gap-1">
-              <span className="text-xs font-semibold text-muted">사용 내용</span>
-              <input aria-label={`${customer.customerName} 사용 내용`} className="input" placeholder="예: 바게트 픽업" value={useForm.note} onChange={(event) => setUseForm(customer.id, { note: event.target.value })} />
+              <span className="text-xs font-semibold text-muted">사용 내용 <span className="font-normal">(선택)</span></span>
+              <input aria-label={`${customer.customerName} 사용 내용`} className="input" placeholder="안 적어도 사용 처리 가능" value={useForm.note} onChange={(event) => setUseForm(customer.id, { note: event.target.value })} />
             </label>
             <button className="inline-flex min-h-10 items-center justify-center gap-2 rounded-control bg-cocoa px-4 text-sm font-bold text-white transition hover:bg-bread" type="button" onClick={() => void useBalance(customer)}>
               <MinusCircle className="h-4 w-4" aria-hidden="true" />

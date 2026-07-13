@@ -542,44 +542,6 @@ export function StatisticsPage() {
       <section className="dc-card-pad">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <div>
-            <p className="dc-eyebrow">손님이 직접 한 말</p>
-            <p className="mt-1 text-xs font-semibold text-muted">
-              직원 관찰이나 매출 메모가 아니라 손님 입에서 나온 말만 모았습니다.
-            </p>
-          </div>
-          <span className="rounded-full bg-cream px-3 py-1 text-xs font-bold text-cocoa">
-            {directQuotes.length > 0 ? `최대 ${directQuotes.length.toLocaleString("ko-KR")}개` : "직접 발화만"}
-          </span>
-        </div>
-        {directQuotes.length > 0 ? (
-          <div className="grid gap-2">
-            {directQuotes.map((quote, index) => (
-              <Link
-                key={quote.id}
-                className="block rounded-[10px] border border-[#F1EAE0] bg-white px-3 py-2 transition hover:bg-cream"
-                to={detailLink(range, quote.criterionId)}
-                aria-label={`${quote.text} 직접 발화 기록 보기`}
-              >
-                <div className="mb-1 text-[10.5px] font-extrabold text-bread">
-                  직접 발화 {index + 1}
-                </div>
-                <p className="text-[13px] font-bold leading-5 text-ink">“{quote.text}”</p>
-                <p className="mt-1 text-[10.5px] font-semibold text-muted">
-                  {quote.date.slice(5).replace("-", ".")} · {quote.path.map((item) => item.name).join(" > ")}
-                </p>
-              </Link>
-            ))}
-          </div>
-        ) : (
-          <p className="rounded-[10px] bg-cream px-3 py-4 text-sm font-semibold text-muted">
-            이 기간에는 손님이 직접 한 말로 확인되는 기록이 없습니다.
-          </p>
-        )}
-      </section>
-
-      <section className="dc-card-pad">
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <div>
             <p className="dc-eyebrow">이번 기간 우선순위</p>
             <p className="mt-1 text-xs font-semibold text-muted">
               많이 쌓인 신호부터 바로 확인합니다.
@@ -636,7 +598,7 @@ export function StatisticsPage() {
         ))}
       </div>
 
-      <div className="grid gap-[14px]">
+      <div className="grid gap-[14px] xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)]">
         <section className="dc-card-pad">
           <div className="mb-3 flex items-center justify-between gap-3">
             <div>
@@ -689,6 +651,46 @@ export function StatisticsPage() {
               </p>
             )}
           </div>
+        </section>
+
+        <section className="dc-card-pad">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <p className="dc-eyebrow">손님이 직접 한 말</p>
+              <p className="mt-1 text-xs font-semibold text-muted">
+                직원 관찰이나 매출 메모가 아니라 손님 입에서 나온 말만 모았습니다.
+              </p>
+            </div>
+            <span className="rounded-full bg-cream px-3 py-1 text-xs font-bold text-cocoa">
+              {directQuotes.length > 0
+                ? `최대 ${directQuotes.length.toLocaleString("ko-KR")}개`
+                : "직접 발화만"}
+            </span>
+          </div>
+          {directQuotes.length > 0 ? (
+            <div className="grid gap-2">
+              {directQuotes.map((quote, index) => (
+                <Link
+                  key={quote.id}
+                  className="block rounded-[10px] border border-[#F1EAE0] bg-white px-3 py-2 transition hover:bg-cream"
+                  to={detailLink(range, quote.criterionId)}
+                  aria-label={`${quote.text} 직접 발화 기록 보기`}
+                >
+                  <div className="mb-1 text-[10.5px] font-extrabold text-bread">
+                    직접 발화 {index + 1}
+                  </div>
+                  <p className="text-[13px] font-bold leading-5 text-ink">“{quote.text}”</p>
+                  <p className="mt-1 text-[10.5px] font-semibold text-muted">
+                    {quote.date.slice(5).replace("-", ".")} · {quote.path.map((item) => item.name).join(" > ")}
+                  </p>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <p className="rounded-[10px] bg-cream px-3 py-4 text-sm font-semibold text-muted">
+              이 기간에는 손님이 직접 한 말로 확인되는 기록이 없습니다.
+            </p>
+          )}
         </section>
       </div>
     </div>

@@ -109,6 +109,7 @@ type ProductDto = {
   id: number;
   name: string;
   isActive: boolean;
+  sortOrder?: number;
 };
 
 type ProductTotals = {
@@ -139,24 +140,10 @@ const tabs: Array<{ id: DailyTab; label: string; description: string }> = [
 ];
 
 const manualSoldProducts = new Set(["구름빵", "호밀쇼콜라오렌지", "호밀비트", "호밀후르츠"]);
-const productLineupOrder = new Map<string, number>(
-  productLineup.map((name, index) => [name, index])
-);
 
 const defaultChannels: ChannelRow[] = ["선물", "쿠팡이츠", "배민", "제로페이", "택배", "납품"].map(
   (name) => ({ name, count: "0", amount: "0" })
 );
-
-function sortProductNames(productNames: string[]): string[] {
-  return [...productNames].sort((left, right) => {
-    const leftOrder = productLineupOrder.get(left) ?? Number.MAX_SAFE_INTEGER;
-    const rightOrder = productLineupOrder.get(right) ?? Number.MAX_SAFE_INTEGER;
-    if (leftOrder !== rightOrder) {
-      return leftOrder - rightOrder;
-    }
-    return left.localeCompare(right, "ko-KR");
-  });
-}
 
 function createProductRow(productName: string): ProductRow {
   return {
@@ -178,7 +165,7 @@ function createProductRows(productNames: readonly string[] = productLineup): Pro
 
 function mergeProductRows(existingRows: ProductRow[], productNames: string[]): ProductRow[] {
   const rowsByName = new Map<string, ProductRow>(existingRows.map((row) => [row.productName, row]));
-  return sortProductNames(productNames).map((productName) => ({
+  return productNames.map((productName) => ({
     ...(rowsByName.get(productName) ?? createProductRow(productName)),
     productName,
     manualSold: manualSoldProducts.has(productName)

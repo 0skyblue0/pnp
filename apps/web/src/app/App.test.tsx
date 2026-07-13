@@ -1091,6 +1091,24 @@ describe("App", () => {
           headers: { "Content-Type": "application/json" }
         });
       }
+      if (url.includes("/product")) {
+        return new Response(
+          JSON.stringify({
+            data: {
+              items: [
+                { id: 30, name: "치킨샌드위치", isActive: true, sortOrder: 10 },
+                { id: 10, name: "바게트", isActive: true, sortOrder: 20 },
+                { id: 20, name: "호밀쇼콜라오렌지", isActive: true, sortOrder: 30 }
+              ],
+              total: 3,
+              page: 1,
+              size: 3
+            },
+            error: null
+          }),
+          { headers: { "Content-Type": "application/json" } }
+        );
+      }
       if (url.includes("/daily-operation") && (!init?.method || init.method === "GET")) {
         return new Response(
           JSON.stringify({
@@ -1234,6 +1252,12 @@ describe("App", () => {
     fireEvent.click(screen.getByRole("tab", { name: "제품" }));
     expect(screen.getByText("바게트")).toBeInTheDocument();
     expect(screen.getByText("치킨샌드위치")).toBeInTheDocument();
+    expect(
+      screen
+        .getByLabelText("치킨샌드위치 생산량")
+        .compareDocumentPosition(screen.getByLabelText("바게트 생산량")) &
+        Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
     expect(screen.getByText("생산량(개)")).toBeInTheDocument();
     expect(screen.getByText("판매량(개)")).toBeInTheDocument();
     expect(screen.getByText("기타(+)/(-)")).toBeInTheDocument();

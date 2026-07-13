@@ -345,7 +345,7 @@ describe("App", () => {
     expect(screen.getByRole("heading", { name: "2026년 7월" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "7.10 스케줄 입력" }));
     expect(screen.getByRole("heading", { name: "7월 10일 일정판" })).toBeInTheDocument();
-    expect(screen.getByText("선택한 날짜에 이미 잡힌 일정을 확인하고 바로 새 일정을 입력합니다.")).toBeInTheDocument();
+    expect(screen.getByText("내용을 적고 저장하세요.")).toBeInTheDocument();
     expect(screen.getByRole("option", { name: "휴무" })).toBeInTheDocument();
     expect(screen.getByLabelText("스케줄 날짜")).toHaveValue("2026-07-10");
     expect(screen.getByLabelText("일정 내용")).toBeInTheDocument();
@@ -362,8 +362,8 @@ describe("App", () => {
     expect(screen.getByRole("heading", { name: "2026년 6월" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "6.30 스케줄 입력" }));
     expect(screen.getByRole("heading", { name: "6월 30일 일정판" })).toBeInTheDocument();
-    expect(screen.getByText("이 날짜 일정 1건")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "여름 신메뉴 출시 수정" }));
+    expect(screen.getByText("일정 1건")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "일정판에서 여름 신메뉴 출시 수정" }));
     fireEvent.change(screen.getByLabelText("일정 내용"), {
       target: { value: "수정된 연간 일정" }
     });

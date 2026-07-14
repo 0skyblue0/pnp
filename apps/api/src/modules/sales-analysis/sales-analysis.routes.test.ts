@@ -26,7 +26,8 @@ function record(
 function buildPrismaMock() {
   return {
     dailyOperationRecord: { findMany: vi.fn() },
-    annualGoalNotice: { findFirst: vi.fn() }
+    annualGoalNotice: { findFirst: vi.fn() },
+    product: { findMany: vi.fn() }
   };
 }
 
@@ -49,6 +50,7 @@ describe("sales analysis routes", () => {
     prisma.annualGoalNotice.findFirst.mockResolvedValue({
       monthlyTargets: { "01": 300000, "02": 400000, "03": 0, "04": 0, "05": 0, "06": 0, "07": 0, "08": 0, "09": 0, "10": 0, "11": 0, "12": 0 }
     });
+    prisma.product.findMany.mockResolvedValue([{ name: "바게트" }, { name: "깜빠뉴" }]);
 
     const app = Fastify({ logger: false });
     app.decorate("prisma", prisma as never);
@@ -57,13 +59,19 @@ describe("sales analysis routes", () => {
     const response = await app.inject({ method: "GET", url: "/summary?year=2026" });
 
     expect(response.statusCode).toBe(200);
-    const body = response.json<ApiEnvelope<{ totalSales: number; totalCount: number; averageTicket: number; monthly: Array<{ month: string; sales: number; targetAmount: number; targetProgressRate: number | null }>; productTop: Array<{ productName: string; soldQty: number; lossQty: number }>; visual: { maxMonthlySales: number } }>>();
+    const body = response.json<ApiEnvelope<{ totalSales: number; totalCount: number; averageTicket: number; recordedDays: number; monthly: Array<{ month: string; sales: number; targetAmount: number; targetProgressRate: number | null; hasRecord: boolean; averageTicket: number; previousSalesChange: number | null; previousSalesChangeRate: number | null }>; productTop: Array<{ productName: string; soldQty: number; lossQty: number; lossRate: number | null }>; lossTop: Array<{ productName: string; lossQty: number; lossRate: number | null }>; latestRecordedMonth: { month: string; previousSalesChange: number | null; previousSalesChangeRate: number | null } | null; dataWarnings: string[]; visual: { maxMonthlySales: number } }>>();
     expect(body.error).toBeNull();
     expect(body.data?.totalSales).toBe(350000);
     expect(body.data?.totalCount).toBe(35);
     expect(body.data?.averageTicket).toBe(10000);
-    expect(body.data?.monthly.find((item) => item.month === "2026-01")).toMatchObject({ sales: 150000, targetAmount: 300000, targetProgressRate: 0.5 });
-    expect(body.data?.productTop[0]).toMatchObject({ productName: "바게트", soldQty: 14, lossQty: 3 });
+    expect(body.data?.recordedDays).toBe(2);
+    expect(body.data?.monthly.find((item) => item.month === "2026-01")).toMatchObject({ sales: 150000, targetAmount: 300000, targetProgressRate: 0.5, hasRecord: true, averageTicket: 10000 });
+    expect(body.data?.monthly.find((item) => item.month === "2026-02")).toMatchObject({ previousSalesChange: 50000, previousSalesChangeRate: 1 / 3 });
+    expect(body.data?.monthly.find((item) => item.month === "2026-03")).toMatchObject({ hasRecord: false });
+    expect(body.data?.latestRecordedMonth).toMatchObject({ month: "2026-02", previousSalesChange: 50000 });
+    expect(body.data?.productTop[0]).toMatchObject({ productName: "바게트", soldQty: 14, lossQty: 3, lossRate: 3 / 17 });
+    expect(body.data?.lossTop[0]).toMatchObject({ productName: "바게트", lossQty: 3, lossRate: 3 / 17 });
+    expect(body.data?.dataWarnings).toEqual([]);
     expect(body.data?.visual.maxMonthlySales).toBe(200000);
 
     await app.close();

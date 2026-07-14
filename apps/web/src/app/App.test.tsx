@@ -103,29 +103,61 @@ describe("App", () => {
               year: 2026,
               totalSales: 350000,
               totalCount: 35,
+              recordedDays: 2,
+              recordedMonths: 2,
               averageTicket: 10000,
               dailyAverageSales: 175000,
               targetAmount: 700000,
               targetProgressRate: 0.5,
+              latestRecordedMonth: {
+                month: "2026-02",
+                sales: 200000,
+                count: 20,
+                previousSalesChange: 50000,
+                previousSalesChangeRate: 1 / 3
+              },
               monthly: [
                 {
                   month: "2026-01",
                   sales: 150000,
                   count: 15,
+                  recordedDays: 1,
+                  hasRecord: true,
+                  averageTicket: 10000,
                   targetAmount: 300000,
-                  targetProgressRate: 0.5
+                  targetProgressRate: 0.5,
+                  previousSalesChange: null,
+                  previousSalesChangeRate: null
                 },
                 {
                   month: "2026-02",
                   sales: 200000,
                   count: 20,
+                  recordedDays: 1,
+                  hasRecord: true,
+                  averageTicket: 10000,
                   targetAmount: 400000,
-                  targetProgressRate: 0.5
+                  targetProgressRate: 0.5,
+                  previousSalesChange: 50000,
+                  previousSalesChangeRate: 1 / 3
+                },
+                {
+                  month: "2026-03",
+                  sales: 0,
+                  count: 0,
+                  recordedDays: 0,
+                  hasRecord: false,
+                  averageTicket: 0,
+                  targetAmount: 0,
+                  targetProgressRate: null,
+                  previousSalesChange: null,
+                  previousSalesChangeRate: null
                 }
               ],
               channels: [{ name: "POS", amount: 300000, count: 30, ratio: 0.85 }],
-              productTop: [{ productName: "바게트", soldQty: 14, lossQty: 3, tastingQty: 0 }],
-              lossTop: [{ productName: "바게트", soldQty: 14, lossQty: 3, tastingQty: 0 }],
+              productTop: [{ productName: "바게트", soldQty: 14, lossQty: 3, tastingQty: 0, lossRate: 3 / 17 }],
+              lossTop: [{ productName: "바게트", soldQty: 14, lossQty: 3, tastingQty: 0, lossRate: 3 / 17 }],
+              dataWarnings: ["허 브 제품명은 띄어쓰기 확인이 필요합니다."],
               visual: { maxMonthlySales: 200000, maxDailySales: 200000 }
             },
             error: null
@@ -143,8 +175,12 @@ describe("App", () => {
 
     expect(await screen.findByRole("heading", { name: "매출 분석" })).toBeInTheDocument();
     expect(screen.getByText("350,000원")).toBeInTheDocument();
-    expect(screen.getByText("월별 매출 그래프")).toBeInTheDocument();
-    expect(screen.getAllByText("바게트").length).toBeGreaterThan(0);
+    expect(screen.getByText("현장 요약")).toBeInTheDocument();
+    expect(screen.getByText("월별 매출 흐름")).toBeInTheDocument();
+    expect(screen.getByText("기록일 평균")).toBeInTheDocument();
+    expect(screen.getByText("채널별 매출 비중")).toBeInTheDocument();
+    expect(screen.getAllByText(/바게트/).length).toBeGreaterThan(0);
+    expect(screen.getByText("데이터 정리 필요")).toBeInTheDocument();
   });
 
   it("shows regular customer list and staff-confirmed candidates", async () => {

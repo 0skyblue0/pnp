@@ -2431,13 +2431,18 @@ describe("App", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "사용" }));
     expect(screen.getByRole("heading", { name: "사용" })).toBeInTheDocument();
-    expect(screen.getByPlaceholderText("안 적어도 사용 처리 가능")).toBeInTheDocument();
     expect(screen.getByText("공동 사용")).toBeInTheDocument();
     expect(
       screen.getByText("등록된 사람을 선택하고 남은 한도 안에서 차감합니다.")
     ).toBeInTheDocument();
+    expect(screen.getByText("공동 사용이 아닌 경우")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "장부에서 직접 차감 열기" })).toBeInTheDocument();
+    expect(screen.queryByPlaceholderText("안 적어도 사용 처리 가능")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "김선결 사용 처리" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "장부에서 직접 차감 열기" }));
+    expect(screen.getByPlaceholderText("안 적어도 사용 처리 가능")).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText("김선결 사용 금액"), { target: { value: "5000" } });
-    fireEvent.click(screen.getByRole("button", { name: "김선결 사용 처리" }));
+    fireEvent.click(screen.getByRole("button", { name: "장부에서 직접 차감" }));
 
     await waitFor(() => expect(usedBodies[0]).toMatchObject({ amount: 5000 }));
     expect(usedBodies[0]).not.toHaveProperty("note");

@@ -928,6 +928,12 @@ function SelectedCustomerDetail(props: {
     ? sharedSummaries.find((summary) => summary.phoneLast4 === selectedSharedPhone)
     : undefined;
   const selectedSharedRemaining = selectedParticipant?.remainingAmount ?? sharedLimit;
+  const isSharedLedger = customer.ledgerType === "SHARED";
+  const [directUseOpen, setDirectUseOpen] = useState(!isSharedLedger);
+
+  useEffect(() => {
+    setDirectUseOpen(!isSharedLedger);
+  }, [customer.id, isSharedLedger]);
 
   return (
     <article
@@ -954,127 +960,156 @@ function SelectedCustomerDetail(props: {
       {mode === "USE" ? (
         <section className="mt-4 rounded-[12px] bg-[#F4E3D8]/60 p-4">
           <h3 className="text-base font-extrabold text-ink">사용</h3>
-          <div className="mt-3 grid gap-2 md:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)_auto] md:items-end">
-            <label className="grid gap-1">
-              <span className="text-xs font-semibold text-muted">사용 금액</span>
-              <input
-                aria-label={`${customer.customerName} 사용 금액`}
-                className="input text-right"
-                inputMode="numeric"
-                placeholder="5,000"
-                value={useForm.amount}
-                onChange={(event) =>
-                  setUseForm(customer.id, { amount: formatAmountInput(event.target.value) })
-                }
-              />
-            </label>
-            <label className="grid gap-1">
-              <span className="text-xs font-semibold text-muted">
-                사용 내용 <span className="font-normal">(선택)</span>
-              </span>
-              <input
-                aria-label={`${customer.customerName} 사용 내용`}
-                className="input"
-                placeholder="안 적어도 사용 처리 가능"
-                value={useForm.note}
-                onChange={(event) => setUseForm(customer.id, { note: event.target.value })}
-              />
-            </label>
-            <button
-              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-control bg-cocoa px-4 text-sm font-bold text-white transition hover:bg-bread md:col-span-2 lg:col-span-1"
-              type="button"
-              onClick={() => void useBalance(customer)}
-            >
-              <MinusCircle className="h-4 w-4" aria-hidden="true" />
-              {customer.customerName} 사용 처리
-            </button>
-          </div>
 
-          <div className="mt-4 rounded-[12px] border border-[#E8D6C7] bg-white/70 p-4">
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex items-start gap-2">
-                <Users className="mt-0.5 h-4 w-4 text-cocoa" aria-hidden="true" />
+          {isSharedLedger ? (
+            <div className="mt-3 rounded-[12px] border border-[#E8D6C7] bg-white/70 p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-start gap-2">
+                  <Users className="mt-0.5 h-4 w-4 text-cocoa" aria-hidden="true" />
+                  <div>
+                    <h4 className="text-sm font-extrabold text-ink">공동 사용</h4>
+                    <p className="mt-1 text-xs font-semibold text-muted">
+                      등록된 사람을 선택하고 남은 한도 안에서 차감합니다.
+                    </p>
+                  </div>
+                </div>
+                {sharedLimit > 0 ? (
+                  <span className="rounded-full bg-cream px-3 py-1 text-xs font-extrabold text-cocoa">
+                    1인 한도 {formatCurrency(sharedLimit)}원
+                  </span>
+                ) : null}
+              </div>
+
+              <div className="mt-3 grid gap-2 md:grid-cols-[1fr_0.9fr_1fr_auto] md:items-end">
+                <label className="grid gap-1">
+                  <span className="text-xs font-semibold text-muted">이름</span>
+                  <input
+                    aria-label={`${customer.customerName} 공동 사용자 이름`}
+                    className="input"
+                    placeholder={selectedParticipant?.participantName ?? "홍길동"}
+                    value={sharedUseForm.name}
+                    onChange={(event) =>
+                      setSharedUseForm(customer.id, { name: event.target.value })
+                    }
+                  />
+                </label>
+                <label className="grid gap-1">
+                  <span className="text-xs font-semibold text-muted">뒷자리</span>
+                  <input
+                    aria-label={`${customer.customerName} 공동 사용자 휴대폰 뒷자리`}
+                    className="input text-center"
+                    inputMode="numeric"
+                    placeholder="1234"
+                    value={sharedUseForm.phoneLast4}
+                    onChange={(event) =>
+                      setSharedUseForm(customer.id, {
+                        phoneLast4: event.target.value.replace(/\D/g, "").slice(0, 4)
+                      })
+                    }
+                  />
+                </label>
+                <label className="grid gap-1">
+                  <span className="text-xs font-semibold text-muted">이번 사용</span>
+                  <input
+                    aria-label={`${customer.customerName} 공동 사용 금액`}
+                    className="input text-right"
+                    inputMode="numeric"
+                    placeholder={
+                      selectedSharedRemaining ? formatCurrency(selectedSharedRemaining) : "30,000"
+                    }
+                    value={sharedUseForm.amount}
+                    onChange={(event) =>
+                      setSharedUseForm(customer.id, {
+                        amount: formatAmountInput(event.target.value)
+                      })
+                    }
+                  />
+                </label>
+                <button
+                  className="inline-flex min-h-10 items-center justify-center gap-2 rounded-control bg-ink px-4 text-sm font-bold text-white transition hover:bg-cocoa"
+                  type="button"
+                  onClick={() => void useSharedBalance(customer)}
+                >
+                  차감
+                </button>
+              </div>
+              <label className="mt-2 grid gap-1">
+                <span className="text-xs font-semibold text-muted">
+                  메모 <span className="font-normal">(선택)</span>
+                </span>
+                <input
+                  aria-label={`${customer.customerName} 공동 사용 메모`}
+                  className="input"
+                  placeholder="예: 법인카드 5명 중 1명"
+                  value={sharedUseForm.note}
+                  onChange={(event) => setSharedUseForm(customer.id, { note: event.target.value })}
+                />
+              </label>
+              <p className="mt-2 text-xs font-bold text-cocoa">
+                {selectedParticipant
+                  ? `${selectedParticipant.participantName}(${selectedParticipant.phoneLast4}) 사용 ${formatCurrency(selectedParticipant.usedAmount)}원 · 남은 한도 ${formatCurrency(selectedParticipant.remainingAmount)}원`
+                  : "뒷자리를 입력하면 이 사람이 이미 쓴 금액과 남은 한도를 바로 확인할 수 있습니다."}
+              </p>
+            </div>
+          ) : null}
+
+          {isSharedLedger ? (
+            <div className="mt-3 rounded-[12px] border border-[#E8D6C7] bg-white/60 p-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
-                  <h4 className="text-sm font-extrabold text-ink">공동 사용</h4>
+                  <p className="text-xs font-extrabold text-cocoa">공동 사용이 아닌 경우</p>
                   <p className="mt-1 text-xs font-semibold text-muted">
-                    등록된 사람을 선택하고 남은 한도 안에서 차감합니다.
+                    사람별 한도와 상관없이 장부 잔액에서 바로 차감합니다.
                   </p>
                 </div>
+                <button
+                  type="button"
+                  className="rounded-control border border-latte bg-white px-3 py-2 text-xs font-extrabold text-cocoa hover:bg-cream"
+                  onClick={() => setDirectUseOpen((current) => !current)}
+                >
+                  {directUseOpen ? "장부에서 직접 차감 닫기" : "장부에서 직접 차감 열기"}
+                </button>
               </div>
-              {sharedLimit > 0 ? (
-                <span className="rounded-full bg-cream px-3 py-1 text-xs font-extrabold text-cocoa">
-                  1인 한도 {formatCurrency(sharedLimit)}원
-                </span>
-              ) : null}
             </div>
+          ) : null}
 
-            <div className="mt-3 grid gap-2 md:grid-cols-[1fr_0.9fr_1fr_auto] md:items-end">
+          {directUseOpen ? (
+            <div className="mt-3 grid gap-2 md:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)_auto] md:items-end">
               <label className="grid gap-1">
-                <span className="text-xs font-semibold text-muted">이름</span>
+                <span className="text-xs font-semibold text-muted">사용 금액</span>
                 <input
-                  aria-label={`${customer.customerName} 공동 사용자 이름`}
-                  className="input"
-                  placeholder={selectedParticipant?.participantName ?? "홍길동"}
-                  value={sharedUseForm.name}
-                  onChange={(event) => setSharedUseForm(customer.id, { name: event.target.value })}
-                />
-              </label>
-              <label className="grid gap-1">
-                <span className="text-xs font-semibold text-muted">뒷자리</span>
-                <input
-                  aria-label={`${customer.customerName} 공동 사용자 휴대폰 뒷자리`}
-                  className="input text-center"
-                  inputMode="numeric"
-                  placeholder="1234"
-                  value={sharedUseForm.phoneLast4}
-                  onChange={(event) =>
-                    setSharedUseForm(customer.id, {
-                      phoneLast4: event.target.value.replace(/\D/g, "").slice(0, 4)
-                    })
-                  }
-                />
-              </label>
-              <label className="grid gap-1">
-                <span className="text-xs font-semibold text-muted">이번 사용</span>
-                <input
-                  aria-label={`${customer.customerName} 공동 사용 금액`}
+                  aria-label={`${customer.customerName} 사용 금액`}
                   className="input text-right"
                   inputMode="numeric"
-                  placeholder={
-                    selectedSharedRemaining ? formatCurrency(selectedSharedRemaining) : "30,000"
-                  }
-                  value={sharedUseForm.amount}
+                  placeholder="5,000"
+                  value={useForm.amount}
                   onChange={(event) =>
-                    setSharedUseForm(customer.id, { amount: formatAmountInput(event.target.value) })
+                    setUseForm(customer.id, { amount: formatAmountInput(event.target.value) })
                   }
+                />
+              </label>
+              <label className="grid gap-1">
+                <span className="text-xs font-semibold text-muted">
+                  사용 내용 <span className="font-normal">(선택)</span>
+                </span>
+                <input
+                  aria-label={`${customer.customerName} 사용 내용`}
+                  className="input"
+                  placeholder="안 적어도 사용 처리 가능"
+                  value={useForm.note}
+                  onChange={(event) => setUseForm(customer.id, { note: event.target.value })}
                 />
               </label>
               <button
-                className="inline-flex min-h-10 items-center justify-center gap-2 rounded-control bg-ink px-4 text-sm font-bold text-white transition hover:bg-cocoa"
+                className="inline-flex min-h-10 items-center justify-center gap-2 rounded-control bg-cocoa px-4 text-sm font-bold text-white transition hover:bg-bread md:col-span-2 lg:col-span-1"
                 type="button"
-                onClick={() => void useSharedBalance(customer)}
+                onClick={() => void useBalance(customer)}
               >
-                차감
+                <MinusCircle className="h-4 w-4" aria-hidden="true" />
+                {isSharedLedger ? "장부에서 직접 차감" : `${customer.customerName} 사용 처리`}
               </button>
             </div>
-            <label className="mt-2 grid gap-1">
-              <span className="text-xs font-semibold text-muted">
-                메모 <span className="font-normal">(선택)</span>
-              </span>
-              <input
-                aria-label={`${customer.customerName} 공동 사용 메모`}
-                className="input"
-                placeholder="예: 법인카드 5명 중 1명"
-                value={sharedUseForm.note}
-                onChange={(event) => setSharedUseForm(customer.id, { note: event.target.value })}
-              />
-            </label>
-            <p className="mt-2 text-xs font-bold text-cocoa">
-              {selectedParticipant
-                ? `${selectedParticipant.participantName}(${selectedParticipant.phoneLast4}) 사용 ${formatCurrency(selectedParticipant.usedAmount)}원 · 남은 한도 ${formatCurrency(selectedParticipant.remainingAmount)}원`
-                : "뒷자리를 입력하면 이 사람이 이미 쓴 금액과 남은 한도를 바로 확인할 수 있습니다."}
-            </p>
-          </div>
+          ) : null}
         </section>
       ) : null}
 

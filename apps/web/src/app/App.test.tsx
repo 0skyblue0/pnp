@@ -176,7 +176,14 @@ describe("App", () => {
     expect(await screen.findByRole("heading", { name: "매출 분석" })).toBeInTheDocument();
     expect(screen.getByText("350,000원")).toBeInTheDocument();
     expect(screen.getByText("현장 요약")).toBeInTheDocument();
-    expect(screen.getByText("월별 매출 흐름")).toBeInTheDocument();
+    expect(screen.getByText("월별 목표 달성 흐름")).toBeInTheDocument();
+    expect(screen.getByText("등록된 목표 합계")).toBeInTheDocument();
+    expect(screen.getByText("700,000원")).toBeInTheDocument();
+    expect(screen.getByText("전체 달성률")).toBeInTheDocument();
+    expect(screen.getAllByText("50%").length).toBeGreaterThan(0);
+    expect(screen.getByText("최근 기록월 목표 차이")).toBeInTheDocument();
+    expect(screen.getByText("200,000원 부족")).toBeInTheDocument();
+    expect(screen.getByText(/목표 400,000원 · 달성률/)).toBeInTheDocument();
     expect(screen.getByText("기록일 평균")).toBeInTheDocument();
     expect(screen.getByText("채널별 매출 비중")).toBeInTheDocument();
     expect(screen.getAllByText(/바게트/).length).toBeGreaterThan(0);

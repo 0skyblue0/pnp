@@ -51,6 +51,11 @@ function percent(value: number | null | undefined) {
   return `${Math.round(value * 100)}%`;
 }
 
+function precisePercent(value: number | null | undefined) {
+  if (value === null || value === undefined) return "목표 미설정";
+  return `${(value * 100).toFixed(1)}%`;
+}
+
 function signedMoney(value: number) {
   const prefix = value > 0 ? "+" : "";
   return `${prefix}${money(value)}`;
@@ -72,6 +77,25 @@ function comparisonText(item: { previousSalesChange: number | null; previousSale
   return `전월 대비 ${signedMoney(item.previousSalesChange)} · ${Math.abs(Math.round(item.previousSalesChangeRate * 100))}% ${direction}`;
 }
 
+function targetGapText(sales: number, targetAmount: number) {
+  if (targetAmount <= 0) return "목표 미설정";
+  const gap = sales - targetAmount;
+  if (gap >= 0) return `${money(gap)} 초과`;
+  return `${money(Math.abs(gap))} 부족`;
+}
+
+function targetStatusClass(progressRate: number | null) {
+  if (progressRate === null) return "text-muted";
+  if (progressRate >= 1) return "text-green";
+  if (progressRate >= 0.8) return "text-bread";
+  return "text-cocoa";
+}
+
+function progressWidth(progressRate: number | null) {
+  if (progressRate === null) return 0;
+  return Math.max(2, Math.min(100, Math.round(progressRate * 100)));
+}
+
 function summaryText(data: SalesAnalysisDto | null) {
   if (!data || data.recordedDays === 0) {
     return "선택한 연도에 아직 기록된 매출이 없습니다. 일일 운영 기록이 저장되면 이곳에 흐름이 보입니다.";
@@ -89,6 +113,14 @@ function RatioBar({ ratio }: { ratio: number }) {
   return (
     <div className="mt-2 h-2 overflow-hidden rounded-full bg-cream">
       <div className="h-full rounded-full bg-bread" style={{ width: `${width}%` }} />
+    </div>
+  );
+}
+
+function TargetProgressBar({ progressRate }: { progressRate: number | null }) {
+  return (
+    <div className="mt-2 h-2 overflow-hidden rounded-full bg-cream">
+      <div className="h-full rounded-full bg-bread" style={{ width: `${progressWidth(progressRate)}%` }} />
     </div>
   );
 }
@@ -118,6 +150,8 @@ export function SalesAnalysisPage() {
   }, [year]);
 
   const maxMonthly = data?.visual.maxMonthlySales ?? 0;
+  const latestMonthTarget = data?.latestRecordedMonth ? data.monthly.find((item) => item.month === data.latestRecordedMonth?.month)?.targetAmount ?? 0 : 0;
+  const latestTargetGap = data?.latestRecordedMonth ? targetGapText(data.latestRecordedMonth.sales, latestMonthTarget) : "목표 미설정";
 
   return (
     <div className="mx-auto grid max-w-7xl gap-4">
@@ -139,30 +173,52 @@ export function SalesAnalysisPage() {
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-cocoa">현장 요약</p>
           <p className="mt-1 text-sm font-bold text-ink">{summaryText(data)}</p>
         </div>
-        <div className="mt-4 grid gap-3 md:grid-cols-2 lg:grid-cols-5">
+        <div className="mt-4 grid gap-3 md:grid-cols-2 lg:grid-cols-6">
           <div className="dc-card px-4 py-3"><p className="text-xs text-muted">연간 매출</p><p className="mt-1 text-xl font-extrabold text-ink">{money(data?.totalSales ?? 0)}</p></div>
+          <div className="dc-card px-4 py-3"><p className="text-xs text-muted">등록된 목표 합계</p><p className="mt-1 text-xl font-extrabold text-ink">{data && data.targetAmount > 0 ? money(data.targetAmount) : "목표 미설정"}</p></div>
           <div className="dc-card px-4 py-3"><p className="text-xs text-muted">매출 건수</p><p className="mt-1 text-xl font-extrabold text-ink">{(data?.totalCount ?? 0).toLocaleString("ko-KR")}건</p></div>
           <div className="dc-card px-4 py-3"><p className="text-xs text-muted">객단가</p><p className="mt-1 text-xl font-extrabold text-ink">{money(data?.averageTicket ?? 0)}</p></div>
           <div className="dc-card px-4 py-3"><p className="text-xs text-muted">기록일 평균</p><p className="mt-1 text-xl font-extrabold text-ink">{money(data?.dailyAverageSales ?? 0)}</p><p className="mt-1 text-xs text-muted">기록 {(data?.recordedDays ?? 0).toLocaleString("ko-KR")}일 기준</p></div>
-          <div className="dc-card px-4 py-3"><p className="text-xs text-muted">목표 달성률</p><p className="mt-1 text-xl font-extrabold text-bread">{percent(data?.targetProgressRate)}</p></div>
+          <div className="dc-card px-4 py-3"><p className="text-xs text-muted">전체 달성률</p><p className={`mt-1 text-xl font-extrabold ${targetStatusClass(data?.targetProgressRate ?? null)}`}>{percent(data?.targetProgressRate)}</p><TargetProgressBar progressRate={data?.targetProgressRate ?? null} /></div>
+        </div>
+        <div className="mt-3 grid gap-3 md:grid-cols-3">
+          <div className="rounded-[12px] border border-latte bg-cream/30 px-4 py-3">
+            <p className="text-xs text-muted">최근 기록월 목표 차이</p>
+            <p className="mt-1 text-lg font-extrabold text-ink">{latestTargetGap}</p>
+          </div>
+          <div className="rounded-[12px] border border-latte bg-cream/30 px-4 py-3">
+            <p className="text-xs text-muted">목표 입력 위치</p>
+            <p className="mt-1 text-sm font-bold text-cocoa">관리 &gt; 홈 공지/목표 관리에서 월별 목표액을 입력합니다.</p>
+          </div>
+          <div className="rounded-[12px] border border-latte bg-cream/30 px-4 py-3">
+            <p className="text-xs text-muted">달성률 기준</p>
+            <p className="mt-1 text-sm font-bold text-cocoa">100% 이상 초과, 80~99% 근접, 80% 미만 점검으로 봅니다.</p>
+          </div>
         </div>
       </section>
 
       <section className="rounded-[14px] border border-latte bg-white p-5">
         <div className="flex flex-wrap items-end justify-between gap-2">
-          <h3 className="text-base font-extrabold text-ink">월별 매출 흐름</h3>
-          <p className="text-xs text-muted">기록 없는 달은 흐리게 표시합니다.</p>
+          <h3 className="text-base font-extrabold text-ink">월별 목표 달성 흐름</h3>
+          <p className="text-xs text-muted">매출과 목표액, 달성률, 부족/초과 금액을 같이 봅니다.</p>
         </div>
         <div className="mt-4 grid gap-2">
           {(data?.monthly ?? []).map((item) => {
             const width = maxMonthly > 0 && item.hasRecord ? Math.max(2, Math.round((item.sales / maxMonthly) * 100)) : 0;
             return (
-              <div key={item.month} className={`grid gap-2 rounded-[12px] px-2 py-1 sm:grid-cols-[5rem_minmax(0,1fr)_14rem] sm:items-center ${item.hasRecord ? "" : "opacity-45"}`}>
+              <div key={item.month} className={`grid gap-2 rounded-[12px] px-2 py-2 sm:grid-cols-[5rem_minmax(0,1fr)_18rem] sm:items-center ${item.hasRecord ? "" : "opacity-45"}`}>
                 <p className="text-sm font-bold text-cocoa">{monthNumber(item.month)}월</p>
-                <div className="h-8 overflow-hidden rounded-full bg-cream">
-                  <div className="flex h-full items-center rounded-full bg-bread px-3 text-xs font-bold text-white" style={{ width: `${width}%` }}>
-                    {item.hasRecord ? money(item.sales) : ""}
+                <div>
+                  <div className="h-8 overflow-hidden rounded-full bg-cream">
+                    <div className="flex h-full items-center rounded-full bg-bread px-3 text-xs font-bold text-white" style={{ width: `${width}%` }}>
+                      {item.hasRecord ? money(item.sales) : ""}
+                    </div>
                   </div>
+                  {item.targetAmount > 0 ? (
+                    <p className="mt-1 text-xs font-bold text-muted">목표 {money(item.targetAmount)} · 달성률 <span className={targetStatusClass(item.targetProgressRate)}>{precisePercent(item.targetProgressRate)}</span> · {targetGapText(item.sales, item.targetAmount)}</p>
+                  ) : (
+                    <p className="mt-1 text-xs font-bold text-muted">월 목표 미설정</p>
+                  )}
                 </div>
                 <p className="text-right text-xs font-bold text-muted">
                   {item.hasRecord ? `${item.count.toLocaleString("ko-KR")}건 · 객단가 ${money(item.averageTicket)} · ${comparisonText(item)}` : "기록 없음"}

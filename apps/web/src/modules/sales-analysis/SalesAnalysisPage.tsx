@@ -161,12 +161,17 @@ export function SalesAnalysisPage() {
             <h2 className="section-title">매출 분석</h2>
             <p className="mt-1 text-sm text-muted">POS와 POS 외 일일 운영 기록으로 매출 흐름을 확인합니다.</p>
           </div>
-          <label className="grid gap-1">
-            <span className="field-label">분석 년도</span>
-            <select className="input min-w-32" value={year} onChange={(event) => setYear(event.target.value)} aria-label="분석 년도">
-              {yearOptions.map((option) => <option key={option} value={option}>{option}년</option>)}
-            </select>
-          </label>
+          <div className="flex flex-wrap items-end gap-2">
+            <a className="inline-flex min-h-10 items-center rounded-control bg-bread px-4 text-sm font-extrabold text-white hover:bg-cocoa" href={`/staff?tab=notice&goal=sales&year=${year}`}>
+              월별 목표 입력하러 가기
+            </a>
+            <label className="grid gap-1">
+              <span className="field-label">분석 년도</span>
+              <select className="input min-w-32" value={year} onChange={(event) => setYear(event.target.value)} aria-label="분석 년도">
+                {yearOptions.map((option) => <option key={option} value={option}>{option}년</option>)}
+              </select>
+            </label>
+          </div>
         </div>
         {error ? <p className="mt-3 rounded-control bg-red/10 px-3 py-2 text-sm font-bold text-red">{error}</p> : null}
         <div className="mt-4 rounded-[12px] border border-latte bg-cream/40 px-4 py-3">

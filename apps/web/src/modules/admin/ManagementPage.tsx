@@ -228,6 +228,17 @@ function monthlyTargetsFromForm(form: GoalNoticeForm): MonthlyTargets {
   ) as MonthlyTargets;
 }
 
+function salesGoalFormForYear(year: string): GoalNoticeForm {
+  const safeYear = year.replace(/\D/g, "").slice(0, 4) || String(new Date().getFullYear());
+  return {
+    ...emptyGoalNoticeForm,
+    category: "sales",
+    title: `${safeYear}년 월별 매출 목표`,
+    targetYear: safeYear,
+    note: ""
+  };
+}
+
 function sortProducts(products: ProductDto[]): ProductDto[] {
   return [...products].sort((left, right) => {
     const leftOrder = left.sortOrder ?? productLineupOrder.get(left.name) ?? Number.MAX_SAFE_INTEGER;
@@ -353,6 +364,11 @@ export function ManagementPage() {
   const [criterionForm, setCriterionForm] = useState<CriterionForm>(emptyCriterionForm);
   const [goalNoticeForm, setGoalNoticeForm] = useState<GoalNoticeForm>(emptyGoalNoticeForm);
   const [scheduleForm, setScheduleForm] = useState<ScheduleForm>(emptyScheduleForm);
+  const [sameMonthlyTarget, setSameMonthlyTarget] = useState("");
+  const initialSearchParams = new URLSearchParams(window.location.search);
+  const requestedAdminTab = initialSearchParams.get("tab");
+  const requestedGoal = initialSearchParams.get("goal");
+  const requestedGoalYear = initialSearchParams.get("year");
 
   const loadManagementData = useCallback(async () => {
     setIsLoading(true);
@@ -400,6 +416,18 @@ export function ManagementPage() {
   useEffect(() => {
     void loadManagementData();
   }, [loadManagementData]);
+
+  useEffect(() => {
+    if (requestedAdminTab === "notice") {
+      setActiveAdminTab("notice");
+    }
+    if (requestedGoal === "sales") {
+      const year = requestedGoalYear ?? String(new Date().getFullYear());
+      setEditingGoalNoticeId(null);
+      setGoalNoticeForm(salesGoalFormForYear(year));
+      setIsGoalNoticeFormOpen(true);
+    }
+  }, [requestedAdminTab, requestedGoal, requestedGoalYear]);
 
   useEffect(() => {
     if (selectedScheduleMonth) {
@@ -539,12 +567,6 @@ export function ManagementPage() {
     setIsCriterionFormOpen(false);
   }
 
-  function openNewGoalNoticeForm() {
-    setEditingGoalNoticeId(null);
-    setGoalNoticeForm(emptyGoalNoticeForm);
-    setIsGoalNoticeFormOpen(true);
-  }
-
   function openGoalNoticeEdit(notice: AnnualGoalNoticeDto) {
     setEditingGoalNoticeId(notice.id);
     setGoalNoticeForm({
@@ -555,13 +577,24 @@ export function ManagementPage() {
       targetYear: String(notice.targetYear ?? new Date().getFullYear()),
       monthlyTargets: monthlyTargetInputsFromNotice(notice)
     });
+    setSameMonthlyTarget("");
     setIsGoalNoticeFormOpen(true);
   }
 
   function closeGoalNoticeForm() {
     setEditingGoalNoticeId(null);
     setGoalNoticeForm(emptyGoalNoticeForm);
+    setSameMonthlyTarget("");
     setIsGoalNoticeFormOpen(false);
+  }
+
+  function applySameMonthlyTarget() {
+    const formatted = digitsToCurrencyInput(sameMonthlyTarget);
+    setSameMonthlyTarget(formatted);
+    setGoalNoticeForm((current) => ({
+      ...current,
+      monthlyTargets: Object.fromEntries(monthKeys.map((month) => [month, formatted])) as Record<MonthKey, string>
+    }));
   }
 
   function openNewScheduleForm(date = "") {
@@ -1458,28 +1491,56 @@ export function ManagementPage() {
             <div className="rounded-[14px] border border-latte bg-white px-5 py-[18px]">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <h3 className="text-[15px] font-bold text-ink">직원 공지 등록 및 수정</h3>
-                  <p className="mt-1 text-[12.5px] text-muted">홈 화면에 노출되는 매출 목표 공지, 직원 공지를 추가·수정·삭제하는 화면입니다.</p>
+                  <h3 className="text-[15px] font-bold text-ink">월별 매출 목표 · 홈 공지</h3>
+                  <p className="mt-1 text-[12.5px] text-muted">매출 분석 달성률에 쓰는 월별 목표액과 홈 화면 공지를 관리합니다.</p>
                 </div>
-                <button className="rounded-[9px] bg-bread px-4 py-2 text-[12.5px] font-bold text-white" type="button" onClick={openNewGoalNoticeForm}>
-                  홈 공지 추가
+                <button className="rounded-[9px] bg-bread px-4 py-2 text-[12.5px] font-bold text-white" type="button" onClick={() => {
+                  setEditingGoalNoticeId(null);
+                  setGoalNoticeForm(salesGoalFormForYear(String(new Date().getFullYear())));
+                  setSameMonthlyTarget("");
+                  setIsGoalNoticeFormOpen(true);
+                }}>
+                  월별 목표 입력
                 </button>
+              </div>
+
+              <div className="mt-4 grid gap-3 md:grid-cols-3">
+                <div className="rounded-[12px] border border-bread/30 bg-cream/60 px-4 py-3">
+                  <p className="text-xs font-bold text-muted">1) 연도 확인</p>
+                  <p className="mt-1 text-sm font-extrabold text-ink">올해 목표면 {new Date().getFullYear()}년 그대로 둡니다.</p>
+                </div>
+                <div className="rounded-[12px] border border-bread/30 bg-cream/60 px-4 py-3">
+                  <p className="text-xs font-bold text-muted">2) 목표액 입력</p>
+                  <p className="mt-1 text-sm font-extrabold text-ink">한 달 목표액을 한 번에 채우거나 월별로 다르게 적습니다.</p>
+                </div>
+                <div className="rounded-[12px] border border-bread/30 bg-cream/60 px-4 py-3">
+                  <p className="text-xs font-bold text-muted">3) 저장 후 확인</p>
+                  <p className="mt-1 text-sm font-extrabold text-ink">매출 분석에서 달성률과 부족/초과 금액이 바로 보입니다.</p>
+                </div>
               </div>
 
               {isGoalNoticeFormOpen ? (
                 <div className="mt-4 rounded-[12px] border border-latte bg-cream/50 p-4">
-                  <div className="grid gap-3 lg:grid-cols-[10rem_minmax(0,1fr)_minmax(0,1fr)]">
+                  <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-extrabold text-ink">{goalNoticeForm.category === "sales" ? "월별 매출 목표 입력" : "홈 공지 입력"}</p>
+                      <p className="mt-1 text-xs font-semibold text-muted">매출 목표는 제목과 월별 금액만 적으면 됩니다. 메모는 선택입니다.</p>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <button className={[
+                        "rounded-[9px] px-3 py-2 text-xs font-bold",
+                        goalNoticeForm.category === "sales" ? "bg-bread text-white" : "bg-cream text-cocoa"
+                      ].join(" ")} type="button" onClick={() => setGoalNoticeForm((current) => ({ ...salesGoalFormForYear(current.targetYear), monthlyTargets: current.monthlyTargets }))}>매출 목표</button>
+                      <button className={[
+                        "rounded-[9px] px-3 py-2 text-xs font-bold",
+                        goalNoticeForm.category !== "sales" ? "bg-bread text-white" : "bg-cream text-cocoa"
+                      ].join(" ")} type="button" onClick={() => setGoalNoticeForm((current) => ({ ...current, category: "staff", title: "", value: "", note: "" }))}>직원 공지</button>
+                    </div>
+                  </div>
+                  <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_10rem]">
                     <label className="grid gap-2">
-                      <span className="field-label">공지 종류</span>
-                      <select className="input" aria-label="공지 종류" value={goalNoticeForm.category} onChange={(event) => setGoalNoticeForm((current) => ({ ...current, category: event.target.value as AnnualGoalNoticeCategory }))}>
-                        <option value="sales">매출 목표</option>
-                        <option value="operation">운영 목표</option>
-                        <option value="staff">직원 공지</option>
-                      </select>
-                    </label>
-                    <label className="grid gap-2">
-                      <span className="field-label">공지 제목</span>
-                      <input className="input" aria-label="공지 제목" value={goalNoticeForm.title} onChange={(event) => setGoalNoticeForm((current) => ({ ...current, title: event.target.value }))} />
+                      <span className="field-label">{goalNoticeForm.category === "sales" ? "목표 이름" : "공지 제목"}</span>
+                      <input className="input" aria-label="공지 제목" placeholder={goalNoticeForm.category === "sales" ? `${goalNoticeForm.targetYear}년 월별 매출 목표` : "예: 이번 주 전달사항"} value={goalNoticeForm.title} onChange={(event) => setGoalNoticeForm((current) => ({ ...current, title: event.target.value }))} />
                     </label>
                     {goalNoticeForm.category === "sales" ? (
                       <label className="grid gap-2">
@@ -1496,8 +1557,21 @@ export function ManagementPage() {
                   {goalNoticeForm.category === "sales" ? (
                     <div className="mt-3 rounded-[12px] border border-latte bg-white p-3">
                       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                        <p className="text-sm font-bold text-cocoa">월별 매출 목표</p>
+                        <div>
+                          <p className="text-sm font-bold text-cocoa">월별 매출 목표</p>
+                          <p className="mt-1 text-xs font-semibold text-muted">같은 목표액이면 아래 칸에 한 번만 적고 전체 채우기를 누르세요.</p>
+                        </div>
                         <p className="text-sm font-extrabold text-bread">최종 총합 {formatCurrency(Object.values(monthlyTargetsFromForm(goalNoticeForm)).reduce((total, amount) => total + amount, 0))}</p>
+                      </div>
+                      <div className="mb-3 grid gap-2 rounded-[10px] border border-latte bg-cream/50 p-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+                        <label className="grid gap-1">
+                          <span className="text-xs font-bold text-muted">모든 달 같은 목표액</span>
+                          <span className="relative block">
+                            <input className="input w-full pr-8 text-right" aria-label="모든 달 같은 목표액" inputMode="numeric" placeholder="예: 70,000,000" value={sameMonthlyTarget} onChange={(event) => setSameMonthlyTarget(digitsToCurrencyInput(event.target.value))} />
+                            <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-muted">원</span>
+                          </span>
+                        </label>
+                        <button className="rounded-control bg-cocoa px-4 py-2 text-sm font-extrabold text-white" type="button" onClick={applySameMonthlyTarget}>1~12월 전체 채우기</button>
                       </div>
                       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
                         {monthKeys.map((month) => (
@@ -1527,7 +1601,7 @@ export function ManagementPage() {
                   ) : null}
                   <label className="mt-3 grid gap-2">
                     <span className="field-label">공지 메모</span>
-                    <textarea className="input min-h-20 py-3" aria-label="공지 메모" value={goalNoticeForm.note} onChange={(event) => setGoalNoticeForm((current) => ({ ...current, note: event.target.value }))} />
+                    <textarea className="input min-h-20 py-3" aria-label="공지 메모" placeholder={goalNoticeForm.category === "sales" ? "선택: 목표를 정한 이유나 참고사항" : "홈에 같이 보여줄 메모"} value={goalNoticeForm.note} onChange={(event) => setGoalNoticeForm((current) => ({ ...current, note: event.target.value }))} />
                   </label>
                   <div className="mt-3 flex justify-end gap-2">
                     <button className="rounded-control border border-stone-300 bg-white px-4 py-2 font-bold text-cocoa" type="button" onClick={closeGoalNoticeForm}>취소</button>

@@ -176,6 +176,10 @@ describe("App", () => {
     expect(await screen.findByRole("heading", { name: "매출 분석" })).toBeInTheDocument();
     expect(screen.getByText("350,000원")).toBeInTheDocument();
     expect(screen.getByText("현장 요약")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "월별 목표 입력하러 가기" })).toHaveAttribute(
+      "href",
+      `/staff?tab=notice&goal=sales&year=${new Date().getFullYear()}`
+    );
     expect(screen.getByText("월별 목표 달성 흐름")).toBeInTheDocument();
     expect(screen.getByText("등록된 목표 합계")).toBeInTheDocument();
     expect(screen.getByText("700,000원")).toBeInTheDocument();
@@ -524,12 +528,16 @@ describe("App", () => {
       screen.getByText(/대분류\(제품·서비스·응대·구매·운영·손님경험·기타\)/)
     ).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "홈 공지 관리" }));
-    expect(screen.getByText(/홈 화면에 노출되는 매출 목표 공지/)).toBeInTheDocument();
-    expect(screen.getByText("직원 공지 등록 및 수정")).toBeInTheDocument();
+    expect(screen.getByText(/매출 분석 달성률에 쓰는 월별 목표액/)).toBeInTheDocument();
+    expect(screen.getByText("월별 매출 목표 · 홈 공지")).toBeInTheDocument();
     expect(screen.getByText("2026년 매출 목표")).toBeInTheDocument();
     expect(screen.getByText("총합 48,000,000원")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "홈 공지 추가" }));
-    fireEvent.change(screen.getByLabelText("공지 종류"), { target: { value: "staff" } });
+    fireEvent.click(screen.getByRole("button", { name: "월별 목표 입력" }));
+    expect(screen.getByText("월별 매출 목표 입력")).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("모든 달 같은 목표액"), { target: { value: "70000000" } });
+    fireEvent.click(screen.getByRole("button", { name: "1~12월 전체 채우기" }));
+    expect(screen.getByLabelText("1월 매출 목표")).toHaveValue("70,000,000");
+    fireEvent.click(screen.getByRole("button", { name: "직원 공지" }));
     fireEvent.change(screen.getByLabelText("공지 제목"), { target: { value: "직원 공지" } });
     fireEvent.change(screen.getByLabelText("공지 내용"), { target: { value: "주말 응대 집중" } });
     fireEvent.change(screen.getByLabelText("공지 메모"), {
@@ -540,10 +548,9 @@ describe("App", () => {
     expect(await screen.findByText("홈 공지 추가: 직원 공지")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "올해 매출 목표 수정" }));
-    fireEvent.change(screen.getByLabelText("공지 종류"), { target: { value: "operation" } });
-    fireEvent.change(screen.getByLabelText("공지 제목"), { target: { value: "운영 목표" } });
-    fireEvent.change(screen.getByLabelText("공지 내용"), { target: { value: "일요일 매출 상승" } });
-    fireEvent.change(screen.getByLabelText("공지 메모"), { target: { value: "시식 안내 강화" } });
+    fireEvent.change(screen.getByLabelText("목표 연도"), { target: { value: "2026" } });
+    fireEvent.change(screen.getByLabelText("6월 매출 목표"), { target: { value: "72000000" } });
+    expect(screen.getByLabelText("6월 매출 목표")).toHaveValue("72,000,000");
     fireEvent.click(screen.getByRole("button", { name: "공지 저장" }));
 
     expect(await screen.findByText("홈 공지 수정 완료")).toBeInTheDocument();

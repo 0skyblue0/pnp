@@ -550,10 +550,10 @@ describe("App", () => {
     expect(screen.getByText("활성 제품")).toBeInTheDocument();
     expect(screen.getByText("전체 직원")).toBeInTheDocument();
     expect(screen.getByText("활성 직원")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "제품 관리" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "직원 관리" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "반응 기준 관리" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "홈 공지 관리" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "제품 관리" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "직원 관리" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "반응 기준 관리" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "홈 공지 관리" })).toBeInTheDocument();
     expect(screen.getAllByText("제품명").length).toBeGreaterThan(0);
     expect(screen.getAllByText("카테고리").length).toBeGreaterThan(0);
     expect(screen.getAllByText("시즌").length).toBeGreaterThan(0);
@@ -589,11 +589,11 @@ describe("App", () => {
         body: JSON.stringify({ productIds: [1, 3, 2] })
       })
     );
-    fireEvent.click(screen.getByRole("button", { name: "반응 기준 관리" }));
+    fireEvent.click(screen.getByRole("tab", { name: "반응 기준 관리" }));
     expect(
       screen.getByText(/대분류\(제품·서비스·응대·구매·운영·손님경험·기타\)/)
     ).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "홈 공지 관리" }));
+    fireEvent.click(screen.getByRole("tab", { name: "홈 공지 관리" }));
     expect(screen.getByText(/매출 분석 달성률에 쓰는 월별 목표액/)).toBeInTheDocument();
     expect(screen.getByText("월별 매출 목표 · 홈 공지")).toBeInTheDocument();
     expect(screen.getByText("2026년 매출 목표")).toBeInTheDocument();
@@ -626,7 +626,7 @@ describe("App", () => {
     fireEvent.click(within(goalNoticeConfirmDialog).getByRole("button", { name: "삭제" }));
     expect(await screen.findByText("홈 공지 삭제 완료")).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "연간 스케줄 관리" }));
+    fireEvent.click(screen.getByRole("tab", { name: "연간 스케줄 관리" }));
     expect(screen.getByText("연간 스케줄 달력 관리")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "2026년 7월" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "이전 달" })).toBeInTheDocument();
@@ -2072,15 +2072,9 @@ describe("App", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "AI 분류하기" }));
 
-    const errorToast = await screen.findByRole("alert");
-    expect(errorToast).toHaveTextContent(
-      "AI 분류 API가 설정되지 않았습니다. 관리자에게 연결 상태를 확인해 주세요."
-    );
-    expect(
-      screen.getAllByText(
-        "AI 분류 API가 설정되지 않았습니다. 관리자에게 연결 상태를 확인해 주세요."
-      ).length
-    ).toBeGreaterThan(0);
+    const errorMessage = "AI 분류 API가 설정되지 않았습니다. 관리자에게 연결 상태를 확인해 주세요.";
+    await waitFor(() => expect(screen.getAllByText(errorMessage)).toHaveLength(2));
+    expect(screen.getAllByRole("alert")).toHaveLength(2);
     expect(screen.getByText("선택 기준: 미선택")).toBeInTheDocument();
     expect(screen.getByLabelText("한 줄 요약")).toHaveValue("");
     expect(screen.queryByText(/AI 추천 적용됨/)).not.toBeInTheDocument();

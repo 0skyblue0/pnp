@@ -260,6 +260,8 @@ describe("App", () => {
     expect(screen.getByRole("group", { name: "연간 매출 핵심 지표" })).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "매출 비교 시각화" })).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "월별 상세" })).toBeInTheDocument();
+    expect(screen.getByRole("list", { name: "월별 매출 막대" })).toBeInTheDocument();
+    expect(screen.getAllByRole("listitem")).toHaveLength(3);
     expect(screen.getByRole("link", { name: "월별 목표 입력하러 가기" })).toHaveAttribute(
       "href",
       `/staff?tab=notice&goal=sales&year=${new Date().getFullYear()}`

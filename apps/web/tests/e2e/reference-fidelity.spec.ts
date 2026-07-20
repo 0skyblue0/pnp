@@ -162,6 +162,12 @@ test("captures deterministic reference routes including sales analysis at the co
         "content",
         "reference-fidelity-alignment-task-1"
       );
+      if (route.path === "/sales-analysis") {
+        await expect(page.locator('meta[name="pnp-ui-reference-sales"]')).toHaveAttribute(
+          "content",
+          "reference-fidelity-alignment-task-3"
+        );
+      }
       await expect(page.getByRole("main")).toBeVisible();
       await expect(page.getByRole("heading", { name: route.heading })).toBeVisible();
       await expect.poll(() => page.locator("body").innerText()).toContain(route.readyText);

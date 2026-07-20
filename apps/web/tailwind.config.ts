@@ -8,6 +8,18 @@ export default {
   theme: {
     extend: {
       colors: {
+        canvas: "#EDE7DF",
+        surface: "#FFFFFF",
+        "surface-muted": "#F7F3EC",
+        border: "#E9E1D3",
+        foreground: "#2B2621",
+        subtle: "#8A7F72",
+        brand: "#B5654A",
+        "brand-strong": "#8C4A32",
+        info: "#425CC7",
+        warning: "#B76A1E",
+        success: "#197A4A",
+        danger: "#C24136",
         bread: "#B5654A",
         paper: "#EDE7DF",
         ink: "#2B2621",
@@ -21,8 +33,9 @@ export default {
         red: "#C24136"
       },
       borderRadius: {
+        sm: "8px",
         control: "9px",
-        panel: "14px"
+        panel: "12px"
       },
       boxShadow: {
         panel:

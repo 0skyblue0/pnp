@@ -3,6 +3,17 @@
 @tailwind utilities;
 
 :root {
+  --app-space-1: 4px;
+  --app-space-2: 8px;
+  --app-space-3: 12px;
+  --app-space-4: 16px;
+  --app-space-5: 20px;
+  --app-space-6: 24px;
+  --app-space-8: 32px;
+  --app-space-10: 40px;
+  --app-radius-sm: 8px;
+  --app-radius-control: 9px;
+  --app-radius-panel: 12px;
   font-family:
     Pretendard,
     -apple-system,
@@ -17,6 +28,11 @@
 
 * {
   box-sizing: border-box;
+}
+
+:focus-visible {
+  outline: 2px solid #b5654a;
+  outline-offset: 2px;
 }
 
 body {
@@ -67,6 +83,54 @@ body {
 }
 
 @layer components {
+  .app-page {
+    @apply mx-auto w-full max-w-[1440px] px-4 py-6 sm:px-6 lg:px-8;
+  }
+
+  .app-page-header {
+    @apply flex flex-col gap-4 border-b border-border pb-5 sm:flex-row sm:items-end sm:justify-between;
+  }
+
+  .app-page-header > div:first-child {
+    @apply min-w-0;
+  }
+
+  .app-page-header h1 {
+    @apply text-[24px] font-bold tracking-[-0.025em] text-foreground sm:text-[28px];
+  }
+
+  .app-page-header p {
+    @apply mt-1 text-sm leading-6 text-subtle;
+  }
+
+  .app-page-header p:first-child {
+    @apply mt-0 text-xs font-semibold uppercase tracking-[0.08em] text-brand-strong;
+  }
+
+  .app-page-actions {
+    @apply flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end;
+  }
+
+  .app-card {
+    @apply min-w-0 rounded-panel border border-border bg-surface p-4 shadow-panel sm:p-5;
+  }
+
+  .app-card-muted {
+    @apply min-w-0 rounded-panel border border-border bg-surface-muted p-4 sm:p-5;
+  }
+
+  .app-data-head {
+    @apply border-b border-border px-1 py-3 text-xs font-semibold text-subtle;
+  }
+
+  .app-data-row {
+    @apply border-b border-border/60 px-1 py-3 text-[13px] text-foreground last:border-b-0;
+  }
+
+  .app-status {
+    @apply inline-flex items-center gap-1.5 rounded-sm border border-current/15 px-2 py-1 text-xs font-semibold leading-4;
+  }
+
   .panel {
     @apply min-w-0 rounded-panel border border-latte bg-white p-4 shadow-none lg:p-5;
   }
@@ -109,6 +173,21 @@ body {
 
   .dc-action {
     @apply rounded-[9px] bg-bread px-4 py-2 text-[13px] font-semibold text-white transition hover:bg-cocoa;
+  }
+}
+
+.app-numeric {
+  font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
   }
 }
 

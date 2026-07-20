@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -67,6 +67,63 @@ describe("App", () => {
     fireEvent.click(screen.getByRole("button", { name: "메뉴 열기" }));
 
     expect(screen.getByRole("link", { name: "매출 분석" })).toBeVisible();
+  });
+
+  it("focuses the drawer, traps its keyboard navigation, and restores the menu trigger after Escape", () => {
+    render(<App />);
+
+    const trigger = screen.getByRole("button", { name: "메뉴 열기" });
+    fireEvent.click(trigger);
+
+    const dialog = screen.getByRole("dialog", { name: "주요 메뉴" });
+    const closeButton = within(dialog).getByRole("button", { name: "메뉴 닫기" });
+    expect(closeButton).toHaveFocus();
+
+    const lastLink = within(dialog).getByRole("link", { name: "알림" });
+    lastLink.focus();
+    fireEvent.keyDown(dialog, { key: "Tab" });
+    expect(within(dialog).getByRole("link", { name: "Paul & Paulina 홈" })).toHaveFocus();
+
+    fireEvent.keyDown(dialog, { key: "Escape" });
+    expect(screen.queryByRole("dialog", { name: "주요 메뉴" })).not.toBeInTheDocument();
+    expect(trigger).toHaveFocus();
+  });
+
+  it("closes the mobile drawer after navigation", () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "메뉴 열기" }));
+    fireEvent.click(within(screen.getByRole("dialog", { name: "주요 메뉴" })).getByRole("link", { name: "매출 분석" }));
+
+    expect(screen.queryByRole("dialog", { name: "주요 메뉴" })).not.toBeInTheDocument();
+  });
+
+  it("closes the drawer and keeps the desktop sidebar available at the large breakpoint", () => {
+    const listeners = new Set<(event: MediaQueryListEvent) => void>();
+    const mediaQueryState = { matches: false };
+    const mediaQuery = {
+      get matches() {
+        return mediaQueryState.matches;
+      },
+      media: "(min-width: 1024px)",
+      onchange: null,
+      addEventListener: (_type: string, listener: (event: MediaQueryListEvent) => void) => listeners.add(listener),
+      removeEventListener: (_type: string, listener: (event: MediaQueryListEvent) => void) => listeners.delete(listener),
+      addListener: (listener: (event: MediaQueryListEvent) => void) => listeners.add(listener),
+      removeListener: (listener: (event: MediaQueryListEvent) => void) => listeners.delete(listener),
+      dispatchEvent: () => true
+    } as MediaQueryList;
+    vi.stubGlobal("matchMedia", vi.fn(() => mediaQuery));
+
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "메뉴 열기" }));
+    mediaQueryState.matches = true;
+    act(() => {
+      listeners.forEach((listener) => listener({ matches: true } as MediaQueryListEvent));
+    });
+
+    expect(screen.queryByRole("dialog", { name: "주요 메뉴" })).not.toBeInTheDocument();
+    expect(document.querySelector("aside")).toHaveAttribute("aria-hidden", "false");
   });
 
   it("shows the main bakery work tabs", () => {

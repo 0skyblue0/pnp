@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import type { KeyboardEvent } from "react";
 import {
   BarChart3,
   Bell,
@@ -38,6 +39,30 @@ function todayLabel() {
   return `${dotted} (${weekday})`;
 }
 
+function useLargeScreen() {
+  const query = "(min-width: 1024px)";
+  const getMatches = () =>
+    typeof window !== "undefined" && typeof window.matchMedia === "function"
+      ? window.matchMedia(query).matches
+      : false;
+  const [isLargeScreen, setIsLargeScreen] = useState(getMatches);
+
+  useEffect(() => {
+    if (typeof window.matchMedia !== "function") {
+      return;
+    }
+
+    const mediaQuery = window.matchMedia(query);
+    const updateMatches = () => setIsLargeScreen(mediaQuery.matches);
+
+    updateMatches();
+    mediaQuery.addEventListener("change", updateMatches);
+    return () => mediaQuery.removeEventListener("change", updateMatches);
+  }, []);
+
+  return isLargeScreen;
+}
+
 function Brand() {
   return (
     <NavLink to="/home" className="inline-block rounded-sm" aria-label="Paul & Paulina 홈" title="홈으로 이동">
@@ -61,7 +86,7 @@ function Navigation({ onNavigate }: { onNavigate?: () => void }) {
               "flex min-h-11 items-center gap-3 rounded-control px-3 text-[13px] font-semibold transition motion-reduce:transition-none",
               isActive
                 ? "from-cocoa bg-brand text-white shadow-control"
-                : "text-[#5c5548] hover:bg-surface-muted hover:text-foreground"
+                : "text-subtle hover:bg-surface-muted hover:text-foreground"
             ].join(" ")
           }
         >
@@ -81,7 +106,7 @@ function NotificationLink({ unreadCount, onNavigate }: { unreadCount: number; on
       className={({ isActive }) =>
         [
           "relative flex min-h-11 items-center gap-3 rounded-control px-3 text-[13px] font-semibold transition motion-reduce:transition-none",
-          isActive ? "from-cocoa bg-brand text-white shadow-control" : "text-[#5c5548] hover:bg-surface-muted hover:text-foreground"
+          isActive ? "from-cocoa bg-brand text-white shadow-control" : "text-subtle hover:bg-surface-muted hover:text-foreground"
         ].join(" ")
       }
     >
@@ -104,6 +129,12 @@ export function AppLayout() {
   const location = useLocation();
   const [unreadCount, setUnreadCount] = useState(0);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const isLargeScreen = useLargeScreen();
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const drawerRef = useRef<HTMLElement>(null);
+  const didOpenDrawerRef = useRef(false);
+  const isDrawerOpen = isMenuOpen && !isLargeScreen;
 
   useEffect(() => {
     let cancelled = false;
@@ -126,10 +157,67 @@ export function AppLayout() {
     setIsMenuOpen(false);
   }, [location.pathname]);
 
+  useEffect(() => {
+    if (isLargeScreen) {
+      setIsMenuOpen(false);
+    }
+  }, [isLargeScreen]);
+
+  useEffect(() => {
+    if (isDrawerOpen) {
+      didOpenDrawerRef.current = true;
+      closeButtonRef.current?.focus();
+      return;
+    }
+
+    if (didOpenDrawerRef.current) {
+      didOpenDrawerRef.current = false;
+      if (!isLargeScreen) {
+        menuButtonRef.current?.focus();
+      }
+    }
+  }, [isDrawerOpen, isLargeScreen]);
+
+  function closeMenu() {
+    setIsMenuOpen(false);
+  }
+
+  function handleDrawerKeyDown(event: KeyboardEvent<HTMLElement>) {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      closeMenu();
+      return;
+    }
+
+    if (event.key !== "Tab") {
+      return;
+    }
+
+    const focusable = drawerRef.current?.querySelectorAll<HTMLElement>(
+      'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+    );
+    if (!focusable || focusable.length === 0) {
+      return;
+    }
+
+    const first = focusable.item(0);
+    const last = focusable.item(focusable.length - 1);
+    if (!first || !last) {
+      return;
+    }
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  }
+
   return (
     <div className="min-h-screen bg-canvas text-foreground lg:flex">
       <aside
-        aria-hidden={isMenuOpen}
+        aria-hidden={isDrawerOpen}
         className="hidden w-[210px] shrink-0 border-r border-border bg-surface lg:flex lg:min-h-screen lg:flex-col"
       >
         <div className="sticky top-0 flex h-screen w-[210px] flex-col p-4">
@@ -174,8 +262,9 @@ export function AppLayout() {
               </NavLink>
               <button
                 type="button"
+                ref={menuButtonRef}
                 aria-controls="mobile-navigation"
-                aria-expanded={isMenuOpen}
+                aria-expanded={isDrawerOpen}
                 aria-label="메뉴 열기"
                 onClick={() => setIsMenuOpen(true)}
                 className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-control text-subtle transition hover:bg-surface-muted hover:text-foreground motion-reduce:transition-none"
@@ -186,37 +275,40 @@ export function AppLayout() {
           </div>
         </header>
 
-        {isMenuOpen ? (
+        {isDrawerOpen ? (
           <div className="fixed inset-0 z-30 lg:hidden">
             <button
               type="button"
               aria-label="메뉴 닫기"
               className="absolute inset-0 cursor-default bg-foreground/30"
-              onClick={() => setIsMenuOpen(false)}
+              onClick={closeMenu}
             />
             <section
               id="mobile-navigation"
               role="dialog"
               aria-modal="true"
               aria-label="주요 메뉴"
+              ref={drawerRef}
+              onKeyDown={handleDrawerKeyDown}
               className="relative flex h-full w-[min(86vw,320px)] flex-col bg-surface p-4 shadow-elegant"
             >
               <div className="flex min-h-11 items-center justify-between">
                 <Brand />
                 <button
                   type="button"
+                  ref={closeButtonRef}
                   aria-label="메뉴 닫기"
-                  onClick={() => setIsMenuOpen(false)}
+                  onClick={closeMenu}
                   className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-control text-subtle transition hover:bg-surface-muted hover:text-foreground motion-reduce:transition-none"
                 >
                   <X aria-hidden="true" className="h-5 w-5" />
                 </button>
               </div>
               <div className="mt-7">
-                <Navigation onNavigate={() => setIsMenuOpen(false)} />
+                <Navigation onNavigate={closeMenu} />
               </div>
               <div className="mt-2 border-t border-border pt-2">
-                <NotificationLink unreadCount={unreadCount} onNavigate={() => setIsMenuOpen(false)} />
+                <NotificationLink unreadCount={unreadCount} onNavigate={closeMenu} />
               </div>
               <p className="mt-auto px-3 text-xs text-subtle">{dateText}</p>
             </section>

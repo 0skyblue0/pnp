@@ -88,7 +88,16 @@ export function RegularCustomerPage() {
                 <p className="font-extrabold text-ink">{item.customerName}님</p><p className="text-muted">{item.maskedPhone ?? "연락처 없음"}</p><p className="text-[12px] text-[var(--ref-text-secondary)]">{item.fixedMemo || "저장된 메모 없음"}</p>
               </article>
             ))}
-            {items.length === 0 ? <p className="px-4 py-12 text-center text-sm font-semibold text-muted">저장된 단골손님이 없습니다.</p> : null}
+            {items.length === 0 ? (
+              <>
+                {["placeholder-1", "placeholder-2", "placeholder-3"].map((key) => (
+                  <div key={key} className="grid gap-1 ref-table-row text-muted md:grid-cols-[1fr_1fr_1.8fr] md:gap-3" aria-label="저장 단골 플레이스홀더">
+                    <span className="font-semibold">이름</span><span>연락처</span><span className="text-[12px]">고정 메모</span>
+                  </div>
+                ))}
+                <p className="px-4 py-3 text-center text-xs font-semibold text-muted">저장된 단골손님이 없습니다. 후보를 확인해 추가할 수 있습니다.</p>
+              </>
+            ) : null}
           </div>
         </section>
 
@@ -108,7 +117,17 @@ export function RegularCustomerPage() {
                 <button className="ref-secondary-action mt-3" type="button" onClick={() => void saveCandidate(candidate)}>단골로 저장</button>
               </article>
             ))}
-            {candidates.length === 0 ? <p className="px-4 py-12 text-center text-sm font-semibold text-muted">현재 단골 후보가 없습니다.</p> : null}
+            {candidates.length === 0 ? (
+              <>
+                {["candidate-placeholder-1", "candidate-placeholder-2", "candidate-placeholder-3"].map((key) => (
+                  <div key={key} className="ref-table-row opacity-65" aria-label="단골 후보 플레이스홀더">
+                    <div className="flex items-start justify-between gap-3"><div><p className="font-extrabold text-ink">이름</p><p className="mt-1 text-[12px] text-muted">연락처 · 방문 이력</p></div><span className="ref-status-tag">후보</span></div>
+                    <button className="ref-secondary-action mt-3" type="button" disabled>단골로 저장</button>
+                  </div>
+                ))}
+                <p className="px-4 py-3 text-center text-xs font-semibold text-muted">현재 단골 후보가 없습니다.</p>
+              </>
+            ) : null}
           </div>
         </section>
       </div>

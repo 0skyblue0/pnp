@@ -753,7 +753,12 @@ export function DailyLogPage() {
             </button>
           ))}
         </div>
-        {viewMode === "entry" ? <DailyOperationExcelImportPanel /> : null}
+        {viewMode === "entry" ? (
+          <details className="mb-4 rounded-panel border border-latte bg-white px-4 py-3">
+            <summary className="cursor-pointer text-sm font-bold text-ink">일일업무보고서 엑셀 불러오기</summary>
+            <div className="mt-3 border-t border-latte pt-3"><DailyOperationExcelImportPanel /></div>
+          </details>
+        ) : null}
         {message ? (
           <div role="status" className="mb-4 rounded-control border border-green/20 bg-green/10 px-3 py-2 text-sm font-semibold text-green">
             {message}
@@ -1683,7 +1688,7 @@ function ProductsSection({
           </article>
         ))}
       </div>
-      <div className="hidden max-h-[420px] overflow-x-auto overflow-y-auto rounded-[10px] border border-latte bg-white pr-1 md:block">
+      <div className="hidden max-h-[300px] overflow-x-auto overflow-y-auto rounded-[10px] border border-latte bg-white pr-1 md:block">
         <div className="sticky top-0 z-10 grid min-w-[720px] grid-cols-[1.1fr_0.8fr_0.98fr_0.98fr_0.8fr_0.8fr] gap-[8px] border-b border-[#EFE8DC] bg-white px-[8px] py-[9px] text-[11px] font-semibold text-muted">
         <div>제품명</div>
         <div>생산량(개)</div>

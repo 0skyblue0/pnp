@@ -408,7 +408,7 @@ export function HomePage() {
 
       <section className="grid gap-3 md:grid-cols-3">
         <button
-          className="ref-card px-5 py-4 text-left transition hover:border-bread focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bread/30 motion-reduce:transition-none"
+          className="ref-card md:col-span-3 px-5 py-4 text-left transition hover:border-bread focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bread/30 motion-reduce:transition-none"
           type="button"
           onClick={() => salesGoalNotice ? setDetailGoalNoticeKey(goalNoticeKey(salesGoalNotice)) : undefined}
         >

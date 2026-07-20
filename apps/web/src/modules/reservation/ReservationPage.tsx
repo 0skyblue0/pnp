@@ -888,12 +888,12 @@ export function ReservationPage() {
           {overdueCount > 0 ? <span className="ml-2 rounded-full bg-red/10 px-2 py-0.5 text-red">픽업 지연 {overdueCount}건</span> : null}
         </p>
         {!showReservationForm && message ? (
-          <div className="mb-4 rounded-control border border-green/20 bg-green/10 px-3 py-2 text-sm font-semibold text-green">
+          <div role="status" className="mb-4 rounded-control border border-green/20 bg-green/10 px-3 py-2 text-sm font-semibold text-green">
             {message}
           </div>
         ) : null}
         {!showReservationForm && error ? (
-          <div className="mb-4 rounded-control border border-red/20 bg-red/10 px-3 py-2 text-sm font-semibold text-red">
+          <div role="alert" className="mb-4 rounded-control border border-red/20 bg-red/10 px-3 py-2 text-sm font-semibold text-red">
             {error}
           </div>
         ) : null}

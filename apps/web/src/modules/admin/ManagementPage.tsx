@@ -1,5 +1,5 @@
 import { Pencil, Plus, RefreshCcw, Trash2, UserPlus, X } from "lucide-react";
-import { useCallback, useEffect, useRef, useState, type DragEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type DragEvent, type KeyboardEvent } from "react";
 
 import { apiDelete, apiGet, apiPatch, apiPost } from "../../shared/api/client.js";
 import type { ListEnvelope } from "../../shared/api/types.js";
@@ -1126,6 +1126,15 @@ export function ManagementPage() {
   );
   const selectedDateSchedules = selectedScheduleDate ? schedulesByDate[selectedScheduleDate] ?? [] : [];
   const scheduleCells = calendarDates(scheduleMonth);
+  const handleAdminTabKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
+    const currentIndex = adminTabs.findIndex((tab) => tab.key === activeAdminTab);
+    const nextIndex = event.key === "Home" ? 0 : event.key === "End" ? adminTabs.length - 1 : event.key === "ArrowRight" ? (currentIndex + 1) % adminTabs.length : event.key === "ArrowLeft" ? (currentIndex - 1 + adminTabs.length) % adminTabs.length : -1;
+    const nextTab = nextIndex < 0 ? undefined : adminTabs[nextIndex];
+    if (!nextTab) return;
+    event.preventDefault();
+    setActiveAdminTab(nextTab.key);
+    requestAnimationFrame(() => document.getElementById(`management-tab-${nextTab.key}`)?.focus());
+  };
 
   return (
     <div className="app-page grid gap-4">
@@ -1138,12 +1147,12 @@ export function ManagementPage() {
         <h2 className="sr-only">홈 목표·매출 공지 관리</h2>
 
         {message ? (
-          <div className="mb-4 rounded-control border border-green/20 bg-green/10 px-3 py-2 text-sm font-semibold text-green">
+          <div role="status" className="mb-4 rounded-control border border-green/20 bg-green/10 px-3 py-2 text-sm font-semibold text-green">
             {message}
           </div>
         ) : null}
         {error ? (
-          <div className="mb-4 rounded-control border border-red/20 bg-red/10 px-3 py-2 text-sm font-semibold text-red">
+          <div role="alert" className="mb-4 rounded-control border border-red/20 bg-red/10 px-3 py-2 text-sm font-semibold text-red">
             {error}
           </div>
         ) : null}
@@ -1197,6 +1206,8 @@ export function ManagementPage() {
             return (
               <button
                 key={tab.key}
+                id={`management-tab-${tab.key}`}
+                aria-controls={`management-panel-${tab.key}`}
                 type="button"
                 className={[
                   "min-h-11 rounded-[9px] px-4 py-2 text-[12.5px] font-semibold transition motion-reduce:transition-none",
@@ -1205,6 +1216,7 @@ export function ManagementPage() {
                 role="tab"
                 aria-selected={isActive}
                 onClick={() => setActiveAdminTab(tab.key)}
+                onKeyDown={handleAdminTabKeyDown}
               >
                 {tab.label}
               </button>
@@ -1212,7 +1224,7 @@ export function ManagementPage() {
           })}
         </div>
 
-        <div className="mt-[14px]">
+        <div className="mt-[14px]" id={`management-panel-${activeAdminTab}`} role="tabpanel" aria-labelledby={`management-tab-${activeAdminTab}`}>
           {activeAdminTab === "product" ? (
             <div className="rounded-[14px] border border-latte bg-white px-5 py-[18px]">
               <div className="flex flex-wrap items-center justify-between gap-3">

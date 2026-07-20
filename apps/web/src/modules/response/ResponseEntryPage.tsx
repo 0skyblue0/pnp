@@ -262,12 +262,12 @@ export function ResponseEntryPage({ embedded = false }: { embedded?: boolean } =
             손님이 한 말이면 그대로, 직원이 관찰한 내용이면 있었던 일을 적어주세요.
           </p>
           {saveMessage ? (
-            <div className="rounded-control border border-green/20 bg-green/10 px-3 py-2 text-sm font-semibold text-green">
+            <div role="status" className="rounded-control border border-green/20 bg-green/10 px-3 py-2 text-sm font-semibold text-green">
               {saveMessage}
             </div>
           ) : null}
           {saveError ? (
-            <div className="rounded-control border border-red/20 bg-red/10 px-3 py-2 text-sm font-semibold text-red">
+            <div role="alert" className="rounded-control border border-red/20 bg-red/10 px-3 py-2 text-sm font-semibold text-red">
               {saveError}
             </div>
           ) : null}

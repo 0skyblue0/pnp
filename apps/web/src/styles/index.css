@@ -80,6 +80,22 @@ body {
   textarea {
     -webkit-tap-highlight-color: transparent;
   }
+
+  button,
+  select,
+  textarea,
+  input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]) {
+    min-height: 2.75rem;
+  }
+
+  button:focus-visible,
+  a:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible,
+  input:focus-visible {
+    outline: 2px solid theme("colors.bread");
+    outline-offset: 2px;
+  }
 }
 
 @layer components {
@@ -128,7 +144,7 @@ body {
   }
 
   .app-status {
-    @apply inline-flex items-center gap-1.5 rounded-sm border border-current/15 px-2 py-1 text-xs font-semibold leading-4;
+    @apply inline-flex items-center gap-1.5 rounded-sm border border-current border-opacity-20 px-2 py-1 text-xs font-semibold leading-4;
   }
 
   .panel {

@@ -580,12 +580,12 @@ export function PrepaidLedgerPage() {
       </section>
 
       {message ? (
-        <div className="rounded-control border border-green/20 bg-green/10 px-3 py-2 text-sm font-semibold text-green">
+        <div role="status" className="rounded-control border border-green/20 bg-green/10 px-3 py-2 text-sm font-semibold text-green">
           {message}
         </div>
       ) : null}
       {error ? (
-        <div className="rounded-control border border-red/20 bg-red/10 px-3 py-2 text-sm font-semibold text-red">
+        <div role="alert" className="rounded-control border border-red/20 bg-red/10 px-3 py-2 text-sm font-semibold text-red">
           {error}
         </div>
       ) : null}

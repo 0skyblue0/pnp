@@ -429,7 +429,7 @@ export function ResponseListPage() {
           </Link>} />
 
         {error ? (
-          <div className="mb-4 rounded-control border border-red/20 bg-red/10 px-3 py-2 text-sm font-semibold text-red">
+          <div role="alert" className="mb-4 rounded-control border border-red/20 bg-red/10 px-3 py-2 text-sm font-semibold text-red">
             {error}
           </div>
         ) : null}

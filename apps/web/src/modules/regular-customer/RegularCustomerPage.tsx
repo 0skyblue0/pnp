@@ -74,8 +74,8 @@ export function RegularCustomerPage() {
             <input className="input min-w-56" aria-label="단골손님 검색" placeholder="이름 또는 연락처" value={query} onChange={(event) => setQuery(event.target.value)} />
             <button className="min-h-11 rounded-control bg-bread px-4 py-2 text-sm font-bold text-white" type="button" onClick={() => void load()}>검색</button>
           </div>} />
-        {message ? <p className="mt-3 rounded-control bg-green/10 px-3 py-2 text-sm font-bold text-green">{message}</p> : null}
-        {error ? <p className="mt-3 rounded-control bg-red/10 px-3 py-2 text-sm font-bold text-red">{error}</p> : null}
+        {message ? <p role="status" className="mt-3 rounded-control bg-green/10 px-3 py-2 text-sm font-bold text-green">{message}</p> : null}
+        {error ? <p role="alert" className="mt-3 rounded-control bg-red/10 px-3 py-2 text-sm font-bold text-red">{error}</p> : null}
         <div className="mt-4 grid gap-3 md:grid-cols-3">
           <div className="dc-card px-4 py-3"><p className="text-xs text-muted">저장된 단골</p><p className="mt-1 text-2xl font-extrabold text-ink">{items.length}</p></div>
           <div className="dc-card px-4 py-3"><p className="text-xs text-muted">단골 후보</p><p className="mt-1 text-2xl font-extrabold text-ink">{candidates.length}</p></div>

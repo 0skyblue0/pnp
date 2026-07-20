@@ -1,5 +1,5 @@
 import { BarChart3, ListFilter } from "lucide-react";
-import { useMemo } from "react";
+import { useMemo, type KeyboardEvent } from "react";
 import { useSearchParams } from "react-router-dom";
 
 import { PageHeader } from "../../shared/ui/PageHeader.js";
@@ -9,6 +9,7 @@ import { ResponseListPage } from "./ResponseListPage.js";
 
 type ResponseMode = "entry" | "lookup";
 type InquiryTab = "stats" | "detail";
+const modeOptions: ResponseMode[] = ["entry", "lookup"];
 
 const tabOptions: Array<{
   value: InquiryTab;
@@ -73,6 +74,26 @@ export function ResponseInquiryPage() {
     setSearchParams(nextParams, { replace: true });
   };
 
+  const handleModeKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
+    const currentIndex = modeOptions.indexOf(activeMode);
+    const nextIndex = event.key === "Home" ? 0 : event.key === "End" ? modeOptions.length - 1 : event.key === "ArrowRight" ? (currentIndex + 1) % modeOptions.length : event.key === "ArrowLeft" ? (currentIndex - 1 + modeOptions.length) % modeOptions.length : -1;
+    const nextMode = nextIndex < 0 ? undefined : modeOptions[nextIndex];
+    if (!nextMode) return;
+    event.preventDefault();
+    handleModeChange(nextMode);
+    requestAnimationFrame(() => document.getElementById(`response-mode-tab-${nextMode}`)?.focus());
+  };
+
+  const handleInquiryTabKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
+    const currentIndex = tabOptions.findIndex((option) => option.value === activeTab);
+    const nextIndex = event.key === "Home" ? 0 : event.key === "End" ? tabOptions.length - 1 : event.key === "ArrowRight" ? (currentIndex + 1) % tabOptions.length : event.key === "ArrowLeft" ? (currentIndex - 1 + tabOptions.length) % tabOptions.length : -1;
+    const nextTab = nextIndex < 0 ? undefined : tabOptions[nextIndex];
+    if (!nextTab) return;
+    event.preventDefault();
+    handleTabChange(nextTab.value);
+    requestAnimationFrame(() => document.getElementById(tabIds[nextTab.value].tab)?.focus());
+  };
+
   return (
     <div className="app-page grid gap-4">
       <section className="app-card min-w-0">
@@ -89,6 +110,8 @@ export function ResponseInquiryPage() {
             ).map(([mode, label]) => (
               <button
                 key={mode}
+                id={`response-mode-tab-${mode}`}
+                aria-controls={`response-mode-panel-${mode}`}
                 aria-selected={activeMode === mode}
                 className={[
                   "inline-flex min-h-11 items-center rounded-[7px] px-4 text-[12.5px] font-semibold transition motion-reduce:transition-none",
@@ -97,6 +120,7 @@ export function ResponseInquiryPage() {
                 role="tab"
                 type="button"
                 onClick={() => handleModeChange(mode)}
+                onKeyDown={handleModeKeyDown}
               >
                 {label}
               </button>
@@ -128,6 +152,7 @@ export function ResponseInquiryPage() {
                   role="tab"
                   type="button"
                   onClick={() => handleTabChange(option.value)}
+                  onKeyDown={handleInquiryTabKeyDown}
                 >
                   <Icon className="mr-2 h-4 w-4 shrink-0" aria-hidden="true" />
                   {option.label}
@@ -139,10 +164,14 @@ export function ResponseInquiryPage() {
       </section>
 
       {activeMode === "entry" ? (
-        <ResponseEntryPage />
+        <div aria-labelledby="response-mode-tab-entry" id="response-mode-panel-entry" role="tabpanel">
+          <ResponseEntryPage />
+        </div>
       ) : (
-        <div aria-labelledby={tabIds[activeTab].tab} id={tabIds[activeTab].panel} role="tabpanel">
-          {activeTab === "stats" ? <StatisticsPage /> : <ResponseListPage />}
+        <div aria-labelledby="response-mode-tab-lookup" id="response-mode-panel-lookup" role="tabpanel">
+          <div aria-labelledby={tabIds[activeTab].tab} id={tabIds[activeTab].panel} role="tabpanel">
+            {activeTab === "stats" ? <StatisticsPage /> : <ResponseListPage />}
+          </div>
         </div>
       )}
     </div>

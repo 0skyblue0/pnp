@@ -525,7 +525,7 @@ export function PrepaidLedgerPage() {
   }
 
   return (
-    <div className="mx-auto grid w-full max-w-[1196px] gap-3 pb-6">
+    <div className="mx-auto grid w-full max-w-[996px] gap-3 pb-6">
       <section className="border-b border-[var(--ref-line)] pb-3">
         <PageHeader
           title="선결제 장부"

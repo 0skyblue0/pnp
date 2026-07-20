@@ -353,7 +353,7 @@ export function HomePage() {
   const completedReservationCount = todayReservationCount - pendingReservationCount;
 
   return (
-    <div className="mx-auto grid w-full max-w-[1196px] gap-4">
+    <div className="mx-auto grid w-full max-w-[996px] gap-4">
       <header className="flex min-h-11 items-center gap-3 border-b border-[var(--ref-line)] pb-3">
         <h1 className="text-[21px] font-extrabold tracking-[-0.025em] text-ink">홈</h1>
         <p className="text-sm text-muted">오늘의 운영 현황</p>

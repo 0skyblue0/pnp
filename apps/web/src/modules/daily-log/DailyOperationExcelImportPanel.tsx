@@ -110,15 +110,15 @@ export function DailyOperationExcelImportPanel() {
   }
 
   return (
-    <section className="mb-4 rounded-[14px] border border-latte bg-white px-4 py-4">
+    <section className="app-card mb-4 px-4 py-4" aria-labelledby="daily-operation-excel-import-title">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h3 className="text-sm font-extrabold text-ink">일일업무보고서 엑셀 불러오기</h3>
+          <h3 id="daily-operation-excel-import-title" className="text-sm font-extrabold text-ink">일일업무보고서 엑셀 불러오기</h3>
           <p className="mt-1 text-xs leading-5 text-muted">
             엑셀을 바로 저장하지 않고 먼저 날짜·제품·손님 반응 후보를 미리 보여줍니다.
           </p>
         </div>
-        <label className="inline-flex min-h-10 cursor-pointer items-center rounded-control border border-latte bg-cream px-4 text-sm font-bold text-cocoa">
+        <label className="inline-flex min-h-11 cursor-pointer items-center rounded-control border border-latte bg-cream px-4 text-sm font-bold text-cocoa focus-within:ring-2 focus-within:ring-bread/30">
           엑셀 선택
           <input
             className="sr-only"
@@ -139,7 +139,7 @@ export function DailyOperationExcelImportPanel() {
       {isLoading ? <p className="mt-3 text-sm font-bold text-muted">엑셀을 확인하는 중입니다.</p> : null}
       {preview ? (
         <div className="mt-4 grid gap-3">
-          <div className="rounded-[12px] border border-latte bg-cream/40 p-3">
+          <div className="app-card-muted p-3">
             <p className="text-xs font-bold text-muted">읽은 날짜</p>
             <p className="mt-1 text-xl font-extrabold text-ink">{preview.records.length}일</p>
             <div className="mt-3 grid gap-2">
@@ -171,7 +171,7 @@ export function DailyOperationExcelImportPanel() {
               ))}
             </div>
           </div>
-          <div className="rounded-[12px] border border-latte bg-cream/40 p-3">
+          <div className="app-card-muted p-3">
             <p className="text-xs font-bold text-muted">손님 반응 후보</p>
             <p className="mt-1 text-xl font-extrabold text-ink">{preview.customerResponseCandidates.length}건</p>
             <div className="mt-3 grid gap-2">
@@ -205,13 +205,13 @@ export function DailyOperationExcelImportPanel() {
             onDeleteRecord={() => undefined}
             preview
           />
-          <div className="lg:col-span-2 flex flex-wrap items-center justify-between gap-3 rounded-[12px] border border-latte bg-white p-3">
+          <div className="app-card lg:col-span-2 flex flex-wrap items-center justify-between gap-3 p-3">
             <p className="text-sm leading-6 text-muted">
               경고 {preview.warnings.length}건 · 건너뜀 {preview.skippedSheets.length}개 시트.
               {hasUnacknowledgedWarning ? " 경고 날짜를 확인해야 저장할 수 있습니다." : " 저장 전 날짜와 후보를 확인하세요."}
             </p>
             <button
-              className="rounded-control bg-bread px-4 py-2 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"
+              className="min-h-11 rounded-control bg-bread px-4 py-2 text-sm font-bold text-white transition hover:bg-cocoa focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bread/30 disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transition-none"
               type="button"
               disabled={isLoading || hasUnacknowledgedWarning}
               onClick={() => void applyImport()}

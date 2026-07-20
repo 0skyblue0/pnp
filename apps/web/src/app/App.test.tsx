@@ -241,6 +241,7 @@ describe("App", () => {
     expect(await screen.findByRole("heading", { name: "매출 분석" })).toBeInTheDocument();
     expect(screen.getByText("350,000원")).toBeInTheDocument();
     expect(screen.getByText("현장 요약")).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "연간 매출 핵심 지표" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "월별 목표 입력하러 가기" })).toHaveAttribute(
       "href",
       `/staff?tab=notice&goal=sales&year=${new Date().getFullYear()}`

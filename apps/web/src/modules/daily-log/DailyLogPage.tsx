@@ -6,6 +6,7 @@ import type { ListEnvelope } from "../../shared/api/types.js";
 import { todayInStoreTime } from "../../shared/time/storeTime.js";
 import { Button } from "../../shared/ui/Button.js";
 import { useConfirm } from "../../shared/ui/ConfirmDialog.js";
+import { PageHeader } from "../../shared/ui/PageHeader.js";
 import { productLineup } from "../../shared/productLineup.js";
 import { DailyOperationExcelImportPanel } from "./DailyOperationExcelImportPanel.js";
 import { providedDailyOperationDefaultMonth } from "./providedDailyOperationRecords.js";
@@ -704,17 +705,15 @@ export function DailyLogPage() {
   return (
     <div className="mx-auto grid max-w-none gap-[14px]">
       <section ref={entryPanelRef} className="min-w-0">
-        <div className="mb-4 flex items-center justify-between gap-3">
-          <div>
-            <h2 className="section-title">일일 운영 기록</h2>
-            <h2 className="sr-only">매장 운영일지</h2>
-          </div>
-          <div className="flex items-center gap-3">
+        <PageHeader
+          title="일일 운영 기록"
+          description="매장 운영일지"
+          actions={<div className="flex items-center gap-3">
             <span className="text-[12.5px] text-muted">{draft.date.replaceAll("-", ".")}</span>
             {viewMode === "entry" ? (
               <Button
                 aria-label="일일 운영 저장"
-                className="dc-action min-h-0"
+                className="dc-action"
                 icon={Save}
                 type="button"
                 onClick={() => void saveDraft()}
@@ -722,8 +721,9 @@ export function DailyLogPage() {
                 저장
               </Button>
             ) : null}
-          </div>
-        </div>
+          </div>}
+        />
+        <h2 className="sr-only">매장 운영일지</h2>
         <div className="mb-4 flex flex-wrap gap-2" role="tablist" aria-label="일일 운영 화면 선택">
           {(
             [
@@ -737,7 +737,7 @@ export function DailyLogPage() {
               role="tab"
               aria-selected={viewMode === mode}
               className={[
-                "rounded-control border px-5 py-2 text-sm font-bold transition",
+                "min-h-11 rounded-control border px-5 py-2 text-sm font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bread/30 motion-reduce:transition-none",
                 viewMode === mode
                   ? "border-cocoa bg-cocoa text-white shadow-control"
                   : "border-latte bg-white text-cocoa hover:border-bread"

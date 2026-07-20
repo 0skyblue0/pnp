@@ -214,11 +214,12 @@ test("verifies the desktop reference shell frame at 1440px", async ({ page }) =>
     await route.fulfill({ contentType: "application/json", body: JSON.stringify(success(fixture)) });
   });
 
-  await page.goto("/home", { waitUntil: "networkidle" });
+  await page.goto("/home", { waitUntil: "domcontentloaded" });
   await expect(page.locator('meta[name="pnp-ui-reference-shell"]')).toHaveAttribute(
     "content",
     "reference-fidelity-alignment-task-2"
   );
+  await expect(page.getByRole("main")).toBeVisible();
 
   const sidebar = page.locator("aside");
   await expect(sidebar).toHaveCSS("width", "210px");
@@ -228,5 +229,7 @@ test("verifies the desktop reference shell frame at 1440px", async ({ page }) =>
   await expect(page.getByRole("link", { name: "홈", exact: true }).first()).toHaveCSS("background-color", "rgb(200, 145, 47)");
   await expect(page.locator("aside + div")).toHaveCSS("background-color", "rgb(244, 240, 233)");
   await expect(page.locator("header.ref-page-header")).toHaveCSS("background-color", "rgb(251, 248, 243)");
+  await expect(page.locator('[aria-busy="true"]')).toHaveCount(0);
+  await page.evaluate(async () => document.fonts.ready);
   await expect(page).toHaveScreenshot("reference-shell-desktop-1440.png", { fullPage: true });
 });

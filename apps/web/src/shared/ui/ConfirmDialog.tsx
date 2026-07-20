@@ -101,7 +101,7 @@ export function ConfirmProvider({ children }: PropsWithChildren) {
       {pending
         ? createPortal(
             <div
-              className="fixed inset-0 z-[110] grid place-items-center bg-[#261e18]/45 px-4"
+              className="fixed inset-0 z-[110] grid place-items-center bg-ref-cocoa/45 px-4"
               onMouseDown={(event) => {
                 if (event.target === event.currentTarget) {
                   close(false);
@@ -115,7 +115,7 @@ export function ConfirmProvider({ children }: PropsWithChildren) {
                 aria-labelledby="confirm-dialog-title"
                 aria-describedby="confirm-dialog-message"
                 tabIndex={-1}
-                className="w-full max-w-sm rounded-panel border border-[#e7dfd3] bg-white p-5 shadow-elegant"
+                className="w-full max-w-sm rounded-panel border border-ref-line bg-ref-card p-5 shadow-elegant"
               >
                 <h2 id="confirm-dialog-title" className="text-base font-bold text-ink">
                   {pending.title ?? "확인"}

@@ -108,7 +108,7 @@ body {
   }
 
   .app-page-actions {
-    @apply flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end;
+    @apply flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end [&_a]:min-h-11 [&_button]:min-h-11 [&_input]:min-h-11 [&_select]:min-h-11;
   }
 
   .app-card {
@@ -148,7 +148,7 @@ body {
   }
 
   .input {
-    @apply min-h-10 max-w-full rounded-control border border-latte bg-white px-3 py-2 text-[13px] font-medium text-ink shadow-none outline-none transition placeholder:text-muted/60 hover:border-[#d8cdbd] focus:border-bread focus:bg-white focus:ring-2 focus:ring-bread/15;
+    @apply min-h-11 max-w-full rounded-control border border-latte bg-white px-3 py-2 text-[13px] font-medium text-ink shadow-none outline-none transition placeholder:text-muted/60 hover:border-[#d8cdbd] focus:border-bread focus:bg-white focus:ring-2 focus:ring-bread/15 motion-reduce:transition-none;
   }
 
   .dc-card {

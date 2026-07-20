@@ -1509,12 +1509,12 @@ function BasicSection({
         </div>
       </div>
       <div className="mt-[14px] text-[11px] text-muted">날씨</div>
-      <div className="mt-[6px] flex gap-[8px]">
+      <div className="mt-[6px] flex flex-wrap gap-[8px]">
         {weatherOptions.map((weather) => (
           <button
             key={weather}
             className={[
-              "rounded-full px-[15px] py-[7px] text-[12.5px] font-semibold transition",
+              "min-h-11 rounded-full px-[15px] py-[7px] text-[12.5px] font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bread/30 motion-reduce:transition-none",
               visualWeather === weather
                 ? "bg-bread text-white"
                 : "bg-cream text-cocoa hover:bg-[#eadfd1]"
@@ -1649,8 +1649,28 @@ function ProductsSection({
 
   return (
     <div>
-      <div className="max-h-[420px] overflow-y-auto rounded-[10px] border border-latte bg-white pr-1">
-        <div className="sticky top-0 z-10 grid grid-cols-[1.1fr_0.8fr_0.98fr_0.98fr_0.8fr_0.8fr] gap-[8px] border-b border-[#EFE8DC] bg-white px-[8px] py-[9px] text-[11px] font-semibold text-muted">
+      <div className="grid gap-3 md:hidden">
+        {rows.map((row) => (
+          <article key={row.productName} className="rounded-[10px] border border-latte bg-white p-3">
+            <h4 className="text-[13px] font-semibold text-ink">{row.productName}</h4>
+            <div className="mt-3 grid grid-cols-2 gap-3">
+              <label className="grid gap-1 text-[11px] font-semibold text-muted">
+                생산량(개)
+                <input className="min-h-11 w-full rounded-[7px] border border-latte px-2 text-[13px] text-ink outline-none focus:border-bread focus:ring-2 focus:ring-bread/15" inputMode="numeric" value={row.producedQty} onFocus={(event) => event.currentTarget.select()} onChange={(event) => updateRow(row.productName, "producedQty", event.target.value)} />
+              </label>
+              <label className="grid gap-1 text-[11px] font-semibold text-muted">
+                재고(남음, 개)
+                <input className="min-h-11 w-full rounded-[7px] border border-latte px-2 text-[13px] text-ink outline-none focus:border-bread focus:ring-2 focus:ring-bread/15" inputMode="numeric" value={row.stockQty} onFocus={(event) => event.currentTarget.select()} onChange={(event) => updateRow(row.productName, "stockQty", event.target.value)} />
+              </label>
+              <QuantityStepper label="손실량(개)" value={row.lossQty} onChange={(value) => updateRow(row.productName, "lossQty", value)} decrement={() => adjustQuantity(row.productName, "lossQty", -1)} increment={() => adjustQuantity(row.productName, "lossQty", 1)} />
+              <QuantityStepper label="시식량(개)" value={row.tastingQty} onChange={(value) => updateRow(row.productName, "tastingQty", value)} decrement={() => adjustQuantity(row.productName, "tastingQty", -1)} increment={() => adjustQuantity(row.productName, "tastingQty", 1)} />
+            </div>
+            <p className="mt-3 text-[13px] font-bold text-bread">판매량: {row.soldQtyUnmeasurable ? "측정 불가" : `${row.manualSold ? row.soldQty : calculatedSold(row)}개`}</p>
+          </article>
+        ))}
+      </div>
+      <div className="hidden max-h-[420px] overflow-x-auto overflow-y-auto rounded-[10px] border border-latte bg-white pr-1 md:block">
+        <div className="sticky top-0 z-10 grid min-w-[720px] grid-cols-[1.1fr_0.8fr_0.98fr_0.98fr_0.8fr_0.8fr] gap-[8px] border-b border-[#EFE8DC] bg-white px-[8px] py-[9px] text-[11px] font-semibold text-muted">
         <div>제품명</div>
         <div>생산량(개)</div>
         <div>손실량(개)</div>
@@ -1661,11 +1681,11 @@ function ProductsSection({
       {rows.map((row) => (
         <div
           key={row.productName}
-          className="grid grid-cols-[1.1fr_0.8fr_0.98fr_0.98fr_0.8fr_0.8fr] items-center gap-[8px] border-b border-[#F5F0E7] px-[8px] py-[8px] last:border-b-0"
+          className="grid min-w-[720px] grid-cols-[1.1fr_0.8fr_0.98fr_0.98fr_0.8fr_0.8fr] items-center gap-[8px] border-b border-[#F5F0E7] px-[8px] py-[8px] last:border-b-0"
         >
           <div className="text-[13px] font-semibold text-ink">{row.productName}</div>
           <input
-            className="h-[30px] min-w-0 w-full rounded-[7px] border border-latte px-[8px] text-[12.5px] outline-none"
+            className="min-h-11 min-w-0 w-full rounded-[7px] border border-latte px-[8px] text-[12.5px] outline-none focus:border-bread focus:ring-2 focus:ring-bread/15"
             inputMode="numeric"
             value={row.producedQty}
             onFocus={(event) => event.currentTarget.select()}
@@ -1673,21 +1693,21 @@ function ProductsSection({
           />
           <div className="flex items-center gap-[3px]">
             <button
-              className="flex h-[26px] w-[20px] shrink-0 items-center justify-center rounded-[6px] bg-cream text-[13px] font-bold text-cocoa"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[6px] bg-cream text-[13px] font-bold text-cocoa focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bread/30"
               type="button"
               onClick={() => adjustQuantity(row.productName, "lossQty", -1)}
             >
               −
             </button>
             <input
-              className="h-[30px] min-w-0 flex-1 rounded-[7px] border border-latte px-[2px] text-center text-[12.5px] outline-none"
+              className="min-h-11 min-w-0 flex-1 rounded-[7px] border border-latte px-[2px] text-center text-[12.5px] outline-none focus:border-bread focus:ring-2 focus:ring-bread/15"
               inputMode="numeric"
               value={row.lossQty}
               onFocus={(event) => event.currentTarget.select()}
               onChange={(event) => updateRow(row.productName, "lossQty", event.target.value)}
             />
             <button
-              className="flex h-[26px] w-[20px] shrink-0 items-center justify-center rounded-[6px] bg-cream text-[13px] font-bold text-cocoa"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[6px] bg-cream text-[13px] font-bold text-cocoa focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bread/30"
               type="button"
               onClick={() => adjustQuantity(row.productName, "lossQty", 1)}
             >
@@ -1696,21 +1716,21 @@ function ProductsSection({
           </div>
           <div className="flex items-center gap-[3px]">
             <button
-              className="flex h-[26px] w-[20px] shrink-0 items-center justify-center rounded-[6px] bg-cream text-[13px] font-bold text-cocoa"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[6px] bg-cream text-[13px] font-bold text-cocoa focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bread/30"
               type="button"
               onClick={() => adjustQuantity(row.productName, "tastingQty", -1)}
             >
               −
             </button>
             <input
-              className="h-[30px] min-w-0 flex-1 rounded-[7px] border border-latte px-[2px] text-center text-[12.5px] outline-none"
+              className="min-h-11 min-w-0 flex-1 rounded-[7px] border border-latte px-[2px] text-center text-[12.5px] outline-none focus:border-bread focus:ring-2 focus:ring-bread/15"
               inputMode="numeric"
               value={row.tastingQty}
               onFocus={(event) => event.currentTarget.select()}
               onChange={(event) => updateRow(row.productName, "tastingQty", event.target.value)}
             />
             <button
-              className="flex h-[26px] w-[20px] shrink-0 items-center justify-center rounded-[6px] bg-cream text-[13px] font-bold text-cocoa"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[6px] bg-cream text-[13px] font-bold text-cocoa focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bread/30"
               type="button"
               onClick={() => adjustQuantity(row.productName, "tastingQty", 1)}
             >
@@ -1718,7 +1738,7 @@ function ProductsSection({
             </button>
           </div>
           <input
-            className="h-[30px] min-w-0 w-full rounded-[7px] border border-latte px-[8px] text-[12.5px] outline-none"
+            className="min-h-11 min-w-0 w-full rounded-[7px] border border-latte px-[8px] text-[12.5px] outline-none focus:border-bread focus:ring-2 focus:ring-bread/15"
             inputMode="numeric"
             value={row.stockQty}
             onFocus={(event) => event.currentTarget.select()}
@@ -1822,6 +1842,19 @@ function ProductsSection({
         <span>자동 계산</span>
       </div>
     </div>
+  );
+}
+
+function QuantityStepper({ label, value, onChange, decrement, increment }: { label: string; value: string; onChange: (value: string) => void; decrement: () => void; increment: () => void }) {
+  return (
+    <label className="grid gap-1 text-[11px] font-semibold text-muted">
+      {label}
+      <span className="grid grid-cols-[2.75rem_minmax(0,1fr)_2.75rem] gap-1">
+        <button className="flex h-11 w-11 items-center justify-center rounded-[7px] bg-cream text-base font-bold text-cocoa focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bread/30" type="button" aria-label={`${label} 줄이기`} onClick={decrement}>−</button>
+        <input className="min-h-11 min-w-0 rounded-[7px] border border-latte px-2 text-center text-[13px] text-ink outline-none focus:border-bread focus:ring-2 focus:ring-bread/15" inputMode="numeric" value={value} onFocus={(event) => event.currentTarget.select()} onChange={(event) => onChange(event.target.value)} />
+        <button className="flex h-11 w-11 items-center justify-center rounded-[7px] bg-cream text-base font-bold text-cocoa focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bread/30" type="button" aria-label={`${label} 늘리기`} onClick={increment}>+</button>
+      </span>
+    </label>
   );
 }
 

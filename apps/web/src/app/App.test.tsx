@@ -246,7 +246,7 @@ describe("App", () => {
       "href",
       `/staff?tab=notice&goal=sales&year=${new Date().getFullYear()}`
     );
-    expect(screen.getByText("월별 목표 달성 흐름")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "월별 목표 달성 흐름" })).toBeInTheDocument();
     expect(screen.getByText("등록된 목표 합계")).toBeInTheDocument();
     expect(screen.getByText("700,000원")).toBeInTheDocument();
     expect(screen.getByText("전체 달성률")).toBeInTheDocument();
@@ -1577,16 +1577,16 @@ describe("App", () => {
     expect(screen.getAllByText("10건").length).toBeGreaterThan(0);
 
     fireEvent.click(screen.getByRole("tab", { name: "제품" }));
-    expect(screen.getByText("바게트")).toBeInTheDocument();
-    expect(screen.getByText("치킨샌드위치")).toBeInTheDocument();
+    expect(screen.getAllByText("바게트").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("치킨샌드위치").length).toBeGreaterThan(0);
     expect(
       screen
         .getByLabelText("치킨샌드위치 생산량")
         .compareDocumentPosition(screen.getByLabelText("바게트 생산량")) &
         Node.DOCUMENT_POSITION_FOLLOWING
     ).toBeTruthy();
-    expect(screen.getByText("생산량(개)")).toBeInTheDocument();
-    expect(screen.getByText("판매량(개)")).toBeInTheDocument();
+    expect(screen.getAllByText("생산량(개)").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("판매량(개)").length).toBeGreaterThan(0);
     expect(screen.getByText("기타(+)/(-)")).toBeInTheDocument();
     expect(screen.getByLabelText("바게트 기타 입고 +")).toBeInTheDocument();
     expect(screen.getByLabelText("바게트 기타 출고 -")).toBeInTheDocument();

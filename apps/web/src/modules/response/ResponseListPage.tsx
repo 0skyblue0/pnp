@@ -5,6 +5,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { apiDelete, apiGet, apiPatch, apiPost } from "../../shared/api/client.js";
 import type { ListEnvelope } from "../../shared/api/types.js";
 import { todayInStoreTime } from "../../shared/time/storeTime.js";
+import { PageHeader } from "../../shared/ui/PageHeader.js";
 import { Button } from "../../shared/ui/Button.js";
 import {
   criteriaByParent,
@@ -421,17 +422,11 @@ export function ResponseListPage() {
   };
 
   return (
-    <div className="mx-auto grid max-w-7xl gap-4">
-      <section className="panel min-w-0">
-        <div className="panel-heading">
-          <div>
-            <p className="text-sm text-muted">고객 반응</p>
-            <h2 className="section-title">상세 조회</h2>
-          </div>
-          <Link className="text-sm font-semibold text-blue hover:underline" to="/response/new">
+    <div className="app-page grid gap-4">
+      <section className="app-card min-w-0">
+        <PageHeader eyebrow="고객 반응" title="상세 조회" actions={<Link className="text-sm font-semibold text-blue hover:underline" to="/response/new">
             반응 입력
-          </Link>
-        </div>
+          </Link>} />
 
         {error ? (
           <div className="mb-4 rounded-control border border-red/20 bg-red/10 px-3 py-2 text-sm font-semibold text-red">

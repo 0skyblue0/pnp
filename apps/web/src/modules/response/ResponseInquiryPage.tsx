@@ -2,6 +2,7 @@ import { BarChart3, ListFilter } from "lucide-react";
 import { useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 
+import { PageHeader } from "../../shared/ui/PageHeader.js";
 import { StatisticsPage } from "../statistics/StatisticsPage.js";
 import { ResponseEntryPage } from "./ResponseEntryPage.js";
 import { ResponseListPage } from "./ResponseListPage.js";
@@ -73,11 +74,9 @@ export function ResponseInquiryPage() {
   };
 
   return (
-    <div className="grid gap-4">
-      <section className="mx-auto w-full max-w-none min-w-0">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <h2 className="section-title">손님 반응</h2>
-          <div
+    <div className="app-page grid gap-4">
+      <section className="app-card min-w-0">
+        <PageHeader title="손님 반응" description="손님 반응을 입력하고 기록을 분석합니다." actions={<div
             aria-label="손님 반응 화면 선택"
             className="flex flex-wrap gap-2 rounded-control border border-latte bg-white p-1"
             role="tablist"
@@ -92,7 +91,7 @@ export function ResponseInquiryPage() {
                 key={mode}
                 aria-selected={activeMode === mode}
                 className={[
-                  "inline-flex min-h-8 items-center rounded-[7px] px-4 text-[12.5px] font-semibold transition",
+                  "inline-flex min-h-11 items-center rounded-[7px] px-4 text-[12.5px] font-semibold transition motion-reduce:transition-none",
                   activeMode === mode ? "bg-bread text-white" : "text-cocoa hover:bg-cream"
                 ].join(" ")}
                 role="tab"
@@ -102,8 +101,7 @@ export function ResponseInquiryPage() {
                 {label}
               </button>
             ))}
-          </div>
-        </div>
+          </div>} />
 
         {activeMode === "lookup" ? (
           <div
@@ -121,7 +119,7 @@ export function ResponseInquiryPage() {
                   aria-controls={tabIds[option.value].panel}
                   aria-selected={isActive}
                   className={[
-                    "inline-flex min-h-11 items-center rounded-control border px-3 text-sm font-semibold",
+                    "inline-flex min-h-11 items-center rounded-control border px-3 text-sm font-semibold motion-reduce:transition-none",
                     isActive
                       ? "border-bread bg-bread text-white"
                       : "border-transparent bg-white text-cocoa hover:bg-cream"

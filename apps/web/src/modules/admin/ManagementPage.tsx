@@ -6,6 +6,7 @@ import type { ListEnvelope } from "../../shared/api/types.js";
 import { productLineup } from "../../shared/productLineup.js";
 import { Button } from "../../shared/ui/Button.js";
 import { useConfirm } from "../../shared/ui/ConfirmDialog.js";
+import { PageHeader } from "../../shared/ui/PageHeader.js";
 
 type ProductDto = {
   id: number;
@@ -1127,17 +1128,14 @@ export function ManagementPage() {
   const scheduleCells = calendarDates(scheduleMonth);
 
   return (
-    <div className="mx-auto grid max-w-7xl gap-4">
-      <section className="order-1 min-w-0">
-        <div className="mb-4 flex items-center justify-between gap-3">
-          <div>
-            <h2 className="section-title">관리</h2>
-            <h2 className="sr-only">홈 목표·매출 공지 관리</h2>
-          </div>
+    <div className="app-page grid gap-4">
+      <section className="app-card order-1 min-w-0">
+        <PageHeader title="관리" description="제품, 직원, 분류 기준과 홈 공지를 관리합니다." actions={<>
           <Button className="sr-only" icon={RefreshCcw} type="button" onClick={() => void loadManagementData()}>
             {isLoading ? "조회 중" : "새로고침"}
           </Button>
-        </div>
+        </>} />
+        <h2 className="sr-only">홈 목표·매출 공지 관리</h2>
 
         {message ? (
           <div className="mb-4 rounded-control border border-green/20 bg-green/10 px-3 py-2 text-sm font-semibold text-green">
@@ -1193,7 +1191,7 @@ export function ManagementPage() {
           </div>
         </div>
 
-        <div className="mt-4 flex gap-[6px]">
+        <div className="mt-4 flex flex-wrap gap-[6px] rounded-control border border-border bg-surface-muted p-1" role="tablist" aria-label="관리 항목">
           {adminTabs.map((tab) => {
             const isActive = activeAdminTab === tab.key;
             return (
@@ -1201,9 +1199,11 @@ export function ManagementPage() {
                 key={tab.key}
                 type="button"
                 className={[
-                  "rounded-[9px] px-4 py-2 text-[12.5px] font-semibold transition",
+                  "min-h-11 rounded-[9px] px-4 py-2 text-[12.5px] font-semibold transition motion-reduce:transition-none",
                   isActive ? "bg-bread text-white" : "bg-cream text-cocoa hover:bg-[#EFE6DA]"
                 ].join(" ")}
+                role="tab"
+                aria-selected={isActive}
                 onClick={() => setActiveAdminTab(tab.key)}
               >
                 {tab.label}

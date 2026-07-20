@@ -11,6 +11,7 @@ import {
 import { apiDelete, apiGet, apiPatch, apiPost } from "../../shared/api/client.js";
 import type { ListEnvelope } from "../../shared/api/types.js";
 import { useConfirm } from "../../shared/ui/ConfirmDialog.js";
+import { PageHeader } from "../../shared/ui/PageHeader.js";
 
 type PrepaidTransactionDto = {
   id: string;
@@ -530,11 +531,13 @@ export function PrepaidLedgerPage() {
   }
 
   return (
-    <div className="mx-auto grid max-w-7xl gap-4">
-      <section>
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <h2 className="section-title">선결제 장부</h2>
-          <div className="flex flex-wrap items-center gap-2">
+    <div className="app-page grid gap-4">
+      <section className="app-card">
+        <PageHeader
+          title="선결제 장부"
+          description="손님별 잔액과 거래 내역을 확인하고 충전·사용을 처리합니다."
+          actions={
+            <>
             <label className="sr-only" htmlFor="prepaid-search">
               손님 검색
             </label>
@@ -554,10 +557,11 @@ export function PrepaidLedgerPage() {
               <UserPlus className="h-4 w-4" aria-hidden="true" />
               신규 등록
             </button>
-          </div>
-        </div>
+            </>
+          }
+        />
 
-        <div className="rounded-[14px] border border-latte bg-white px-5 py-4">
+        <div className="mt-4 app-card-muted px-5 py-4">
           <div className="flex flex-wrap gap-8">
             <div>
               <p className="text-[11px] font-semibold text-muted">검색된 손님 수</p>
@@ -595,8 +599,10 @@ export function PrepaidLedgerPage() {
         />
       ) : null}
 
-      <section className="rounded-[14px] border border-latte bg-white px-5 py-3">
-        <div className="grid grid-cols-[1fr_1.25fr_0.9fr_1.6fr_1.7fr] gap-2 border-b border-[#EFE8DC] px-1 py-3 text-[11.5px] font-bold text-muted">
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.3fr)_minmax(340px,0.9fr)] xl:items-start">
+      <section className="app-card px-5 py-3" aria-labelledby="prepaid-history-title">
+        <h2 id="prepaid-history-title" className="mb-2 text-base font-bold text-foreground">거래 내역</h2>
+        <div className="grid gap-2 border-b border-border px-1 py-3 text-xs font-semibold text-subtle sm:grid-cols-[1fr_1.25fr_0.9fr_1.6fr_1.7fr]">
           <div>이름</div>
           <div>연락처</div>
           <div>잔액</div>
@@ -607,7 +613,7 @@ export function PrepaidLedgerPage() {
           {sortedCustomers.map((customer) => (
             <div
               key={customer.id}
-              className="grid grid-cols-[1fr_1.25fr_0.9fr_1.6fr_1.7fr] items-center gap-2 border-b border-[#F5F0E7] px-1 py-3 text-sm text-ink last:border-b-0"
+              className="app-data-row grid gap-2 sm:grid-cols-[1fr_1.25fr_0.9fr_1.6fr_1.7fr] sm:items-center"
             >
               <button
                 type="button"
@@ -626,28 +632,28 @@ export function PrepaidLedgerPage() {
               <div className="flex flex-wrap gap-2">
                 <button
                   type="button"
-                  className="rounded-[8px] bg-[#EAF1F7] px-3 py-1.5 text-xs font-bold text-[#3B6EA5]"
+                  className="min-h-11 rounded-control bg-[#EAF1F7] px-3 py-1.5 text-xs font-bold text-[#3B6EA5]"
                   onClick={() => openCustomer(customer, "CHARGE")}
                 >
                   충전
                 </button>
                 <button
                   type="button"
-                  className="rounded-[8px] bg-[#F4E3D8] px-3 py-1.5 text-xs font-bold text-[#8C4A32]"
+                  className="min-h-11 rounded-control bg-[#F4E3D8] px-3 py-1.5 text-xs font-bold text-[#8C4A32]"
                   onClick={() => openCustomer(customer, "USE")}
                 >
                   사용
                 </button>
                 <button
                   type="button"
-                  className="rounded-[8px] bg-[#F5F0E7] px-3 py-1.5 text-xs font-bold text-muted"
+                  className="min-h-11 rounded-control bg-[#F5F0E7] px-3 py-1.5 text-xs font-bold text-muted"
                   onClick={() => openCustomer(customer, "DETAIL")}
                 >
                   세부내역
                 </button>
                 <button
                   type="button"
-                  className="rounded-[8px] bg-red/10 px-3 py-1.5 text-xs font-bold text-red"
+                  className="min-h-11 rounded-control bg-red/10 px-3 py-1.5 text-xs font-bold text-red"
                   onClick={() => void deleteCustomer(customer)}
                 >
                   삭제
@@ -664,7 +670,8 @@ export function PrepaidLedgerPage() {
       </section>
 
       {selectedCustomer ? (
-        <SelectedCustomerDetail
+        <aside className="app-card xl:sticky xl:top-4" aria-label="선택한 손님 상세">
+          <SelectedCustomerDetail
           customer={selectedCustomer}
           mode={detailMode}
           chargeForm={
@@ -682,8 +689,13 @@ export function PrepaidLedgerPage() {
           useSharedBalance={useSharedBalance}
           saveMemo={saveMemo}
           deleteTransaction={deleteTransaction}
-        />
-      ) : null}
+          />
+        </aside>
+      ) : <aside className="app-card xl:sticky xl:top-4" aria-label="선택한 손님 상세">
+        <h2 className="text-base font-bold text-foreground">선택한 손님 상세</h2>
+        <p className="mt-2 text-sm leading-6 text-subtle">거래 내역에서 손님을 선택하면 잔액, 메모, 충전과 사용 기록을 확인할 수 있습니다.</p>
+      </aside>}
+      </div>
     </div>
   );
 }

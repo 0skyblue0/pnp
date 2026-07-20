@@ -7,6 +7,7 @@ import type { ListEnvelope } from "../../shared/api/types.js";
 import { productLineup } from "../../shared/productLineup.js";
 import { todayInStoreTime } from "../../shared/time/storeTime.js";
 import { useConfirm } from "../../shared/ui/ConfirmDialog.js";
+import { PageHeader } from "../../shared/ui/PageHeader.js";
 
 type ReservationDto = {
   id: string;
@@ -560,7 +561,7 @@ export function ReservationPage() {
   }
 
   return (
-    <div className="relative mx-auto grid max-w-none gap-4">
+    <div className="app-page relative grid gap-4">
       {showReservationForm ? (
         <div className="fixed inset-0 z-50 flex items-start justify-center bg-[rgba(43,38,34,0.4)] px-4 pt-[16px]">
           <section
@@ -841,12 +842,8 @@ export function ReservationPage() {
         </div>
       ) : null}
 
-      <section className="panel min-w-0">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h2 className="section-title">예약 · {date.replaceAll("-", ".")}</h2>
-          </div>
-          <div className="flex flex-wrap items-end gap-2">
+      <section className="app-card min-w-0">
+        <PageHeader title={`예약 · ${date.replaceAll("-", ".")}`} description="예약 목록을 확인하고 새 예약을 등록합니다." actions={<div className="flex flex-wrap items-end gap-2">
             <label className="grid min-w-40 max-w-full cursor-pointer gap-1">
               <span className="text-[11px] font-semibold text-muted">조회 날짜</span>
               <input
@@ -885,8 +882,7 @@ export function ReservationPage() {
                 + 새 예약 등록
               </button>
             ) : null}
-          </div>
-        </div>
+          </div>} />
         <p className="mb-3 text-xs font-semibold text-muted">
           {reservationQuery.trim() ? "다른 날짜까지 검색 중" : `${date.replaceAll("-", ".")} 픽업 체크리스트`} · 전체 {reservations.length}건 / 대기 {pendingCount}건 / 픽업완료 {completedCount}건
           {overdueCount > 0 ? <span className="ml-2 rounded-full bg-red/10 px-2 py-0.5 text-red">픽업 지연 {overdueCount}건</span> : null}
@@ -913,7 +909,7 @@ export function ReservationPage() {
               <article
                 key={reservation.id}
                 aria-label={`${customerName} 예약`}
-                className="dc-card grid gap-3 px-4 py-4 md:grid-cols-[9rem_minmax(0,1fr)] md:gap-4"
+                className="app-card grid gap-3 px-4 py-4 md:grid-cols-[9rem_minmax(0,1fr)] md:gap-4"
               >
                 <div className="flex flex-row items-start justify-between gap-3 border-b border-latte pb-3 md:block md:border-b-0 md:border-r md:pb-0 md:pr-4">
                   <div>

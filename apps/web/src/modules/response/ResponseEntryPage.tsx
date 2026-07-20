@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 
 import { apiGet, apiPost } from "../../shared/api/client.js";
+import { PageHeader } from "../../shared/ui/PageHeader.js";
 import type { ListEnvelope } from "../../shared/api/types.js";
 import { todayInStoreTime } from "../../shared/time/storeTime.js";
 import { Button } from "../../shared/ui/Button.js";
@@ -239,19 +240,15 @@ export function ResponseEntryPage({ embedded = false }: { embedded?: boolean } =
 
   return (
     <form
-      className={["mx-auto grid gap-4", embedded ? "w-full max-w-7xl" : "max-w-5xl"].join(" ")}
+      className={["grid gap-4", embedded ? "w-full" : "app-page max-w-5xl"].join(" ")}
       onSubmit={(event) => {
         void handleSubmit(submit)(event);
       }}
     >
-      <section className="dc-card-pad">
+      <section className="app-card">
         <div className="mb-4 flex items-start justify-between gap-3">
           <div>
-            <p className="dc-eyebrow">새 반응 입력</p>
-            <h2 className="sr-only">손님 반응 입력</h2>
-            <p className="mt-1 text-sm font-semibold text-muted">
-              손님 말과 직원 관찰을 실제 기록으로 남겨 대표 요약에 반영합니다.
-            </p>
+            {embedded ? <><p className="dc-eyebrow">새 반응 입력</p><h2 className="sr-only">손님 반응 입력</h2></> : <PageHeader title="손님 반응 입력" description="손님 말과 직원 관찰을 실제 기록으로 남겨 대표 요약에 반영합니다." />}
           </div>
         </div>
 

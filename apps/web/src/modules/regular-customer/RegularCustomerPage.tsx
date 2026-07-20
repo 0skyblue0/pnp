@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { apiGet, apiPost } from "../../shared/api/client.js";
+import { PageHeader } from "../../shared/ui/PageHeader.js";
 
 type RegularCustomerDto = {
   id: string;
@@ -67,18 +68,12 @@ export function RegularCustomerPage() {
   }
 
   return (
-    <div className="mx-auto grid max-w-7xl gap-4">
-      <section className="rounded-[14px] border border-latte bg-white p-5">
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <h2 className="section-title">단골손님 리스트</h2>
-            <p className="mt-1 text-sm text-muted">예약·선결제에서 자주 보이는 손님과 직원이 저장한 고정 메모를 모아 봅니다.</p>
-          </div>
-          <div className="flex gap-2">
+    <div className="app-page grid gap-4">
+      <section className="app-card">
+        <PageHeader title="단골손님 리스트" description="예약·선결제에서 자주 보이는 손님과 직원이 저장한 고정 메모를 모아 봅니다." actions={<div className="flex gap-2">
             <input className="input min-w-56" aria-label="단골손님 검색" placeholder="이름 또는 연락처" value={query} onChange={(event) => setQuery(event.target.value)} />
-            <button className="rounded-control bg-bread px-4 py-2 text-sm font-bold text-white" type="button" onClick={() => void load()}>검색</button>
-          </div>
-        </div>
+            <button className="min-h-11 rounded-control bg-bread px-4 py-2 text-sm font-bold text-white" type="button" onClick={() => void load()}>검색</button>
+          </div>} />
         {message ? <p className="mt-3 rounded-control bg-green/10 px-3 py-2 text-sm font-bold text-green">{message}</p> : null}
         {error ? <p className="mt-3 rounded-control bg-red/10 px-3 py-2 text-sm font-bold text-red">{error}</p> : null}
         <div className="mt-4 grid gap-3 md:grid-cols-3">
@@ -89,7 +84,7 @@ export function RegularCustomerPage() {
       </section>
 
       <div className="grid gap-4 lg:grid-cols-[1fr_1fr]">
-        <section className="rounded-[14px] border border-latte bg-white p-5">
+        <section className="app-card p-5">
           <h3 className="text-base font-extrabold text-ink">저장된 단골손님</h3>
           <div className="mt-3 grid gap-2">
             {items.map((item) => (
@@ -108,7 +103,7 @@ export function RegularCustomerPage() {
           </div>
         </section>
 
-        <section className="rounded-[14px] border border-latte bg-white p-5">
+        <section className="app-card p-5">
           <h3 className="text-base font-extrabold text-ink">확인할 단골 후보</h3>
           <p className="mt-1 text-xs text-muted">자동으로 저장하지 않고 직원이 확인한 손님만 단골 리스트에 넣습니다.</p>
           <div className="mt-3 grid gap-2">

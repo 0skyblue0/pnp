@@ -2048,7 +2048,7 @@ function NotesSection({
       <section className="min-w-0">
         <div className="dc-eyebrow mb-[12px]">메모</div>
         <div className="grid grid-cols-1 gap-[14px] md:grid-cols-2">
-          {memoFields.map((field, index) => (
+          {memoFields.slice(0, 3).map((field, index) => (
             <label
               key={field.key}
               className={["grid gap-[5px]", index === 0 ? "md:col-span-2" : ""]
@@ -2064,6 +2064,17 @@ function NotesSection({
               />
             </label>
           ))}
+          <details className="md:col-span-2 rounded-[8px] border border-latte bg-cream/30 px-3 py-2">
+            <summary className="cursor-pointer text-[11px] font-semibold text-muted">추가 메모 입력 열기</summary>
+            <div className="mt-3 grid gap-[14px] md:grid-cols-2">
+              {memoFields.slice(3).map((field) => (
+                <label key={field.key} className="grid gap-[5px]">
+                  <span className="text-[11px] text-muted">{field.label}</span>
+                  <textarea aria-label={field.label} className="h-[56px] resize-none rounded-[8px] border border-latte bg-white px-[10px] py-[9px] text-[12.5px] outline-none focus:border-bread" value={draft[field.key]} onChange={(event) => updateDraft(field.key, event.target.value)} />
+                </label>
+              ))}
+            </div>
+          </details>
         </div>
       </section>
 

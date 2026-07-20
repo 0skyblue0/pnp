@@ -867,7 +867,7 @@ export function ReservationPage() {
             </label>
             <button
               type="button"
-              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-[0.9rem] bg-white px-3 text-sm font-extrabold text-cocoa shadow-sm ring-1 ring-latte transition hover:-translate-y-0.5 hover:bg-cream hover:shadow-md active:translate-y-0"
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[0.9rem] bg-white px-3 text-sm font-extrabold text-cocoa shadow-sm ring-1 ring-latte transition hover:-translate-y-0.5 hover:bg-cream hover:shadow-md active:translate-y-0"
               onClick={() => void loadReservations()}
             >
               <RefreshCcw className="h-4 w-4" aria-hidden="true" />
@@ -876,7 +876,7 @@ export function ReservationPage() {
             {!showReservationForm ? (
               <button
                 type="button"
-                className="dc-action inline-flex min-h-0 items-center justify-center"
+                className="dc-action inline-flex min-h-11 items-center justify-center"
                 onClick={openNewReservationForm}
               >
                 + 새 예약 등록

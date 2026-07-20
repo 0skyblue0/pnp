@@ -569,7 +569,7 @@ export function ResponseListPage() {
               }
             />
           </label>
-          <label className="flex min-h-10 items-center gap-2 text-sm font-semibold text-cocoa lg:pb-1">
+          <label className="flex min-h-11 items-center gap-2 text-sm font-semibold text-cocoa lg:pb-1">
             <input
               type="checkbox"
               checked={filters.checkNeeded}
@@ -684,14 +684,14 @@ export function ResponseListPage() {
                   <div className="flex flex-wrap justify-end gap-2">
                     <button
                       type="button"
-                      className="inline-flex min-h-10 items-center justify-center rounded-control border border-bread bg-cream px-4 text-[13px] font-semibold text-cocoa transition hover:bg-[#F4E3D8]"
+                      className="inline-flex min-h-11 items-center justify-center rounded-control border border-bread bg-cream px-4 text-[13px] font-semibold text-cocoa transition hover:bg-[#F4E3D8]"
                       onClick={() => void suggestEditing(response.id)}
                     >
                       {suggestingResponseId === response.id ? "AI 분류 중" : "AI 분류하기"}
                     </button>
                     <button
                       type="button"
-                      className="inline-flex min-h-10 items-center justify-center rounded-control border border-latte bg-white px-4 text-[13px] font-semibold text-cocoa transition hover:bg-cream"
+                      className="inline-flex min-h-11 items-center justify-center rounded-control border border-latte bg-white px-4 text-[13px] font-semibold text-cocoa transition hover:bg-cream"
                       onClick={cancelEditing}
                     >
                       취소
@@ -701,7 +701,7 @@ export function ResponseListPage() {
                     </Button>
                     <button
                       type="button"
-                      className="inline-flex min-h-10 items-center justify-center rounded-control border border-red/20 bg-white px-4 text-[13px] font-semibold text-red transition hover:bg-red/10"
+                      className="inline-flex min-h-11 items-center justify-center rounded-control border border-red/20 bg-white px-4 text-[13px] font-semibold text-red transition hover:bg-red/10"
                       onClick={() => void deleteResponse(response)}
                     >
                       {savingResponseId === response.id ? "삭제 중" : "삭제"}
@@ -728,7 +728,7 @@ export function ResponseListPage() {
                   <div className="flex shrink-0 gap-2 lg:justify-end">
                     <button
                       type="button"
-                      className="inline-flex min-h-10 items-center justify-center rounded-control border border-latte bg-white px-4 text-[13px] font-semibold text-cocoa transition hover:bg-cream"
+                      className="inline-flex min-h-11 items-center justify-center rounded-control border border-latte bg-white px-4 text-[13px] font-semibold text-cocoa transition hover:bg-cream"
                       onClick={() => startEditing(response)}
                     >
                       수정
@@ -741,7 +741,7 @@ export function ResponseListPage() {
           {visibleCount < filteredResponses.length ? (
             <button
               type="button"
-              className="mx-auto inline-flex min-h-10 items-center justify-center rounded-control border border-latte bg-white px-5 text-[13px] font-semibold text-cocoa transition hover:bg-cream"
+              className="mx-auto inline-flex min-h-11 items-center justify-center rounded-control border border-latte bg-white px-5 text-[13px] font-semibold text-cocoa transition hover:bg-cream"
               onClick={() => setVisibleCount((current) => current + INITIAL_VISIBLE_RESPONSE_COUNT)}
             >
               더 보기 ({filteredResponses.length - visibleResponses.length}건 남음)

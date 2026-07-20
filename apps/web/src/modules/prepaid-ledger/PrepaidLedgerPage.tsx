@@ -544,13 +544,13 @@ export function PrepaidLedgerPage() {
             <input
               id="prepaid-search"
               aria-label="손님 검색"
-              className="input h-10 w-64"
+              className="input min-h-11 w-64"
               placeholder="손님 이름 또는 연락처 검색"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
             />
             <button
-              className="inline-flex min-h-10 items-center gap-2 rounded-control bg-bread px-4 text-sm font-bold text-white transition hover:bg-cocoa"
+              className="inline-flex min-h-11 items-center gap-2 rounded-control bg-bread px-4 text-sm font-bold text-white transition hover:bg-cocoa"
               type="button"
               onClick={() => setShowNewForm((current) => !current)}
             >
@@ -739,7 +739,7 @@ function NewPrepaidForm(props: {
             <button
               key={ledgerType}
               type="button"
-              className={`min-h-10 rounded-[10px] text-sm font-extrabold ${form.ledgerType === ledgerType ? "bg-white text-bread shadow-sm" : "text-muted"}`}
+              className={`min-h-11 rounded-[10px] text-sm font-extrabold ${form.ledgerType === ledgerType ? "bg-white text-bread shadow-sm" : "text-muted"}`}
               onClick={() => setForm((current) => ({ ...current, ledgerType }))}
             >
               {ledgerType === "GENERAL" ? "일반" : "공동"}
@@ -865,13 +865,13 @@ function NewPrepaidForm(props: {
         <div className="mt-4 flex justify-end gap-2">
           <button
             type="button"
-            className="inline-flex min-h-10 items-center justify-center rounded-control border border-latte bg-white px-5 text-sm font-bold text-cocoa transition hover:bg-cream"
+            className="inline-flex min-h-11 items-center justify-center rounded-control border border-latte bg-white px-5 text-sm font-bold text-cocoa transition hover:bg-cream"
             onClick={onClose}
           >
             취소
           </button>
           <button
-            className="inline-flex min-h-10 items-center justify-center gap-2 rounded-control bg-bread px-5 text-sm font-bold text-white transition hover:bg-cocoa"
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-control bg-bread px-5 text-sm font-bold text-white transition hover:bg-cocoa"
             type="button"
             onClick={() => void createLedger()}
           >
@@ -1038,7 +1038,7 @@ function SelectedCustomerDetail(props: {
                   />
                 </label>
                 <button
-                  className="inline-flex min-h-10 items-center justify-center gap-2 rounded-control bg-ink px-4 text-sm font-bold text-white transition hover:bg-cocoa"
+                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-control bg-ink px-4 text-sm font-bold text-white transition hover:bg-cocoa"
                   type="button"
                   onClick={() => void useSharedBalance(customer)}
                 >
@@ -1113,7 +1113,7 @@ function SelectedCustomerDetail(props: {
                 />
               </label>
               <button
-                className="inline-flex min-h-10 items-center justify-center gap-2 rounded-control bg-cocoa px-4 text-sm font-bold text-white transition hover:bg-bread md:col-span-2 lg:col-span-1"
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-control bg-cocoa px-4 text-sm font-bold text-white transition hover:bg-bread md:col-span-2 lg:col-span-1"
                 type="button"
                 onClick={() => void useBalance(customer)}
               >
@@ -1152,7 +1152,7 @@ function SelectedCustomerDetail(props: {
                 onChange={(event) => setChargeForm(customer.id, { note: event.target.value })}
               />
             </label>
-            <label className="inline-flex min-h-10 items-center gap-2 rounded-control border border-[#CADCEC] bg-white px-3 text-xs font-extrabold text-cocoa">
+            <label className="inline-flex min-h-11 items-center gap-2 rounded-control border border-[#CADCEC] bg-white px-3 text-xs font-extrabold text-cocoa">
               <input
                 aria-label={`${customer.customerName} 포인트 적립 완료`}
                 type="checkbox"
@@ -1165,7 +1165,7 @@ function SelectedCustomerDetail(props: {
               포인트 적립
             </label>
             <button
-              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-control bg-bread px-4 text-sm font-bold text-white transition hover:bg-cocoa"
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-control bg-bread px-4 text-sm font-bold text-white transition hover:bg-cocoa"
               type="button"
               onClick={() => void chargeBalance(customer)}
             >

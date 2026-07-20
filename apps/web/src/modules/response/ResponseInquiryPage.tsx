@@ -113,6 +113,7 @@ export function ResponseInquiryPage() {
                 id={`response-mode-tab-${mode}`}
                 aria-controls={`response-mode-panel-${mode}`}
                 aria-selected={activeMode === mode}
+                tabIndex={activeMode === mode ? 0 : -1}
                 className={[
                   "inline-flex min-h-11 items-center rounded-[7px] px-4 text-[12.5px] font-semibold transition motion-reduce:transition-none",
                   activeMode === mode ? "bg-bread text-white" : "text-cocoa hover:bg-cream"
@@ -142,6 +143,7 @@ export function ResponseInquiryPage() {
                   key={option.value}
                   aria-controls={tabIds[option.value].panel}
                   aria-selected={isActive}
+                  tabIndex={isActive ? 0 : -1}
                   className={[
                     "inline-flex min-h-11 items-center rounded-control border px-3 text-sm font-semibold motion-reduce:transition-none",
                     isActive

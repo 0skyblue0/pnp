@@ -197,7 +197,7 @@ function deleteMessage(entity: string, result: DeleteResult<unknown>) {
 
 function statusBadge(isActive: boolean) {
   return [
-    "inline-flex min-h-8 items-center rounded-control px-2 text-sm font-semibold",
+    "inline-flex min-h-11 items-center rounded-control px-2 text-sm font-semibold",
     isActive ? "bg-green/10 text-green" : "bg-stone-100 text-muted"
   ].join(" ");
 }
@@ -1215,6 +1215,7 @@ export function ManagementPage() {
                 ].join(" ")}
                 role="tab"
                 aria-selected={isActive}
+                tabIndex={isActive ? 0 : -1}
                 onClick={() => setActiveAdminTab(tab.key)}
                 onKeyDown={handleAdminTabKeyDown}
               >
@@ -1270,7 +1271,7 @@ export function ManagementPage() {
                       {editingProductId === null ? "제품 추가" : "제품 수정"}
                     </h4>
                     <button
-                      className="inline-flex min-h-9 items-center justify-center rounded-control border border-latte bg-white px-3 font-bold text-cocoa hover:bg-cream"
+                      className="inline-flex min-h-11 items-center justify-center rounded-control border border-latte bg-white px-3 font-bold text-cocoa hover:bg-cream"
                       type="button"
                       aria-label="제품 입력 닫기"
                       onClick={closeProductForm}
@@ -1657,7 +1658,7 @@ export function ManagementPage() {
                 </div>
                 <div className="flex items-center gap-2 rounded-[12px] border border-latte bg-cream/50 px-3 py-2">
                   <button
-                    className="flex h-9 w-9 items-center justify-center rounded-full border border-latte bg-white text-lg font-extrabold text-cocoa hover:bg-[#EFE6DA]"
+                    className="flex h-11 w-11 items-center justify-center rounded-full border border-latte bg-white text-lg font-extrabold text-cocoa hover:bg-[#EFE6DA]"
                     type="button"
                     aria-label="이전 달"
                     onClick={() => {
@@ -1670,7 +1671,7 @@ export function ManagementPage() {
                   </button>
                   <h4 className="min-w-[8.5rem] text-center text-lg font-extrabold text-ink">{scheduleMonthLabel(scheduleMonth)}</h4>
                   <button
-                    className="flex h-9 w-9 items-center justify-center rounded-full border border-latte bg-white text-lg font-extrabold text-cocoa hover:bg-[#EFE6DA]"
+                    className="flex h-11 w-11 items-center justify-center rounded-full border border-latte bg-white text-lg font-extrabold text-cocoa hover:bg-[#EFE6DA]"
                     type="button"
                     aria-label="다음 달"
                     onClick={() => {
@@ -1881,21 +1882,21 @@ export function ManagementPage() {
                       {criterion.isActive ? "활성" : "비활성"}
                     </span>
                     <button
-                      className="inline-flex min-h-8 items-center justify-center rounded-control border border-stone-300 bg-white px-2 font-semibold hover:bg-stone-100"
+                      className="inline-flex min-h-11 items-center justify-center rounded-control border border-stone-300 bg-white px-2 font-semibold hover:bg-stone-100"
                       type="button"
                       onClick={() => openCriterionEdit(criterion)}
                     >
                       <Pencil className="h-4 w-4" aria-hidden="true" />
                     </button>
                     <button
-                      className="inline-flex min-h-8 items-center justify-center rounded-control border border-stone-300 bg-white px-2 font-semibold hover:bg-stone-100"
+                      className="inline-flex min-h-11 items-center justify-center rounded-control border border-stone-300 bg-white px-2 font-semibold hover:bg-stone-100"
                       type="button"
                       onClick={() => void toggleCriterionStatus(criterion)}
                     >
                       {criterion.isActive ? "비활성" : "활성"}
                     </button>
                     <button
-                      className="inline-flex min-h-8 items-center justify-center rounded-control border border-red/30 bg-white px-2 font-semibold text-red hover:bg-red/10"
+                      className="inline-flex min-h-11 items-center justify-center rounded-control border border-red/30 bg-white px-2 font-semibold text-red hover:bg-red/10"
                       type="button"
                       onClick={() => void deleteCriterion(criterion)}
                     >
@@ -1919,7 +1920,7 @@ export function ManagementPage() {
                 <h3 className="text-base font-semibold">중분류</h3>
               </div>
               <Button
-                className="min-h-9 px-3 text-sm"
+                className="min-h-11 px-3 text-sm"
                 disabled={selectedMajorId === null}
                 icon={Plus}
                 type="button"
@@ -1952,21 +1953,21 @@ export function ManagementPage() {
                       {criterion.isActive ? "활성" : "비활성"}
                     </span>
                     <button
-                      className="inline-flex min-h-8 items-center justify-center rounded-control border border-stone-300 bg-white px-2 font-semibold hover:bg-stone-100"
+                      className="inline-flex min-h-11 items-center justify-center rounded-control border border-stone-300 bg-white px-2 font-semibold hover:bg-stone-100"
                       type="button"
                       onClick={() => openCriterionEdit(criterion)}
                     >
                       <Pencil className="h-4 w-4" aria-hidden="true" />
                     </button>
                     <button
-                      className="inline-flex min-h-8 items-center justify-center rounded-control border border-stone-300 bg-white px-2 font-semibold hover:bg-stone-100"
+                      className="inline-flex min-h-11 items-center justify-center rounded-control border border-stone-300 bg-white px-2 font-semibold hover:bg-stone-100"
                       type="button"
                       onClick={() => void toggleCriterionStatus(criterion)}
                     >
                       {criterion.isActive ? "비활성" : "활성"}
                     </button>
                     <button
-                      className="inline-flex min-h-8 items-center justify-center rounded-control border border-red/30 bg-white px-2 font-semibold text-red hover:bg-red/10"
+                      className="inline-flex min-h-11 items-center justify-center rounded-control border border-red/30 bg-white px-2 font-semibold text-red hover:bg-red/10"
                       type="button"
                       onClick={() => void deleteCriterion(criterion)}
                     >
@@ -1990,7 +1991,7 @@ export function ManagementPage() {
                 <h3 className="text-base font-semibold">소분류</h3>
               </div>
               <Button
-                className="min-h-9 px-3 text-sm"
+                className="min-h-11 px-3 text-sm"
                 disabled={selectedMiddleId === null}
                 icon={Plus}
                 type="button"
@@ -2020,21 +2021,21 @@ export function ManagementPage() {
                       {criterion.isActive ? "활성" : "비활성"}
                     </span>
                     <button
-                      className="inline-flex min-h-8 items-center justify-center rounded-control border border-stone-300 bg-white px-2 font-semibold hover:bg-stone-100"
+                      className="inline-flex min-h-11 items-center justify-center rounded-control border border-stone-300 bg-white px-2 font-semibold hover:bg-stone-100"
                       type="button"
                       onClick={() => openCriterionEdit(criterion)}
                     >
                       <Pencil className="h-4 w-4" aria-hidden="true" />
                     </button>
                     <button
-                      className="inline-flex min-h-8 items-center justify-center rounded-control border border-stone-300 bg-white px-2 font-semibold hover:bg-stone-100"
+                      className="inline-flex min-h-11 items-center justify-center rounded-control border border-stone-300 bg-white px-2 font-semibold hover:bg-stone-100"
                       type="button"
                       onClick={() => void toggleCriterionStatus(criterion)}
                     >
                       {criterion.isActive ? "비활성" : "활성"}
                     </button>
                     <button
-                      className="inline-flex min-h-8 items-center justify-center rounded-control border border-red/30 bg-white px-2 font-semibold text-red hover:bg-red/10"
+                      className="inline-flex min-h-11 items-center justify-center rounded-control border border-red/30 bg-white px-2 font-semibold text-red hover:bg-red/10"
                       type="button"
                       onClick={() => void deleteCriterion(criterion)}
                     >
@@ -2061,7 +2062,7 @@ export function ManagementPage() {
                   : `${criterionLevelLabel(criterionFormDepth)} 수정 #${editingCriterionId}`}
               </h3>
               <button
-                className="inline-flex min-h-9 items-center justify-center rounded-control border border-stone-300 bg-white px-3 font-semibold hover:bg-stone-100"
+                className="inline-flex min-h-11 items-center justify-center rounded-control border border-stone-300 bg-white px-3 font-semibold hover:bg-stone-100"
                 type="button"
                 onClick={closeCriterionForm}
               >
@@ -2169,7 +2170,7 @@ export function ManagementPage() {
                   <td className="py-3 pl-4">
                     <div className="flex gap-2">
                       <button
-                        className="inline-flex min-h-9 items-center justify-center gap-1 rounded-control border border-stone-300 bg-white px-3 font-semibold hover:bg-stone-100"
+                        className="inline-flex min-h-11 items-center justify-center gap-1 rounded-control border border-stone-300 bg-white px-3 font-semibold hover:bg-stone-100"
                         type="button"
                         onClick={() => openProductEdit(product)}
                       >
@@ -2177,7 +2178,7 @@ export function ManagementPage() {
                         수정
                       </button>
                       <button
-                        className="inline-flex min-h-9 items-center justify-center gap-1 rounded-control border border-red/30 bg-white px-3 font-semibold text-red hover:bg-red/10"
+                        className="inline-flex min-h-11 items-center justify-center gap-1 rounded-control border border-red/30 bg-white px-3 font-semibold text-red hover:bg-red/10"
                         type="button"
                         onClick={() => void deleteProduct(product)}
                       >
@@ -2204,7 +2205,7 @@ export function ManagementPage() {
                 {editingProductId === null ? "제품 추가" : `제품 수정 #${editingProductId}`}
               </h3>
               <button
-                className="inline-flex min-h-9 items-center justify-center rounded-control border border-stone-300 bg-white px-3 font-semibold hover:bg-stone-100"
+                className="inline-flex min-h-11 items-center justify-center rounded-control border border-stone-300 bg-white px-3 font-semibold hover:bg-stone-100"
                 type="button"
                 onClick={closeProductForm}
               >
@@ -2345,7 +2346,7 @@ export function ManagementPage() {
                   <td className="py-3 pl-4">
                     <div className="flex gap-2">
                       <button
-                        className="inline-flex min-h-9 items-center justify-center gap-1 rounded-control border border-stone-300 bg-white px-3 font-semibold hover:bg-stone-100"
+                        className="inline-flex min-h-11 items-center justify-center gap-1 rounded-control border border-stone-300 bg-white px-3 font-semibold hover:bg-stone-100"
                         type="button"
                         onClick={() => openStaffEdit(person)}
                       >
@@ -2353,7 +2354,7 @@ export function ManagementPage() {
                         수정
                       </button>
                       <button
-                        className="inline-flex min-h-9 items-center justify-center gap-1 rounded-control border border-red/30 bg-white px-3 font-semibold text-red hover:bg-red/10"
+                        className="inline-flex min-h-11 items-center justify-center gap-1 rounded-control border border-red/30 bg-white px-3 font-semibold text-red hover:bg-red/10"
                         type="button"
                         onClick={() => void deleteStaff(person)}
                       >
@@ -2380,7 +2381,7 @@ export function ManagementPage() {
                 {editingStaffId === null ? "직원 추가" : `직원 수정 #${editingStaffId}`}
               </h3>
               <button
-                className="inline-flex min-h-9 items-center justify-center rounded-control border border-stone-300 bg-white px-3 font-semibold hover:bg-stone-100"
+                className="inline-flex min-h-11 items-center justify-center rounded-control border border-stone-300 bg-white px-3 font-semibold hover:bg-stone-100"
                 type="button"
                 onClick={closeStaffForm}
               >

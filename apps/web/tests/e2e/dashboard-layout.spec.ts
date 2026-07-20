@@ -26,6 +26,16 @@ test("dashboard routes fit every target viewport", async ({ page }) => {
       await expect(page.getByRole("main")).toBeVisible();
 
       await expectNoPageOverflow(page);
+      if (route === "/daily-log/today" && viewport.width === 375) {
+        await expect
+          .poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth))
+          .toBe(true);
+        await expect
+          .poll(() =>
+            page.getByRole("main").evaluate((main) => main.scrollWidth <= main.clientWidth)
+          )
+          .toBe(true);
+      }
     }
   }
 });

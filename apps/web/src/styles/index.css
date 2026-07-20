@@ -15,6 +15,7 @@
   --ref-line-subtle: #f3ede2;
   --ref-line-warm: #efe8dc;
   --ref-line-faint: #f5f0e7;
+  --ref-divider: #f1eae0;
   --ref-table-head: #faf7f1;
   --ref-gold-soft: #efe7d7;
   --ref-gold-wash: #fdf8ec;
@@ -305,7 +306,7 @@ body {
   }
 
   .dc-card-pad {
-    @apply rounded-panel border border-latte bg-white px-5 py-4 shadow-none;
+    @apply min-w-0 rounded-panel border border-latte bg-white px-5 py-4 shadow-none;
   }
 
   .dc-eyebrow {

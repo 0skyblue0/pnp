@@ -20,6 +20,7 @@ export default {
         "ref-line-subtle": "var(--ref-line-subtle)",
         "ref-line-warm": "var(--ref-line-warm)",
         "ref-line-faint": "var(--ref-line-faint)",
+        "ref-divider": "var(--ref-divider)",
         "ref-table-head": "var(--ref-table-head)",
         "ref-gold-soft": "var(--ref-gold-soft)",
         "ref-gold-wash": "var(--ref-gold-wash)",

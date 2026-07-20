@@ -470,7 +470,7 @@ export function HomePage() {
           <p className="mb-3 text-[11.5px] font-semibold uppercase tracking-[0.03em] text-muted">
             연간 스케줄
           </p>
-          <div className="divide-y divide-[#F1EAE0]">
+          <div className="divide-y divide-ref-divider">
             {upcomingScheduleItems.slice(0, 4).map((item) => (
               <div
                 key={scheduleItemKey(item)}
@@ -495,7 +495,7 @@ export function HomePage() {
           <p className="mb-3 text-[11.5px] font-semibold uppercase tracking-[0.03em] text-muted">
             알림 ({notifications.length}건)
           </p>
-          <div className="divide-y divide-[#F1EAE0]">
+          <div className="divide-y divide-ref-divider">
             {notifications.slice(0, 3).map((notification) => (
               <Link
                 key={notification.id}

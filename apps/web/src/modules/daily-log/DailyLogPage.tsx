@@ -795,7 +795,7 @@ export function DailyLogPage() {
         ) : null}
       </section>
 
-      <section className={viewMode === "entry" ? "grid gap-[14px]" : "grid gap-[14px]"}>
+      <section className={viewMode === "entry" ? "grid min-w-0 gap-[14px]" : "grid min-w-0 gap-[14px]"}>
         {viewMode === "entry" ? (
           <>
             <div className="sr-only" role="tablist" aria-label="일일 운영 입력 분류">
@@ -938,7 +938,7 @@ export function DailyLookupSection({
     lookupMode === "week" ? "전주 대비" : lookupMode === "month" ? "전월 대비" : "이전 기간 대비";
 
   return (
-    <div className="grid gap-[14px]">
+    <div className="grid min-w-0 gap-[14px]">
       {!preview ? <div className="dc-card-pad min-w-0">
         <div className="mb-3 flex items-center justify-between gap-3">
           <div>
@@ -2040,7 +2040,7 @@ function NotesSection({
 
   return (
     <div className="grid gap-[14px]">
-      <section>
+      <section className="min-w-0">
         <div className="dc-eyebrow mb-[12px]">메모</div>
         <div className="grid grid-cols-1 gap-[14px] md:grid-cols-2">
           {memoFields.map((field, index) => (
@@ -2062,7 +2062,7 @@ function NotesSection({
         </div>
       </section>
 
-      <section className="rounded-[12px] border border-latte bg-cream/30 px-4 py-3">
+      <section className="min-w-0 rounded-[12px] border border-latte bg-cream/30 px-4 py-3">
         <div className="dc-eyebrow mb-[12px]">직원 특이사항</div>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[760px] text-left text-[12px]">
@@ -2106,7 +2106,7 @@ function NotesSection({
         </div>
       </section>
 
-      <section className="rounded-[12px] border border-latte bg-cream/30 px-4 py-3">
+      <section className="min-w-0 rounded-[12px] border border-latte bg-cream/30 px-4 py-3">
         <div className="dc-eyebrow mb-[12px]">시설 점검사항</div>
         <div className="grid gap-3 md:grid-cols-2">
           <WorkerTimeInput

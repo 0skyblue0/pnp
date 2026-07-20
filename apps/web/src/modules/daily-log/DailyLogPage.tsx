@@ -2067,8 +2067,9 @@ function NotesSection({
         </div>
       </section>
 
-      <section className="min-w-0 rounded-[12px] border border-latte bg-cream/30 px-4 py-3">
-        <div className="dc-eyebrow mb-[12px]">직원 특이사항</div>
+      <details className="min-w-0 rounded-[12px] border border-latte bg-cream/30 px-4 py-3">
+        <summary className="cursor-pointer text-[11.5px] font-semibold uppercase tracking-[0.03em] text-muted">직원 특이사항 입력 열기</summary>
+        <div className="mt-3">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[760px] text-left text-[12px]">
             <thead>
@@ -2109,10 +2110,12 @@ function NotesSection({
             </tbody>
           </table>
         </div>
-      </section>
+        </div>
+      </details>
 
-      <section className="min-w-0 rounded-[12px] border border-latte bg-cream/30 px-4 py-3">
-        <div className="dc-eyebrow mb-[12px]">시설 점검사항</div>
+      <details className="min-w-0 rounded-[12px] border border-latte bg-cream/30 px-4 py-3">
+        <summary className="cursor-pointer text-[11.5px] font-semibold uppercase tracking-[0.03em] text-muted">시설 점검사항 입력 열기</summary>
+        <div className="mt-3">
         <div className="grid gap-3 md:grid-cols-2">
           <WorkerTimeInput
             label="첫출근자"
@@ -2159,7 +2162,8 @@ function NotesSection({
             />
           </div>
         </div>
-      </section>
+        </div>
+      </details>
     </div>
   );
 }

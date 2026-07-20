@@ -6,11 +6,14 @@ import { parseDateOnly } from "../../../common/datetime.js";
 import { HttpError, sendOk } from "../../../common/http.js";
 import { parseDailyOperationWorkbookFromBuffer, type ParsedDailyOperationRecord } from "./daily-operation-excel-parser.js";
 
+const importedDailyServiceResponsePrefix = "[일일업무보고서 서비스내역 및 손님 특이사항]";
+
 const importBodySchema = z.object({
   fileName: z.string().trim().min(1),
   fileBase64: z.string().min(1),
   apply: z.boolean().optional(),
-  responseCandidateIndexes: z.array(z.number().int().min(0)).optional()
+  responseCandidateIndexes: z.array(z.number().int().min(0)).optional(),
+  acknowledgedDates: z.array(z.string().regex(/^\d{4}-\d{2}-\d{2}$/)).optional()
 });
 
 function toInputJson(value: unknown): Prisma.InputJsonValue {
@@ -48,6 +51,10 @@ function previewRecord(record: ParsedDailyOperationRecord, existing: boolean) {
     channelRowCount: record.channelRows.length,
     totalSales: posSales + channelSales,
     customerResponseCandidateCount: record.customerResponseRows.length,
+    draft: record.draft,
+    productRows: record.productRows,
+    channelRows: record.channelRows,
+    staffSpecialRows: record.staffSpecialRows,
     checks: record.checks
   };
 }
@@ -95,43 +102,61 @@ export async function registerDailyOperationImportRoutes(app: FastifyInstance): 
     const now = new Date();
     const responseCandidates = candidateRows(parsed.records);
     const selected = new Set(input.responseCandidateIndexes ?? responseCandidates.map((_, index) => index));
-    const criterion = await defaultCriterionId(app);
-
-    for (const record of parsed.records) {
-      await app.prisma.dailyOperationRecord.upsert({
-        where: { date: parseDateOnly(record.date) },
-        create: {
-          date: parseDateOnly(record.date),
-          draft: toInputJson(record.draft),
-          productRows: toInputJson(record.productRows),
-          channelRows: toInputJson(record.channelRows),
-          staffSpecialRows: toInputJson(record.staffSpecialRows),
-          updatedAt: now
-        },
-        update: {
-          draft: toInputJson(record.draft),
-          productRows: toInputJson(record.productRows),
-          channelRows: toInputJson(record.channelRows),
-          staffSpecialRows: toInputJson(record.staffSpecialRows),
-          updatedAt: now
-        }
-      });
+    const acknowledgedDates = new Set(input.acknowledgedDates ?? []);
+    const unacknowledgedRecords = parsed.records.filter(
+      (record) => record.checks.mismatches.length > 0 && !acknowledgedDates.has(record.date)
+    );
+    if (unacknowledgedRecords.length > 0) {
+      throw new HttpError(
+        409,
+        "IMPORT_VALIDATION_ACK_REQUIRED",
+        "검증 경고가 있는 날짜를 확인한 뒤 저장해 주세요.",
+        unacknowledgedRecords.map((record) => ({ date: record.date, mismatches: record.checks.mismatches }))
+      );
     }
+    const criterion = await defaultCriterionId(app);
+    const selectedCandidates = responseCandidates.filter((_, index) => selected.has(index));
 
     let responseSavedCount = 0;
-    for (const [index, candidate] of responseCandidates.entries()) {
-      if (!selected.has(index)) continue;
-      await app.prisma.customerResponse.create({
-        data: {
-          date: parseDateOnly(candidate.date),
-          shortSummary: candidate.shortSummary,
-          fullText: candidate.fullText,
-          llmAssisted: false,
-          ...criterion
+    await app.prisma.$transaction(async (transaction) => {
+      for (const record of parsed.records) {
+        const date = parseDateOnly(record.date);
+        await transaction.dailyOperationRecord.upsert({
+          where: { date },
+          create: {
+            date,
+            draft: toInputJson(record.draft),
+            productRows: toInputJson(record.productRows),
+            channelRows: toInputJson(record.channelRows),
+            staffSpecialRows: toInputJson(record.staffSpecialRows),
+            updatedAt: now
+          },
+          update: {
+            draft: toInputJson(record.draft),
+            productRows: toInputJson(record.productRows),
+            channelRows: toInputJson(record.channelRows),
+            staffSpecialRows: toInputJson(record.staffSpecialRows),
+            updatedAt: now
+          }
+        });
+        await transaction.customerResponse.deleteMany({
+          where: { date, fullText: { startsWith: importedDailyServiceResponsePrefix } }
+        });
+        const rows = selectedCandidates.filter((candidate) => candidate.date === record.date);
+        if (rows.length > 0) {
+          await transaction.customerResponse.createMany({
+            data: rows.map((candidate) => ({
+              date,
+              shortSummary: candidate.shortSummary,
+              fullText: candidate.fullText,
+              llmAssisted: false,
+              ...criterion
+            }))
+          });
+          responseSavedCount += rows.length;
         }
-      });
-      responseSavedCount += 1;
-    }
+      }
+    });
 
     return sendOk(reply, {
       dailyOperationSavedCount: parsed.records.length,

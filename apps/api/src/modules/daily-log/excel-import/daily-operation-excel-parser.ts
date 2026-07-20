@@ -9,6 +9,7 @@ export type ProductRow = {
   otherOutQty: string;
   stockQty: string;
   soldQty: string;
+  soldQtyUnmeasurable?: boolean;
   manualSold: boolean;
 };
 
@@ -78,6 +79,12 @@ export type ImportWarning = {
   message: string;
 };
 
+export type ImportCheckMismatch = {
+  field: string;
+  expected: number;
+  actual: number;
+};
+
 export type ParsedDailyOperationRecord = {
   date: string;
   draft: DailyOperationDraft;
@@ -89,6 +96,7 @@ export type ParsedDailyOperationRecord = {
     salesMatched: boolean;
     productTotalsMatched: boolean;
     rawSectionsPreserved: boolean;
+    mismatches: ImportCheckMismatch[];
   };
 };
 
@@ -168,9 +176,6 @@ function parseDailyOperationWorkbookData(
     if (!record.checks.salesMatched) {
       warnings.push({ sheetName, code: "SALES_TOTAL_MISMATCH", message: "매출 합계가 일치하지 않습니다." });
     }
-    if (!record.checks.productTotalsMatched) {
-      warnings.push({ sheetName, code: "PRODUCT_TOTAL_MISMATCH", message: "제품 합계가 일치하지 않습니다." });
-    }
     if (!record.checks.rawSectionsPreserved) {
       warnings.push({ sheetName, code: "RAW_SECTIONS_MISSING", message: "원문 섹션 보존이 누락되었습니다." });
     }
@@ -190,10 +195,9 @@ function parseDailySheet(input: {
   const channelRows = parseChannels(sheet);
   const productRows = parseProductRows(sheet);
   const rawSections = buildRawSections(sheet, { fileName, sheetName, importedAt });
-  const staffSpecialRows = createStaffSpecialRows();
+  const staffSpecialRows = parseStaffSpecialRows(sheet);
   const facilityChecks = parseFacilityChecks(sheet);
-  staffSpecialRows.today.dayOff = lineAt(sheet, 76);
-  staffSpecialRows.tomorrow.dayOff = lineAt(sheet, 77);
+  const storeManagement = parseStoreManagement(sheet);
 
   const productText = rawSections.sections.productOpinionAndLoss.text;
   const customerResponseRows = buildCustomerResponseRows({
@@ -216,8 +220,8 @@ function parseDailySheet(input: {
     nonPosSalesAmount: numberText(sumChannels(channelRows, "amount")),
     nonPosSalesCount: numberText(sumChannels(channelRows, "count")),
     productOpinionAndLoss: productText,
-    facilityIssue: "",
-    cleaningWork: rawSections.sections.storeManagement.text,
+    facilityIssue: storeManagement.facilityIssue,
+    cleaningWork: storeManagement.cleaningWork,
     instructions: rawSections.sections.instructions.text,
     tomorrowPrep: rawSections.sections.tomorrowPrep.text,
     firstWorker: facilityChecks.firstWorker,
@@ -229,10 +233,7 @@ function parseDailySheet(input: {
     rawSections
   };
 
-  const salesMatched = totalsMatch(
-    cellNumber(sheet, "C11") + sumChannels(channelRows, "amount"),
-    cellNumber(sheet, "G11")
-  ) && totalsMatch(cellNumber(sheet, "D11") + sumChannels(channelRows, "count"), cellNumber(sheet, "H11"));
+  const salesMismatches = salesTotalMismatches(sheet, channelRows);
 
   return {
     date,
@@ -242,9 +243,10 @@ function parseDailySheet(input: {
     staffSpecialRows,
     customerResponseRows,
     checks: {
-      salesMatched,
-      productTotalsMatched: productTotalsMatch(sheet, productRows),
-      rawSectionsPreserved: rawSectionsPreserved(rawSections)
+      salesMatched: salesMismatches.length === 0,
+      productTotalsMatched: true,
+      rawSectionsPreserved: rawSectionsPreserved(rawSections),
+      mismatches: salesMismatches
     }
   };
 }
@@ -275,7 +277,24 @@ function splitCustomerResponseNotes(serviceText: string): string[] {
   return serviceText
     .split(/\s*(?:\/|\n)+\s*/u)
     .map((note) => note.trim())
-    .filter((note) => note.length > 0);
+    .filter((note) => note.length > 0)
+    .filter((note) => !isProductQuantityMemo(note));
+}
+
+function isProductQuantityMemo(note: string): boolean {
+  if (!/\d+\s*개/u.test(note) || !/(?:시식|판매|재고|생산량)\s*:|\([HhFf]\)\s*\d+\s*개/u.test(note)) {
+    return false;
+  }
+
+  const withoutProductName = note.replace(
+    /^[가-힣A-Za-z\s]+?(?=\s*(?:(?:시식|판매|재고|생산량)\s*:|\([HhFf]\)\s*\d+\s*개))/u,
+    ""
+  );
+  const remaining = withoutProductName
+    .replace(/(?:시식|판매|재고|생산량)?\s*:?\s*(?:\([HhFf]\)|[HhFf])?\s*\d+\s*개/gu, "")
+    .replace(/[(),\s]/gu, "");
+
+  return remaining.length === 0;
 }
 
 function normalizeServiceNoteLine(line: string): string {
@@ -328,15 +347,23 @@ function parseProductRows(sheet: XLSX.WorkSheet): ProductRow[] {
 
     const productName = normalizeProductName(rawName);
     const other = cellNumber(sheet, `F${row}`);
+    const producedQty = cellNumber(sheet, `C${row}`);
+    const stockQty = cellNumber(sheet, `H${row}`);
+    const soldQty = cellNumber(sheet, `I${row}`);
+    const soldQtyUnmeasurable =
+      !manualSoldProducts.has(productName) &&
+      cellText(sheet, `C${row}`).trim().length === 0 &&
+      soldQty < 0;
     rows.push({
       productName,
-      producedQty: numberText(cellNumber(sheet, `C${row}`)),
+      producedQty: numberText(producedQty),
       lossQty: numberText(cellNumber(sheet, `D${row}`)),
       tastingQty: numberText(cellNumber(sheet, `E${row}`)),
       otherInQty: numberText(other > 0 ? other : 0),
       otherOutQty: numberText(other < 0 ? Math.abs(other) : 0),
-      stockQty: numberText(cellNumber(sheet, `H${row}`)),
-      soldQty: numberText(cellNumber(sheet, `I${row}`)),
+      stockQty: numberText(stockQty),
+      soldQty: numberText(soldQty),
+      ...(soldQtyUnmeasurable ? { soldQtyUnmeasurable: true } : {}),
       manualSold: manualSoldProducts.has(productName)
     });
   }
@@ -507,26 +534,17 @@ function sumChannels(rows: ChannelRow[], key: keyof Pick<ChannelRow, "amount" | 
   return rows.reduce((total, row) => total + Number(row[key].replaceAll(",", "")), 0);
 }
 
-function productTotalsMatch(sheet: XLSX.WorkSheet, rows: ProductRow[]): boolean {
-  const totals = rows.reduce(
-    (sum, row) => ({
-      produced: sum.produced + Number(row.producedQty),
-      loss: sum.loss + Number(row.lossQty),
-      tasting: sum.tasting + Number(row.tastingQty),
-      other: sum.other + Number(row.otherInQty) - Number(row.otherOutQty),
-      stock: sum.stock + Number(row.stockQty),
-      sold: sum.sold + Number(row.soldQty)
-    }),
-    { produced: 0, loss: 0, tasting: 0, other: 0, stock: 0, sold: 0 }
-  );
+function salesTotalMismatches(sheet: XLSX.WorkSheet, channels: ChannelRow[]): ImportCheckMismatch[] {
+  const amount = cellNumber(sheet, "C11") + sumChannels(channels, "amount");
+  const count = cellNumber(sheet, "D11") + sumChannels(channels, "count");
+  return [
+    ...mismatch("salesAmount", cellNumber(sheet, "G11"), amount),
+    ...mismatch("salesCount", cellNumber(sheet, "H11"), count)
+  ];
+}
 
-  return (
-    totalsMatch(totals.produced, cellNumber(sheet, "C51")) &&
-    totalsMatch(totals.loss, cellNumber(sheet, "D51")) &&
-    totalsMatch(totals.tasting, cellNumber(sheet, "E51")) &&
-    totalsMatch(totals.other, cellNumber(sheet, "F51")) &&
-    totalsMatch(totals.stock, cellNumber(sheet, "H51"))
-  );
+function mismatch(field: string, expected: number, actual: number): ImportCheckMismatch[] {
+  return totalsMatch(expected, actual) ? [] : [{ field, expected, actual }];
 }
 
 function rawSectionsPreserved(rawSections: DailyOperationRawSections): boolean {
@@ -552,6 +570,46 @@ function createStaffSpecialRows(): StaffSpecialRows {
     etc: ""
   };
   return { today: { ...empty }, tomorrow: { ...empty } };
+}
+
+function parseStaffSpecialRows(sheet: XLSX.WorkSheet): StaffSpecialRows {
+  const rows = createStaffSpecialRows();
+  const categoryByHeader = new Map<string, StaffCategory>([
+    ["휴무", "dayOff"],
+    ["휴가", "vacation"],
+    ["지각/조퇴", "lateEarly"],
+    ["지원", "support"],
+    ["생일", "birthday"],
+    ["신입", "newStaff"],
+    ["기타사항", "etc"]
+  ]);
+  const columns = ["C", "D", "E", "F", "G", "H", "I"];
+  const headerRow = findLabelRow(sheet, "9. 직원 특이사항") ?? 75;
+  const periods: Array<[StaffPeriod, number]> = [["today", headerRow + 1], ["tomorrow", headerRow + 2]];
+
+  for (const [period, row] of periods) {
+    for (const column of columns) {
+      const header = cellText(sheet, `${column}${headerRow}`).replace(/\s+/g, "");
+      const category = categoryByHeader.get(header);
+      if (category) {
+        rows[period][category] = cellDisplayText(sheet, `${column}${row}`);
+      }
+    }
+  }
+
+  if (!Array.from(columns).some((column) => cellText(sheet, `${column}${headerRow}`).trim())) {
+    rows.today.dayOff = lineAt(sheet, headerRow + 1);
+    rows.tomorrow.dayOff = lineAt(sheet, headerRow + 2);
+  }
+  return rows;
+}
+
+function parseStoreManagement(sheet: XLSX.WorkSheet): Pick<DailyOperationDraft, "facilityIssue" | "cleaningWork"> {
+  const headerRow = findLabelRow(sheet, "6. 매장 관리") ?? 65;
+  return {
+    facilityIssue: joinLines([lineAt(sheet, headerRow), lineAt(sheet, headerRow + 1)]),
+    cleaningWork: joinLines([lineAt(sheet, headerRow + 2), lineAt(sheet, headerRow + 3), lineAt(sheet, headerRow + 4)])
+  };
 }
 
 function excelTimeToText(value: number): string {

@@ -15,7 +15,15 @@ function setCell(rows: unknown[][], row: number, column: number, value: unknown)
   targetRow[column] = value;
 }
 
-function buildWorkbook(path: string) {
+function buildWorkbook(
+  path: string,
+  options: {
+    reportedSoldTotal?: number;
+    missingProductionWithStock?: boolean;
+    missingProductionWithZeroSales?: boolean;
+    serviceText?: string;
+  } = {}
+) {
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([["사용법"]]), "사용법");
 
@@ -47,8 +55,13 @@ function buildWorkbook(path: string) {
   setCell(rows, 13, 2, 5);
   setCell(rows, 13, 8, 5);
   setCell(rows, 14, 1, "호라산 통밀");
-  setCell(rows, 14, 2, 4);
-  setCell(rows, 14, 8, 4);
+  if (options.missingProductionWithStock || options.missingProductionWithZeroSales) {
+    setCell(rows, 14, 7, 4);
+    if (options.missingProductionWithStock) setCell(rows, 14, 8, -4);
+  } else {
+    setCell(rows, 14, 2, 4);
+    setCell(rows, 14, 8, 4);
+  }
 
   setCell(rows, 50, 1, "합 계");
   setCell(rows, 50, 2, 27);
@@ -56,7 +69,7 @@ function buildWorkbook(path: string) {
   setCell(rows, 50, 4, 1);
   setCell(rows, 50, 5, -1);
   setCell(rows, 50, 7, 2);
-  setCell(rows, 50, 8, 21);
+  setCell(rows, 50, 8, options.reportedSoldTotal ?? 21);
 
   setCell(rows, 51, 3, "선물");
   setCell(rows, 51, 4, "쿠팡이츠");
@@ -76,11 +89,12 @@ function buildWorkbook(path: string) {
   setCell(rows, 54, 8, 38_600);
 
   setCell(rows, 56, 0, "4. 서비스내역 및\n   손님 특이사항");
-  setCell(rows, 56, 2, "호밀빵 판매: 4개, (H) 4개/ 호밀쇼콜라오렌지 판매: 3개");
+  setCell(rows, 56, 2, options.serviceText ?? "호밀빵 판매: 4개, (H) 4개/ 호밀쇼콜라오렌지 판매: 3개");
   setCell(rows, 57, 2, "주차지원 요청이 많았습니다./ 샌드위치 수요가 높았습니다.\n비가 와서 배달 주문이 적었습니다.");
   setCell(rows, 60, 0, "5. 제품의견 / 손실");
   setCell(rows, 60, 2, "오픈(김도현) : 반죽힘이 강했습니다.");
   setCell(rows, 64, 0, "6. 매장\n   관리");
+  setCell(rows, 64, 2, "냉장고 점검 필요");
   setCell(rows, 66, 2, "도우컨 날개 청소 완료");
   setCell(rows, 69, 0, "7. 지시 및 전달사항");
   setCell(rows, 69, 2, "닭가슴살 재고 확인");
@@ -88,7 +102,19 @@ function buildWorkbook(path: string) {
   setCell(rows, 72, 2, "구름빵 반죽 작업");
   setCell(rows, 74, 0, "9. 직원 특이사항");
   setCell(rows, 74, 2, "휴무");
+  setCell(rows, 74, 3, "휴가");
+  setCell(rows, 74, 4, "지각/조퇴");
+  setCell(rows, 74, 5, "지원");
+  setCell(rows, 74, 6, "생일");
+  setCell(rows, 74, 7, "신입");
+  setCell(rows, 74, 8, "기타사항");
   setCell(rows, 75, 2, "준모,용국");
+  setCell(rows, 75, 3, "지민");
+  setCell(rows, 75, 4, "준모 30분 지각");
+  setCell(rows, 75, 5, "본점 지원");
+  setCell(rows, 75, 6, "희주");
+  setCell(rows, 75, 7, "민숙");
+  setCell(rows, 75, 8, "유니폼 수령");
   setCell(rows, 76, 2, "세은,희주");
   setCell(rows, 78, 0, "10. 시설 점검사항");
   setCell(rows, 78, 2, "첫 출 근 자");
@@ -141,7 +167,7 @@ describe("parseDailyOperationWorkbook", () => {
       cleaningWork: "도우컨 날개 청소 완료",
       instructions: "닭가슴살 재고 확인",
       tomorrowPrep: "구름빵 반죽 작업",
-      facilityIssue: "",
+      facilityIssue: "냉장고 점검 필요",
       firstWorker: "도현,희주",
       firstWorkerTime: "06:00",
       lastWorker: "윤경",
@@ -200,5 +226,75 @@ describe("parseDailyOperationWorkbook", () => {
       productTotalsMatched: true,
       rawSectionsPreserved: true
     });
+  });
+
+  it("separates facility and every staff-special category from the standard rows", () => {
+    const dir = mkdtempSync(join(tmpdir(), "daily-operation-import-"));
+    const workbookPath = join(dir, "일일업무보고서_5월.xlsx");
+    buildWorkbook(workbookPath);
+
+    const [record] = parseDailyOperationWorkbook(workbookPath).records;
+
+    expect(record?.draft.facilityIssue).toBe("냉장고 점검 필요");
+    expect(record?.draft.cleaningWork).toBe("도우컨 날개 청소 완료");
+    expect(record?.staffSpecialRows.today).toEqual({
+      dayOff: "준모,용국",
+      vacation: "지민",
+      lateEarly: "준모 30분 지각",
+      support: "본점 지원",
+      birthday: "희주",
+      newStaff: "민숙",
+      etc: "유니폼 수령"
+    });
+  });
+
+  it("does not raise a validation warning for product total differences", () => {
+    const dir = mkdtempSync(join(tmpdir(), "daily-operation-import-"));
+    const workbookPath = join(dir, "일일업무보고서_5월.xlsx");
+    buildWorkbook(workbookPath, { reportedSoldTotal: 20 });
+
+    const [record] = parseDailyOperationWorkbook(workbookPath).records;
+
+    expect(record?.checks.productTotalsMatched).toBe(true);
+    expect(record?.checks.mismatches).not.toContainEqual(expect.objectContaining({ field: "soldQty" }));
+  });
+
+  it("marks negative sales as unmeasurable when production is missing", () => {
+    const dir = mkdtempSync(join(tmpdir(), "daily-operation-import-"));
+    const workbookPath = join(dir, "일일업무보고서_5월.xlsx");
+    buildWorkbook(workbookPath, { missingProductionWithStock: true, reportedSoldTotal: 15 });
+
+    const [record] = parseDailyOperationWorkbook(workbookPath).records;
+    const product = record?.productRows.find((row) => row.productName === "호라산 통밀");
+
+    expect(product).toMatchObject({ soldQty: "-4", soldQtyUnmeasurable: true });
+    expect(record?.checks.mismatches).not.toContainEqual(expect.objectContaining({ field: "soldQty" }));
+  });
+
+  it("keeps zero sales measurable even when production is blank", () => {
+    const dir = mkdtempSync(join(tmpdir(), "daily-operation-import-"));
+    const workbookPath = join(dir, "일일업무보고서_5월.xlsx");
+    buildWorkbook(workbookPath, { missingProductionWithZeroSales: true });
+
+    const [record] = parseDailyOperationWorkbook(workbookPath).records;
+    const product = record?.productRows.find((row) => row.productName === "호라산 통밀");
+
+    expect(product).toMatchObject({ soldQty: "0" });
+    expect(product?.soldQtyUnmeasurable).toBeUndefined();
+  });
+
+  it("excludes product quantity memos from customer response candidates", () => {
+    const dir = mkdtempSync(join(tmpdir(), "daily-operation-import-"));
+    const workbookPath = join(dir, "일일업무보고서_4월.xlsx");
+    buildWorkbook(workbookPath, {
+      serviceText: "호밀빵 시식: (H) 1개, 판매: 4개, (H) 9개/ 봄깜빠뉴 판매: 5개, (H) 7개/ 가지 샌드위치 찾으시는 손님 계셨습니다."
+    });
+
+    const [record] = parseDailyOperationWorkbook(workbookPath).records;
+
+    const candidates = record?.customerResponseRows.map((row) => row.shortSummary) ?? [];
+    expect(candidates).not.toContain("호밀빵 시식: (H) 1개, 판매: 4개, (H) 9개");
+    expect(candidates).not.toContain("봄깜빠뉴 판매: 5개, (H) 7개");
+    expect(candidates).toContain("가지 샌드위치 찾으시는 손님 계셨습니다.");
   });
 });

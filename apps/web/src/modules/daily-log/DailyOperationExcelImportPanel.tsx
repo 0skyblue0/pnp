@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import { apiPost } from "../../shared/api/client.js";
+import { DailyLookupSection, type DailyOperationSavedRecord } from "./DailyLogPage.js";
 
 export type DailyOperationExcelPreview = {
   fileName: string;
@@ -10,6 +11,16 @@ export type DailyOperationExcelPreview = {
     productRowCount: number;
     totalSales: number;
     customerResponseCandidateCount: number;
+    draft: DailyOperationSavedRecord["draft"];
+    productRows: DailyOperationSavedRecord["productRows"];
+    channelRows: DailyOperationSavedRecord["channelRows"];
+    staffSpecialRows: DailyOperationSavedRecord["staffSpecialRows"];
+    checks: {
+      salesMatched: boolean;
+      productTotalsMatched: boolean;
+      rawSectionsPreserved: boolean;
+      mismatches: Array<{ field: string; expected: number; actual: number }>;
+    };
   }>;
   customerResponseCandidates: Array<{ date: string; shortSummary: string; fullText: string }>;
   warnings: Array<{ sheetName: string; code: string; message: string }>;
@@ -37,6 +48,19 @@ export function DailyOperationExcelImportPanel() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [acknowledgedDates, setAcknowledgedDates] = useState<Set<string>>(() => new Set());
+  const warnedRecords = useMemo(
+    () => preview?.records.filter((record) => record.checks.mismatches.length > 0) ?? [],
+    [preview]
+  );
+  const hasUnacknowledgedWarning = warnedRecords.some((record) => !acknowledgedDates.has(record.date));
+  const previewRecords: DailyOperationSavedRecord[] = (preview?.records ?? []).filter((record) => Boolean(record.draft)).map((record) => ({
+    draft: record.draft,
+    productRows: record.productRows,
+    channelRows: record.channelRows,
+    staffSpecialRows: record.staffSpecialRows,
+    savedAt: record.date
+  }));
 
   async function readFile(file: File) {
     const buffer = await file.arrayBuffer();
@@ -48,6 +72,7 @@ export function DailyOperationExcelImportPanel() {
     setError("");
     setMessage("");
     setPreview(null);
+    setAcknowledgedDates(new Set());
     const base64 = await readFile(file);
     setFileBase64(base64);
     const envelope = await apiPost<DailyOperationExcelPreview, { fileName: string; fileBase64: string }>(
@@ -70,9 +95,9 @@ export function DailyOperationExcelImportPanel() {
     }
     setIsLoading(true);
     setError("");
-    const envelope = await apiPost<ApplyResult, { fileName: string; fileBase64: string }>(
+    const envelope = await apiPost<ApplyResult, { fileName: string; fileBase64: string; acknowledgedDates: string[] }>(
       "/import/daily-operation-excel/apply",
-      { fileName: selectedFile.name, fileBase64 }
+      { fileName: selectedFile.name, fileBase64, acknowledgedDates: Array.from(acknowledgedDates).sort() }
     );
     setIsLoading(false);
     if (envelope.error) {
@@ -113,15 +138,35 @@ export function DailyOperationExcelImportPanel() {
       {error ? <p className="mt-3 rounded-control bg-red/10 px-3 py-2 text-sm font-bold text-red">{error}</p> : null}
       {isLoading ? <p className="mt-3 text-sm font-bold text-muted">엑셀을 확인하는 중입니다.</p> : null}
       {preview ? (
-        <div className="mt-4 grid gap-3 lg:grid-cols-[1fr_1fr]">
+        <div className="mt-4 grid gap-3">
           <div className="rounded-[12px] border border-latte bg-cream/40 p-3">
             <p className="text-xs font-bold text-muted">읽은 날짜</p>
             <p className="mt-1 text-xl font-extrabold text-ink">{preview.records.length}일</p>
             <div className="mt-3 grid gap-2">
-              {preview.records.slice(0, 5).map((record) => (
+              {preview.records.map((record) => (
                 <div key={record.date} className="rounded-[9px] bg-white px-3 py-2 text-sm">
                   <b>{record.date}</b> · {record.totalSales.toLocaleString("ko-KR")}원 · 제품 {record.productRowCount}줄
                   {record.existing ? <span className="ml-2 text-red">기존 기록 있음</span> : null}
+                  {record.checks.mismatches.length > 0 ? (
+                    <div className="mt-2 rounded-[7px] bg-red/10 px-2 py-2 text-xs leading-5 text-red">
+                      <b>검증 경고</b> · {record.checks.mismatches.map(formatMismatch).join(" / ")}
+                      <label className="mt-2 flex cursor-pointer items-center gap-2 font-bold text-cocoa">
+                        <input
+                          type="checkbox"
+                          checked={acknowledgedDates.has(record.date)}
+                          onChange={(event) => {
+                            setAcknowledgedDates((current) => {
+                              const next = new Set(current);
+                              if (event.target.checked) next.add(record.date);
+                              else next.delete(record.date);
+                              return next;
+                            });
+                          }}
+                        />
+                        {record.date} 검증 경고를 확인하고 저장합니다.
+                      </label>
+                    </div>
+                  ) : null}
                 </div>
               ))}
             </div>
@@ -138,11 +183,39 @@ export function DailyOperationExcelImportPanel() {
               {preview.customerResponseCandidates.length === 0 ? <p className="text-sm text-muted">손님 반응으로 보이는 내용이 없습니다.</p> : null}
             </div>
           </div>
+          <DailyLookupSection
+            records={previewRecords}
+            previousRecords={[]}
+            allRecordCount={previewRecords.length}
+            lookupMode="month"
+            lookupDate={previewRecords[0]?.draft.date ?? ""}
+            lookupStartDate={previewRecords.at(-1)?.draft.date ?? ""}
+            lookupEndDate={previewRecords[0]?.draft.date ?? ""}
+            lookupMonth={(previewRecords[0]?.draft.date ?? "").slice(0, 7)}
+            lookupSortOrder="desc"
+            lookupRange={{ startDate: previewRecords.at(-1)?.draft.date ?? "", endDate: previewRecords[0]?.draft.date ?? "" }}
+            previousLookupRange={{ startDate: "", endDate: "" }}
+            setLookupMode={() => undefined}
+            setLookupDate={() => undefined}
+            setLookupStartDate={() => undefined}
+            setLookupEndDate={() => undefined}
+            setLookupMonth={() => undefined}
+            setLookupSortOrder={() => undefined}
+            onEditRecord={() => undefined}
+            onDeleteRecord={() => undefined}
+            preview
+          />
           <div className="lg:col-span-2 flex flex-wrap items-center justify-between gap-3 rounded-[12px] border border-latte bg-white p-3">
             <p className="text-sm leading-6 text-muted">
-              경고 {preview.warnings.length}건 · 건너뜀 {preview.skippedSheets.length}개 시트. 저장 전 날짜와 후보를 확인하세요.
+              경고 {preview.warnings.length}건 · 건너뜀 {preview.skippedSheets.length}개 시트.
+              {hasUnacknowledgedWarning ? " 경고 날짜를 확인해야 저장할 수 있습니다." : " 저장 전 날짜와 후보를 확인하세요."}
             </p>
-            <button className="rounded-control bg-bread px-4 py-2 text-sm font-bold text-white" type="button" onClick={() => void applyImport()}>
+            <button
+              className="rounded-control bg-bread px-4 py-2 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"
+              type="button"
+              disabled={isLoading || hasUnacknowledgedWarning}
+              onClick={() => void applyImport()}
+            >
               확인한 내용 저장
             </button>
           </div>
@@ -150,4 +223,19 @@ export function DailyOperationExcelImportPanel() {
       ) : null}
     </section>
   );
+}
+
+function formatMismatch(mismatch: { field: string; expected: number; actual: number }): string {
+  const label =
+    {
+      salesAmount: "매출액",
+      salesCount: "매출건수",
+      producedQty: "생산량",
+      lossQty: "손실량",
+      tastingQty: "시식량",
+      otherQty: "기타수량",
+      stockQty: "재고량",
+      soldQty: "판매량"
+    }[mismatch.field] ?? mismatch.field;
+  return `${label} 엑셀 ${mismatch.expected.toLocaleString("ko-KR")} / 계산 ${mismatch.actual.toLocaleString("ko-KR")}`;
 }

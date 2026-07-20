@@ -35,6 +35,7 @@ export type ProductRow = {
   otherOutQty: string;
   stockQty: string;
   soldQty: string;
+  soldQtyUnmeasurable?: boolean;
   manualSold: boolean;
 };
 
@@ -231,6 +232,9 @@ function formatCurrency(value: number): string {
 }
 
 function calculatedSold(row: ProductRow): number {
+  if (row.soldQtyUnmeasurable) {
+    return 0;
+  }
   if (row.manualSold) {
     return numeric(row.soldQty);
   }
@@ -283,10 +287,11 @@ function productDetailValues(row: ProductRow): ProductTotals {
 
 function productDetailText(row: ProductRow): string {
   const values = productDetailValues(row);
-  return productDetailFields
+  const parts = productDetailFields
     .filter((field) => values[field.key] !== 0)
-    .map((field) => `${field.label} ${values[field.key].toLocaleString("ko-KR")}`)
-    .join(" · ");
+    .map((field) => `${field.label} ${values[field.key].toLocaleString("ko-KR")}`);
+  if (row.soldQtyUnmeasurable) parts.push("판매량 측정 불가");
+  return parts.join(" · ");
 }
 
 function hasProductDetail(row: ProductRow): boolean {
@@ -877,7 +882,7 @@ export function DailyLogPage() {
   );
 }
 
-function DailyLookupSection({
+export function DailyLookupSection({
   records,
   previousRecords,
   allRecordCount,
@@ -896,7 +901,8 @@ function DailyLookupSection({
   setLookupMonth,
   setLookupSortOrder,
   onEditRecord,
-  onDeleteRecord
+  onDeleteRecord,
+  preview = false
 }: {
   records: DailyOperationSavedRecord[];
   previousRecords: DailyOperationSavedRecord[];
@@ -917,6 +923,7 @@ function DailyLookupSection({
   setLookupSortOrder: (sortOrder: LookupSortOrder) => void;
   onEditRecord: (record: DailyOperationSavedRecord) => void;
   onDeleteRecord: (record: DailyOperationSavedRecord) => void | Promise<void>;
+  preview?: boolean;
 }) {
   const [expandedDates, setExpandedDates] = useState<string[]>([]);
   const [productDetailDates, setProductDetailDates] = useState<string[]>([]);
@@ -932,7 +939,7 @@ function DailyLookupSection({
 
   return (
     <div className="grid gap-[14px]">
-      <div className="dc-card-pad min-w-0">
+      {!preview ? <div className="dc-card-pad min-w-0">
         <div className="mb-3 flex items-center justify-between gap-3">
           <div>
             <p className="dc-eyebrow">데이터 조회</p>
@@ -1005,7 +1012,7 @@ function DailyLookupSection({
             </p>
           </div>
         </div>
-      </div>
+      </div> : null}
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <SummaryCard label="총매출" value={formatCurrency(totalSales)} />
@@ -1017,13 +1024,13 @@ function DailyLookupSection({
         />
       </div>
 
-      <div className="dc-card px-5 py-3 text-[12.5px] font-semibold text-muted">
+      {!preview ? <div className="dc-card px-5 py-3 text-[12.5px] font-semibold text-muted">
         비교 기간: {previousLookupRange.startDate} ~ {previousLookupRange.endDate} / 비교 총매출{" "}
         {formatCurrency(previousSummary.totalSales)}
-      </div>
+      </div> : null}
 
       <div className="dc-card-pad">
-        <h3 className="dc-eyebrow">조회된 일지</h3>
+        <h3 className="dc-eyebrow">{preview ? "엑셀 미리보기 일지" : "조회된 일지"}</h3>
         {records.length === 0 ? (
           <p className="mt-3 rounded-control border border-dashed border-latte bg-cream/40 px-3 py-6 text-center text-sm font-semibold text-muted">
             선택한 기간에 저장된 일일 운영 일지가 없습니다.
@@ -1142,7 +1149,7 @@ function DailyLookupSection({
                       <div className="min-w-0">
                         <div className="mb-2 flex items-center justify-between gap-2">
                           <p className="text-sm font-bold text-cocoa">메모 원문</p>
-                          <div className="flex items-center justify-end gap-1.5">
+                          {!preview ? <div className="flex items-center justify-end gap-1.5">
                             <button
                               className="rounded-control border border-cocoa bg-white px-2.5 py-1.5 text-sm font-bold text-cocoa hover:bg-cream"
                               type="button"
@@ -1158,7 +1165,7 @@ function DailyLookupSection({
                               <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
                               삭제
                             </button>
-                          </div>
+                          </div> : null}
                         </div>
                         <MemoSummary draft={record.draft} />
                       </div>
@@ -1718,7 +1725,7 @@ function ProductsSection({
             onChange={(event) => updateRow(row.productName, "stockQty", event.target.value)}
           />
           <div className="text-[13px] font-bold text-bread">
-            {row.manualSold ? row.soldQty : calculatedSold(row)}개
+            {row.soldQtyUnmeasurable ? "판매량 측정 불가" : `${row.manualSold ? row.soldQty : calculatedSold(row)}개`}
           </div>
         </div>
       ))}

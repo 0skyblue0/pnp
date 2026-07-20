@@ -1455,7 +1455,7 @@ function BasicSection({
           <span className="text-[11px] text-muted">작성자 *</span>
           <input
             aria-label="작성자"
-            className="h-[34px] rounded-[8px] border border-latte px-[10px] text-[13px] text-ink outline-none focus:border-bread"
+            className="input w-full"
             placeholder="이름 입력"
             value={draft.author}
             onChange={(event) => updateDraft("author", event.target.value)}
@@ -1467,7 +1467,7 @@ function BasicSection({
             <UnitInput
               aria-label="외부온도"
               wrapperClassName="w-0 flex-1"
-              className="h-[34px] w-full rounded-[8px] border border-latte px-[10px] text-[13px] outline-none focus:border-bread"
+              className="input w-full"
               unit="℃"
               value={draft.outsideTemp || "0"}
               onFocus={(event) => event.currentTarget.select()}
@@ -1476,7 +1476,7 @@ function BasicSection({
             <UnitInput
               aria-label="외부습도"
               wrapperClassName="w-0 flex-1"
-              className="h-[34px] w-full rounded-[8px] border border-latte px-[10px] text-[13px] outline-none focus:border-bread"
+              className="input w-full"
               unit="%"
               value={draft.outsideHumidity || "0"}
               onFocus={(event) => event.currentTarget.select()}
@@ -1490,7 +1490,7 @@ function BasicSection({
             <UnitInput
               aria-label="내부온도"
               wrapperClassName="w-0 flex-1"
-              className="h-[34px] w-full rounded-[8px] border border-latte px-[10px] text-[13px] outline-none focus:border-bread"
+              className="input w-full"
               unit="℃"
               value={draft.insideTemp || "0"}
               onFocus={(event) => event.currentTarget.select()}
@@ -1499,7 +1499,7 @@ function BasicSection({
             <UnitInput
               aria-label="내부습도"
               wrapperClassName="w-0 flex-1"
-              className="h-[34px] w-full rounded-[8px] border border-latte px-[10px] text-[13px] outline-none focus:border-bread"
+              className="input w-full"
               unit="%"
               value={draft.insideHumidity || "0"}
               onFocus={(event) => event.currentTarget.select()}
@@ -1656,14 +1656,28 @@ function ProductsSection({
             <div className="mt-3 grid grid-cols-2 gap-3">
               <label className="grid gap-1 text-[11px] font-semibold text-muted">
                 생산량(개)
-                <input className="min-h-11 w-full rounded-[7px] border border-latte px-2 text-[13px] text-ink outline-none focus:border-bread focus:ring-2 focus:ring-bread/15" inputMode="numeric" value={row.producedQty} onFocus={(event) => event.currentTarget.select()} onChange={(event) => updateRow(row.productName, "producedQty", event.target.value)} />
+                <input aria-label={`${row.productName} 생산량`} className="min-h-11 w-full rounded-[7px] border border-latte px-2 text-[13px] text-ink outline-none focus:border-bread focus:ring-2 focus:ring-bread/15" inputMode="numeric" value={row.producedQty} onFocus={(event) => event.currentTarget.select()} onChange={(event) => updateRow(row.productName, "producedQty", event.target.value)} />
               </label>
               <label className="grid gap-1 text-[11px] font-semibold text-muted">
                 재고(남음, 개)
-                <input className="min-h-11 w-full rounded-[7px] border border-latte px-2 text-[13px] text-ink outline-none focus:border-bread focus:ring-2 focus:ring-bread/15" inputMode="numeric" value={row.stockQty} onFocus={(event) => event.currentTarget.select()} onChange={(event) => updateRow(row.productName, "stockQty", event.target.value)} />
+                <input aria-label={`${row.productName} 재고량`} className="min-h-11 w-full rounded-[7px] border border-latte px-2 text-[13px] text-ink outline-none focus:border-bread focus:ring-2 focus:ring-bread/15" inputMode="numeric" value={row.stockQty} onFocus={(event) => event.currentTarget.select()} onChange={(event) => updateRow(row.productName, "stockQty", event.target.value)} />
               </label>
-              <QuantityStepper label="손실량(개)" value={row.lossQty} onChange={(value) => updateRow(row.productName, "lossQty", value)} decrement={() => adjustQuantity(row.productName, "lossQty", -1)} increment={() => adjustQuantity(row.productName, "lossQty", 1)} />
-              <QuantityStepper label="시식량(개)" value={row.tastingQty} onChange={(value) => updateRow(row.productName, "tastingQty", value)} decrement={() => adjustQuantity(row.productName, "tastingQty", -1)} increment={() => adjustQuantity(row.productName, "tastingQty", 1)} />
+              <QuantityStepper label={`${row.productName} 손실량`} value={row.lossQty} onChange={(value) => updateRow(row.productName, "lossQty", value)} decrement={() => adjustQuantity(row.productName, "lossQty", -1)} increment={() => adjustQuantity(row.productName, "lossQty", 1)} />
+              <QuantityStepper label={`${row.productName} 시식량`} value={row.tastingQty} onChange={(value) => updateRow(row.productName, "tastingQty", value)} decrement={() => adjustQuantity(row.productName, "tastingQty", -1)} increment={() => adjustQuantity(row.productName, "tastingQty", 1)} />
+              <label className="grid gap-1 text-[11px] font-semibold text-muted">
+                기타 입고(+)
+                <input aria-label={`${row.productName} 기타 입고 +`} className="min-h-11 w-full rounded-[7px] border border-latte px-2 text-[13px] text-ink outline-none focus:border-bread focus:ring-2 focus:ring-bread/15" inputMode="numeric" value={row.otherInQty} onFocus={(event) => event.currentTarget.select()} onChange={(event) => updateRow(row.productName, "otherInQty", event.target.value)} />
+              </label>
+              <label className="grid gap-1 text-[11px] font-semibold text-muted">
+                기타 출고(-)
+                <input aria-label={`${row.productName} 기타 출고 -`} className="min-h-11 w-full rounded-[7px] border border-latte px-2 text-[13px] text-ink outline-none focus:border-bread focus:ring-2 focus:ring-bread/15" inputMode="numeric" value={row.otherOutQty} onFocus={(event) => event.currentTarget.select()} onChange={(event) => updateRow(row.productName, "otherOutQty", event.target.value)} />
+              </label>
+              {row.manualSold ? (
+                <label className="grid gap-1 text-[11px] font-semibold text-muted">
+                  판매량 직접입력(개)
+                  <input aria-label={`${row.productName} 판매량 직접입력`} className="min-h-11 w-full rounded-[7px] border border-latte px-2 text-[13px] text-ink outline-none focus:border-bread focus:ring-2 focus:ring-bread/15" inputMode="numeric" value={row.soldQty} onFocus={(event) => event.currentTarget.select()} onChange={(event) => updateRow(row.productName, "soldQty", event.target.value)} />
+                </label>
+              ) : null}
             </div>
             <p className="mt-3 text-[13px] font-bold text-bread">판매량: {row.soldQtyUnmeasurable ? "측정 불가" : `${row.manualSold ? row.soldQty : calculatedSold(row)}개`}</p>
           </article>
@@ -1685,6 +1699,7 @@ function ProductsSection({
         >
           <div className="text-[13px] font-semibold text-ink">{row.productName}</div>
           <input
+            aria-label={`${row.productName} 생산량`}
             className="min-h-11 min-w-0 w-full rounded-[7px] border border-latte px-[8px] text-[12.5px] outline-none focus:border-bread focus:ring-2 focus:ring-bread/15"
             inputMode="numeric"
             value={row.producedQty}
@@ -1700,6 +1715,7 @@ function ProductsSection({
               −
             </button>
             <input
+              aria-label={`${row.productName} 손실량`}
               className="min-h-11 min-w-0 flex-1 rounded-[7px] border border-latte px-[2px] text-center text-[12.5px] outline-none focus:border-bread focus:ring-2 focus:ring-bread/15"
               inputMode="numeric"
               value={row.lossQty}
@@ -1723,6 +1739,7 @@ function ProductsSection({
               −
             </button>
             <input
+              aria-label={`${row.productName} 시식량`}
               className="min-h-11 min-w-0 flex-1 rounded-[7px] border border-latte px-[2px] text-center text-[12.5px] outline-none focus:border-bread focus:ring-2 focus:ring-bread/15"
               inputMode="numeric"
               value={row.tastingQty}
@@ -1738,6 +1755,7 @@ function ProductsSection({
             </button>
           </div>
           <input
+            aria-label={`${row.productName} 재고량`}
             className="min-h-11 min-w-0 w-full rounded-[7px] border border-latte px-[8px] text-[12.5px] outline-none focus:border-bread focus:ring-2 focus:ring-bread/15"
             inputMode="numeric"
             value={row.stockQty}
@@ -1750,6 +1768,29 @@ function ProductsSection({
         </div>
       ))}
       </div>
+      <div className="mt-3 hidden gap-3 md:grid md:grid-cols-2 xl:grid-cols-3">
+        {rows.map((row) => (
+          <div key={row.productName} className="grid gap-2 rounded-[8px] border border-latte bg-cream/30 p-2">
+            <p className="text-xs font-semibold text-ink">{row.productName} 기타/직접 판매</p>
+            <div className="grid grid-cols-2 gap-2">
+              <label className="grid gap-1 text-[11px] text-muted">
+                기타 입고(+)
+                <input aria-label={`${row.productName} 기타 입고 +`} className="min-h-11 w-full rounded-[7px] border border-latte bg-white px-2 text-[13px] text-ink outline-none focus:border-bread focus:ring-2 focus:ring-bread/15" inputMode="numeric" value={row.otherInQty} onFocus={(event) => event.currentTarget.select()} onChange={(event) => updateRow(row.productName, "otherInQty", event.target.value)} />
+              </label>
+              <label className="grid gap-1 text-[11px] text-muted">
+                기타 출고(-)
+                <input aria-label={`${row.productName} 기타 출고 -`} className="min-h-11 w-full rounded-[7px] border border-latte bg-white px-2 text-[13px] text-ink outline-none focus:border-bread focus:ring-2 focus:ring-bread/15" inputMode="numeric" value={row.otherOutQty} onFocus={(event) => event.currentTarget.select()} onChange={(event) => updateRow(row.productName, "otherOutQty", event.target.value)} />
+              </label>
+            </div>
+            {row.manualSold ? (
+              <label className="grid gap-1 text-[11px] text-muted">
+                판매량 직접입력(개)
+                <input aria-label={`${row.productName} 판매량 직접입력`} className="min-h-11 w-full rounded-[7px] border border-latte bg-white px-2 text-[13px] text-ink outline-none focus:border-bread focus:ring-2 focus:ring-bread/15" inputMode="numeric" value={row.soldQty} onFocus={(event) => event.currentTarget.select()} onChange={(event) => updateRow(row.productName, "soldQty", event.target.value)} />
+              </label>
+            ) : null}
+          </div>
+        ))}
+      </div>
       <div className="flex justify-end gap-[24px] pt-[10px] text-[12.5px] text-muted">
         <div>
           총 생산량 <span className="font-bold text-ink">{totals.produced.toLocaleString("ko-KR")}개</span>
@@ -1758,7 +1799,7 @@ function ProductsSection({
           총 판매량 <span className="font-bold text-bread">{totals.sold.toLocaleString("ko-KR")}개</span>
         </div>
       </div>
-      <div className="sr-only">
+      <div className="hidden">
         <table>
           <thead>
             <tr>
@@ -1851,7 +1892,7 @@ function QuantityStepper({ label, value, onChange, decrement, increment }: { lab
       {label}
       <span className="grid grid-cols-[2.75rem_minmax(0,1fr)_2.75rem] gap-1">
         <button className="flex h-11 w-11 items-center justify-center rounded-[7px] bg-cream text-base font-bold text-cocoa focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bread/30" type="button" aria-label={`${label} 줄이기`} onClick={decrement}>−</button>
-        <input className="min-h-11 min-w-0 rounded-[7px] border border-latte px-2 text-center text-[13px] text-ink outline-none focus:border-bread focus:ring-2 focus:ring-bread/15" inputMode="numeric" value={value} onFocus={(event) => event.currentTarget.select()} onChange={(event) => onChange(event.target.value)} />
+        <input aria-label={label} className="min-h-11 min-w-0 rounded-[7px] border border-latte px-2 text-center text-[13px] text-ink outline-none focus:border-bread focus:ring-2 focus:ring-bread/15" inputMode="numeric" value={value} onFocus={(event) => event.currentTarget.select()} onChange={(event) => onChange(event.target.value)} />
         <button className="flex h-11 w-11 items-center justify-center rounded-[7px] bg-cream text-base font-bold text-cocoa focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bread/30" type="button" aria-label={`${label} 늘리기`} onClick={increment}>+</button>
       </span>
     </label>

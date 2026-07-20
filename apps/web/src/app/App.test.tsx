@@ -1577,26 +1577,34 @@ describe("App", () => {
     expect(screen.getAllByText("10건").length).toBeGreaterThan(0);
 
     fireEvent.click(screen.getByRole("tab", { name: "제품" }));
+    const productInput = (label: string) => {
+      const input = screen.getAllByLabelText(label)[0];
+      if (!input) throw new Error(`Expected product input: ${label}`);
+      return input;
+    };
     expect(screen.getAllByText("바게트").length).toBeGreaterThan(0);
     expect(screen.getAllByText("치킨샌드위치").length).toBeGreaterThan(0);
     expect(
-      screen
-        .getByLabelText("치킨샌드위치 생산량")
-        .compareDocumentPosition(screen.getByLabelText("바게트 생산량")) &
+      productInput("치킨샌드위치 생산량").compareDocumentPosition(productInput("바게트 생산량")) &
         Node.DOCUMENT_POSITION_FOLLOWING
     ).toBeTruthy();
     expect(screen.getAllByText("생산량(개)").length).toBeGreaterThan(0);
     expect(screen.getAllByText("판매량(개)").length).toBeGreaterThan(0);
     expect(screen.getByText("기타(+)/(-)")).toBeInTheDocument();
-    expect(screen.getByLabelText("바게트 기타 입고 +")).toBeInTheDocument();
-    expect(screen.getByLabelText("바게트 기타 출고 -")).toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText("바게트 생산량"), { target: { value: "10" } });
-    fireEvent.change(screen.getByLabelText("바게트 기타 입고 +"), { target: { value: "3" } });
-    fireEvent.change(screen.getByLabelText("바게트 기타 출고 -"), { target: { value: "2" } });
-    fireEvent.change(screen.getByLabelText("바게트 손실량"), { target: { value: "1" } });
-    fireEvent.change(screen.getByLabelText("바게트 시식량"), { target: { value: "1" } });
-    fireEvent.change(screen.getByLabelText("바게트 재고량"), { target: { value: "4" } });
-    expect(screen.getAllByText("2").length).toBeGreaterThan(0);
+    expect(productInput("바게트 기타 입고 +")).toBeInTheDocument();
+    expect(productInput("바게트 기타 출고 -")).toBeInTheDocument();
+    for (const label of ["바게트 기타 입고 +", "바게트 기타 출고 -", "호밀쇼콜라오렌지 판매량 직접입력"]) {
+      expect(screen.getAllByLabelText(label).some((input) => !input.closest(".sr-only"))).toBe(true);
+    }
+    fireEvent.change(productInput("바게트 생산량"), { target: { value: "10" } });
+    fireEvent.change(productInput("바게트 기타 입고 +"), { target: { value: "3" } });
+    fireEvent.change(productInput("바게트 기타 출고 -"), { target: { value: "2" } });
+    fireEvent.change(productInput("바게트 손실량"), { target: { value: "1" } });
+    fireEvent.change(productInput("바게트 시식량"), { target: { value: "1" } });
+    fireEvent.change(productInput("바게트 재고량"), { target: { value: "4" } });
+    expect(productInput("바게트 생산량")).toHaveValue("10");
+    expect(productInput("바게트 기타 입고 +")).toHaveValue("3");
+    expect(productInput("바게트 기타 출고 -")).toHaveValue("2");
     expect(screen.getAllByLabelText("호밀쇼콜라오렌지 판매량 직접입력").length).toBeGreaterThan(0);
     expect(screen.getByText("자동 계산")).toBeInTheDocument();
 
@@ -1662,7 +1670,7 @@ describe("App", () => {
     expect(savedRecordRow).toHaveTextContent("총매출액35,000원");
     expect(savedRecordRow).toHaveTextContent("매출건수10건");
     expect(savedRecordRow).toHaveTextContent("객단가3,500원");
-    expect(savedRecordRow).toHaveTextContent("제품판매량2개");
+    expect(savedRecordRow).toHaveTextContent("제품판매량4개");
     expect(savedRecordRow).toHaveTextContent("메모2건");
     expect(savedRecordRow).toHaveTextContent("상세");
     expect(within(savedRecordRow).queryByText("구름빵 반죽 작업 있습니다")).not.toBeInTheDocument();
@@ -1726,7 +1734,7 @@ describe("App", () => {
     expect(screen.getByLabelText("POS 매출액")).toHaveValue("20,000");
     expect(screen.getByLabelText("선물 매출액")).toHaveValue("10,000");
     fireEvent.click(screen.getByRole("tab", { name: "제품" }));
-    expect(screen.getByLabelText("바게트 생산량")).toHaveValue("10");
+    expect(screen.getAllByLabelText("바게트 생산량").at(0)).toHaveValue("10");
 
     fireEvent.click(screen.getByRole("tab", { name: "데이터 조회" }));
     fireEvent.change(screen.getByLabelText("조회 방식"), { target: { value: "date" } });

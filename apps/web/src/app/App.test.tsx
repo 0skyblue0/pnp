@@ -2074,7 +2074,9 @@ describe("App", () => {
 
     const errorMessage = "AI 분류 API가 설정되지 않았습니다. 관리자에게 연결 상태를 확인해 주세요.";
     await waitFor(() => expect(screen.getAllByText(errorMessage)).toHaveLength(2));
-    expect(screen.getAllByRole("alert")).toHaveLength(2);
+    const errorAlerts = screen.getAllByRole("alert");
+    expect(errorAlerts).toHaveLength(2);
+    errorAlerts.forEach((alert) => expect(alert).toHaveTextContent(errorMessage));
     expect(screen.getByText("선택 기준: 미선택")).toBeInTheDocument();
     expect(screen.getByLabelText("한 줄 요약")).toHaveValue("");
     expect(screen.queryByText(/AI 추천 적용됨/)).not.toBeInTheDocument();

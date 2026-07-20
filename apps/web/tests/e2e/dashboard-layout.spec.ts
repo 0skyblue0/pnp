@@ -28,6 +28,7 @@ test("keyboard focus remains visible in a reduced-motion browser context", async
   await page.setViewportSize({ width: 375, height: 812 });
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/home", { waitUntil: "domcontentloaded" });
+  await expect(page.getByRole("main")).toBeVisible();
 
   await page.keyboard.press("Tab");
 

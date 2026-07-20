@@ -755,12 +755,12 @@ export function DailyLogPage() {
         </div>
         {viewMode === "entry" ? <DailyOperationExcelImportPanel /> : null}
         {message ? (
-          <div className="mb-4 rounded-control border border-green/20 bg-green/10 px-3 py-2 text-sm font-semibold text-green">
+          <div role="status" className="mb-4 rounded-control border border-green/20 bg-green/10 px-3 py-2 text-sm font-semibold text-green">
             {message}
           </div>
         ) : null}
         {missingItems.length > 0 ? (
-          <div className="mb-4 rounded-control border border-red/20 bg-red/10 px-3 py-2 text-sm font-semibold text-red">
+          <div role="alert" className="mb-4 rounded-control border border-red/20 bg-red/10 px-3 py-2 text-sm font-semibold text-red">
             <p>일일 운영 작성 완료 전 빠진 항목을 확인해 주세요.</p>
             <div className="mt-2 flex flex-wrap gap-2">
               {missingItems.map((item) => {

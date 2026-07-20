@@ -539,13 +539,14 @@ export function PrepaidLedgerPage() {
           actions={
             <>
             <label className="sr-only" htmlFor="prepaid-search">
-              손님 검색
+              고객 검색
             </label>
             <input
               id="prepaid-search"
-              aria-label="손님 검색"
+              aria-label="고객 검색"
+              type="search"
               className="input min-h-11 w-64"
-              placeholder="손님 이름 또는 연락처 검색"
+              placeholder="고객 이름 또는 연락처 검색"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
             />
@@ -600,7 +601,7 @@ export function PrepaidLedgerPage() {
       ) : null}
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.3fr)_minmax(340px,0.9fr)] xl:items-start">
-      <section className="app-card px-5 py-3" aria-labelledby="prepaid-history-title">
+      <section className="app-card px-5 py-3" role="region" aria-labelledby="prepaid-history-title">
         <h2 id="prepaid-history-title" className="mb-2 text-base font-bold text-foreground">거래 내역</h2>
         <div className="grid gap-2 border-b border-border px-1 py-3 text-xs font-semibold text-subtle sm:grid-cols-[1fr_1.25fr_0.9fr_1.6fr_1.7fr]">
           <div>이름</div>
@@ -617,7 +618,8 @@ export function PrepaidLedgerPage() {
             >
               <button
                 type="button"
-                className="text-left font-bold text-ink underline-offset-4 hover:underline"
+                className="text-left font-bold text-ink underline-offset-4 hover:underline aria-[current=true]:rounded-control aria-[current=true]:bg-[#fdf8ec] aria-[current=true]:px-2 aria-[current=true]:text-cocoa"
+                aria-current={selectedCustomer?.id === customer.id ? "true" : undefined}
                 onClick={() => openCustomer(customer, "DETAIL")}
               >
                 {customer.customerName}님
@@ -670,7 +672,7 @@ export function PrepaidLedgerPage() {
       </section>
 
       {selectedCustomer ? (
-        <aside className="app-card xl:sticky xl:top-4" aria-label="선택한 손님 상세">
+        <aside className="app-card xl:sticky xl:top-4" aria-label="선택한 고객 상세">
           <SelectedCustomerDetail
           customer={selectedCustomer}
           mode={detailMode}
@@ -691,9 +693,9 @@ export function PrepaidLedgerPage() {
           deleteTransaction={deleteTransaction}
           />
         </aside>
-      ) : <aside className="app-card xl:sticky xl:top-4" aria-label="선택한 손님 상세">
-        <h2 className="text-base font-bold text-foreground">선택한 손님 상세</h2>
-        <p className="mt-2 text-sm leading-6 text-subtle">거래 내역에서 손님을 선택하면 잔액, 메모, 충전과 사용 기록을 확인할 수 있습니다.</p>
+      ) : <aside className="app-card xl:sticky xl:top-4" aria-label="선택한 고객 상세">
+        <h2 className="text-base font-bold text-foreground">선택한 고객 상세</h2>
+        <p className="mt-2 text-sm leading-6 text-subtle">거래 내역에서 고객을 선택하면 잔액, 메모, 충전과 사용 기록을 확인할 수 있습니다.</p>
       </aside>}
       </div>
     </div>

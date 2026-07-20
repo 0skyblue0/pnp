@@ -134,8 +134,8 @@ export function DailyOperationExcelImportPanel() {
           />
         </label>
       </div>
-      {message ? <p className="mt-3 rounded-control bg-green/10 px-3 py-2 text-sm font-bold text-green">{message}</p> : null}
-      {error ? <p className="mt-3 rounded-control bg-red/10 px-3 py-2 text-sm font-bold text-red">{error}</p> : null}
+      {message ? <p role="status" className="mt-3 rounded-control bg-green/10 px-3 py-2 text-sm font-bold text-green">{message}</p> : null}
+      {error ? <p role="alert" className="mt-3 rounded-control bg-red/10 px-3 py-2 text-sm font-bold text-red">{error}</p> : null}
       {isLoading ? <p className="mt-3 text-sm font-bold text-muted">엑셀을 확인하는 중입니다.</p> : null}
       {preview ? (
         <div className="mt-4 grid gap-3">

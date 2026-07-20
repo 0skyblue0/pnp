@@ -2473,7 +2473,7 @@ describe("App", () => {
     fireEvent.click(screen.getByRole("link", { name: "선결제 장부" }));
 
     expect(await screen.findByRole("heading", { name: "선결제 장부" })).toBeInTheDocument();
-    expect(screen.getByLabelText("손님 검색")).toBeInTheDocument();
+    expect(screen.getByLabelText("고객 검색")).toBeInTheDocument();
     expect(screen.getByText("검색된 손님 수")).toBeInTheDocument();
     expect(screen.getByText("총 잔액")).toBeInTheDocument();
     expect(screen.getByText("이름")).toBeInTheDocument();

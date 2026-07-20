@@ -15,7 +15,11 @@ export function PageHeader({ title, description, actions, eyebrow }: PageHeaderP
         <h1>{title}</h1>
         {description ? <p>{description}</p> : null}
       </div>
-      {actions ? <div className="app-page-actions">{actions}</div> : null}
+      {actions ? (
+        <div className="app-page-actions [&_a]:min-h-11 [&_button]:min-h-11 [&_input]:min-h-11">
+          {actions}
+        </div>
+      ) : null}
     </header>
   );
 }

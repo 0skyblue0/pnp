@@ -157,7 +157,7 @@ test("captures deterministic reference routes including sales analysis at the co
 
     for (const route of comparisonRoutes) {
       requestedApiPaths.clear();
-      await page.goto(route.path, { waitUntil: "networkidle" });
+      await page.goto(route.path, { waitUntil: "domcontentloaded" });
       await expect(page.locator('meta[name="pnp-ui-source"]')).toHaveAttribute(
         "content",
         "reference-fidelity-alignment-task-1"

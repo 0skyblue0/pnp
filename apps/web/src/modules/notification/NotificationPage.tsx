@@ -104,7 +104,7 @@ export function NotificationPage() {
               <span className={["app-status px-2.5 py-1 text-[10px] font-bold", severityClasses(notification.severity)].join(" ")}>{notification.severity}</span>
               <span className="min-w-0 flex-1 truncate text-[13px] text-ink">{notification.title}</span>
               <span className="shrink-0 text-[11px] text-muted">{formatCreatedAt(notification.createdAt)}</span>
-              <span className={["w-11 shrink-0 text-right text-[11px] font-semibold", notification.isRead ? "text-muted" : "text-bread"].join(" ")}>{notification.isRead ? "읽음" : "안읽음"}</span>
+              <span className={["w-11 shrink-0 text-right text-[11px] font-semibold", notification.isRead ? "text-muted" : "text-red"].join(" ")}>{notification.isRead ? "읽음" : "안읽음"}</span>
             </>
           );
 

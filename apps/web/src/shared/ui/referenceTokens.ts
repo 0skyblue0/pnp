@@ -2,7 +2,8 @@ export const referenceTokens = {
   cocoa: "#261e18",
   gold: "#c8912f",
   goldStrong: "#a86e1f",
-  canvas: "#f4f0e9",
+  canvas: "#eceae4",
+  workSurface: "#f4f0e9",
   header: "#fbf8f3",
   card: "#ffffff",
   line: "#e7dfd3",
@@ -12,7 +13,18 @@ export const referenceTokens = {
   goldSoft: "#efe7d7",
   goldWash: "#fdf8ec",
   text: "#261e18",
-  muted: "#8a7f73"
+  textSecondary: "#4a4136",
+  muted: "#8a7f73",
+  textSubtle: "#b3a794",
+  sidebarInactive: "#c9bcab",
+  sidebarMuted: "#8a7c6b",
+  sidebarMutedSoft: "#a89a88",
+  success: "#3f7d4e",
+  warning: "#c05621",
+  danger: "#d9524a",
+  notice: "#d95d39",
+  info: "#3563a8",
+  comparison: "#d9cfc0"
 } as const;
 
 export const referenceComponentClasses = [

@@ -6,7 +6,8 @@
   --ref-cocoa: #261e18;
   --ref-gold: #c8912f;
   --ref-gold-strong: #a86e1f;
-  --ref-canvas: #f4f0e9;
+  --ref-canvas: #eceae4;
+  --ref-work-surface: #f4f0e9;
   --ref-header: #fbf8f3;
   --ref-card: #ffffff;
   --ref-line: #e7dfd3;
@@ -16,7 +17,18 @@
   --ref-gold-soft: #efe7d7;
   --ref-gold-wash: #fdf8ec;
   --ref-text: #261e18;
+  --ref-text-secondary: #4a4136;
   --ref-muted: #8a7f73;
+  --ref-text-subtle: #b3a794;
+  --ref-sidebar-inactive: #c9bcab;
+  --ref-sidebar-muted: #8a7c6b;
+  --ref-sidebar-muted-soft: #a89a88;
+  --ref-success: #3f7d4e;
+  --ref-warning: #c05621;
+  --ref-danger: #d9524a;
+  --ref-notice: #d95d39;
+  --ref-info: #3563a8;
+  --ref-comparison: #d9cfc0;
   --app-space-1: 4px;
   --app-space-2: 8px;
   --app-space-3: 12px;
@@ -114,7 +126,7 @@ body {
 
 @layer components {
   .ref-shell {
-    background: var(--ref-canvas);
+    background: var(--ref-work-surface);
     color: var(--ref-text);
   }
 

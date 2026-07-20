@@ -67,6 +67,20 @@
 }
 ```
 
+### 참조 구현 토큰 매핑
+
+`--ref-canvas`는 원본의 **바깥 앱 배경**(`#eceae4`)이고, `--ref-work-surface`는 사이드바 오른쪽의 **본문 작업면**(`#f4f0e9`)이다. 두 토큰은 같은 의미로 바꾸어 쓰지 않는다.
+
+| CSS 토큰 | 값 | 참조 역할 |
+| --- | --- | --- |
+| `--ref-cocoa`, `--ref-text` | `#261e18` | 사이드바·강한 본문 |
+| `--ref-gold`, `--ref-gold-strong` | `#c8912f`, `#a86e1f` | 활성·강조 |
+| `--ref-canvas`, `--ref-work-surface`, `--ref-header`, `--ref-card` | `#eceae4`, `#f4f0e9`, `#fbf8f3`, `#ffffff` | 바깥 배경·본문·헤더·카드 |
+| `--ref-line`, `--ref-line-strong`, `--ref-line-subtle`, `--ref-table-head` | `#e7dfd3`, `#e0d7c8`, `#f3ede2`, `#faf7f1` | 경계·행·표 헤더 |
+| `--ref-text-secondary`, `--ref-muted`, `--ref-text-subtle` | `#4a4136`, `#8a7f73`, `#b3a794` | 보조 본문·라벨·약한 메타 |
+| `--ref-sidebar-inactive`, `--ref-sidebar-muted`, `--ref-sidebar-muted-soft` | `#c9bcab`, `#8a7c6b`, `#a89a88` | 사이드바 비활성·보조 텍스트 |
+| `--ref-success`, `--ref-warning`, `--ref-danger`, `--ref-notice`, `--ref-info`, `--ref-comparison` | `#3f7d4e`, `#c05621`, `#d9524a`, `#d95d39`, `#3563a8`, `#d9cfc0` | 상태·알림·비교 데이터 |
+
 ### 타이포그래피 토큰
 
 | 역할 | 값 | 사용 |

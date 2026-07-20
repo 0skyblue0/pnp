@@ -48,10 +48,6 @@ function summaryText(data: SalesAnalysisDto | null) {
   return `${range} 매출 기록 ${data.recordedDays}일 기준입니다. 최근 기록월은 ${data.latestRecordedMonth ? `${monthLabel(data.latestRecordedMonth.month)} ${comparisonText(data.latestRecordedMonth)}` : "없음"}입니다.`;
 }
 
-function RatioBar({ ratio }: { ratio: number }) {
-  return <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[var(--ref-gold-soft)]"><div className="h-full rounded-full bg-[var(--ref-gold)]" style={{ width: `${Math.max(2, Math.min(100, Math.round(ratio * 100)))}%` }} /></div>;
-}
-
 export function SalesAnalysisPage() {
   const [year, setYear] = useState(String(currentYear));
   const [data, setData] = useState<SalesAnalysisDto | null>(null);
@@ -77,6 +73,15 @@ export function SalesAnalysisPage() {
   const selected = monthly.find((item) => item.month === selectedMonth) ?? monthly[0];
   const maxMonthly = Math.max(data?.visual.maxMonthlySales ?? 0, ...monthly.map((item) => item.targetAmount));
   const latestTarget = data?.latestRecordedMonth ? monthly.find((item) => item.month === data.latestRecordedMonth?.month)?.targetAmount ?? 0 : 0;
+  const channelColors = ["#cf9628", "#9f691b", "#e0b960", "#efe2c4", "#6e4a22"];
+  const channelGradient = (data?.channels ?? []).slice(0, 5).reduce(
+    (gradient, channel, index, channels) => {
+      const before = channels.slice(0, index).reduce((total, item) => total + item.ratio * 100, 0);
+      const after = before + channel.ratio * 100;
+      return `${gradient}${gradient ? ", " : ""}${channelColors[index] ?? channelColors.at(-1)} ${before}% ${after}%`;
+    },
+    ""
+  );
 
   return (
     <div className="mx-auto grid min-w-0 w-full max-w-[996px] gap-3 pb-6">
@@ -124,7 +129,7 @@ export function SalesAnalysisPage() {
       </details>
 
       <div className="grid gap-3 lg:grid-cols-3">
-        <SupportingPanel title="채널별 매출 비중" subtitle="기록된 매출 채널 기준">{(data?.channels ?? []).map((channel) => <div key={channel.name} className="ref-table-row !px-3 !py-2"><div className="flex justify-between gap-2 text-xs"><b>{channel.name}</b><span className="text-bread">{Math.round(channel.ratio * 100)}%</span></div><p className="mt-1 text-[11px] text-muted">{money(channel.amount)} · {channel.count.toLocaleString("ko-KR")}건</p><RatioBar ratio={channel.ratio} /></div>)}</SupportingPanel>
+        <section className="ref-card !p-0"><div className="border-b border-[var(--ref-line)] px-4 py-3"><h2 className="text-[15px] font-extrabold text-ink">채널별 매출 비중</h2><p className="mt-1 text-[11px] text-muted">기록된 매출 채널 기준</p></div><div className="flex items-center gap-4 px-4 py-4"><div className="relative grid h-28 w-28 shrink-0 place-items-center rounded-full" style={{ background: `conic-gradient(${channelGradient || "var(--ref-gold-soft) 0 100%"})` }}><div className="grid h-16 w-16 place-items-center rounded-full bg-white text-center"><span className="text-[10px] text-muted">합계</span><b className="text-xs text-ink">{money(data?.totalSales ?? 0)}</b></div></div><div className="grid min-w-0 flex-1 gap-1.5">{(data?.channels ?? []).slice(0, 4).map((channel, index) => <div key={channel.name} className="flex items-center justify-between gap-2 text-xs"><span className="flex min-w-0 items-center gap-1.5 truncate"><i className="h-2 w-2 shrink-0 rounded-full" style={{ background: channelColors[index] }} />{channel.name}</span><b>{Math.round(channel.ratio * 100)}%</b></div>)}</div></div></section>
         <SupportingPanel title="많이 팔린 제품" subtitle="판매 수량 상위 제품">{(data?.productTop ?? []).slice(0, 5).map((product) => <p key={product.productName} className="ref-table-row !px-3 !py-2 text-xs"><b>{product.productName}</b><span className="text-muted"> · 판매 {product.soldQty.toLocaleString("ko-KR")}개 · 손실 {product.lossQty.toLocaleString("ko-KR")}개 · 시식 {product.tastingQty.toLocaleString("ko-KR")}개</span></p>)}</SupportingPanel>
         <SupportingPanel title="손실 점검 제품" subtitle="손실 수량과 비율 기준">{(data?.lossTop ?? []).slice(0, 5).map((product) => <p key={product.productName} className="ref-table-row !px-3 !py-2 text-xs"><b>{product.productName}</b><span className="text-muted"> · 손실 {product.lossQty.toLocaleString("ko-KR")}개 · 손실률 {product.lossRate === null ? "계산 없음" : `${Math.round(product.lossRate * 100)}%`}</span></p>)}</SupportingPanel>
       </div>

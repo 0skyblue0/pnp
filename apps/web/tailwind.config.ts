@@ -8,6 +8,16 @@ export default {
   theme: {
     extend: {
       colors: {
+        "ref-cocoa": "var(--ref-cocoa)",
+        "ref-gold": "var(--ref-gold)",
+        "ref-gold-strong": "var(--ref-gold-strong)",
+        "ref-canvas": "var(--ref-canvas)",
+        "ref-header": "var(--ref-header)",
+        "ref-card": "var(--ref-card)",
+        "ref-line": "var(--ref-line)",
+        "ref-line-strong": "var(--ref-line-strong)",
+        "ref-text": "var(--ref-text)",
+        "ref-muted": "var(--ref-muted)",
         canvas: "#EDE7DF",
         surface: "#FFFFFF",
         "surface-muted": "#F7F3EC",

@@ -795,7 +795,7 @@ export function DailyLogPage() {
         ) : null}
       </section>
 
-      <section className={viewMode === "entry" ? "grid min-w-0 gap-[14px]" : "grid min-w-0 gap-[14px]"}>
+      <section className={viewMode === "entry" ? "daily-entry-board grid min-w-0 gap-[14px]" : "grid min-w-0 gap-[14px]"}>
         {viewMode === "entry" ? (
           <>
             <div className="sr-only" role="tablist" aria-label="일일 운영 입력 분류">
@@ -817,12 +817,12 @@ export function DailyLogPage() {
                 </button>
               ))}
             </div>
-            <section className="dc-card-pad">
+            <section className="daily-entry-basic dc-card-pad">
               <p className="dc-eyebrow">환경 · 근무 정보</p>
               <h3 className="sr-only">환경 · 근무 정보</h3>
               <BasicSection draft={draft} updateDraft={updateDraft} />
             </section>
-            <section className="dc-card-pad">
+            <section className="daily-entry-products dc-card-pad">
               <p className="dc-eyebrow">제품별 생산 · 판매 (판매량 자동 계산)</p>
               <h3 className="sr-only">제품별 생산 · 판매</h3>
               <ProductsSection
@@ -831,7 +831,7 @@ export function DailyLogPage() {
                 updateRow={updateProductRow}
               />
             </section>
-            <section>
+            <section className="daily-entry-sales">
               <h3 className="sr-only">매출 요약</h3>
               <SalesSection
                 channelRows={channelRows}
@@ -844,7 +844,7 @@ export function DailyLogPage() {
                 averageSpend={averageSpend}
               />
             </section>
-            <section className="dc-card-pad">
+            <section className="daily-entry-notes dc-card-pad">
               <h3 className="sr-only">메모 · 점검</h3>
               <NotesSection
                 draft={draft}
@@ -1768,7 +1768,11 @@ function ProductsSection({
         </div>
       ))}
       </div>
-      <div className="mt-3 hidden gap-3 md:grid md:grid-cols-2 xl:grid-cols-3">
+      <details className="mt-3 hidden rounded-[8px] border border-latte bg-cream/30 md:block">
+        <summary className="cursor-pointer px-3 py-2 text-xs font-semibold text-cocoa marker:text-bread">
+          기타 입·출고 및 직접 판매 입력 열기
+        </summary>
+        <div className="grid gap-3 border-t border-latte p-3 md:grid-cols-2 xl:grid-cols-3">
         {rows.map((row) => (
           <div key={row.productName} className="grid gap-2 rounded-[8px] border border-latte bg-cream/30 p-2">
             <p className="text-xs font-semibold text-ink">{row.productName} 기타/직접 판매</p>
@@ -1790,7 +1794,8 @@ function ProductsSection({
             ) : null}
           </div>
         ))}
-      </div>
+        </div>
+      </details>
       <div className="flex justify-end gap-[24px] pt-[10px] text-[12.5px] text-muted">
         <div>
           총 생산량 <span className="font-bold text-ink">{totals.produced.toLocaleString("ko-KR")}개</span>

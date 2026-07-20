@@ -49,7 +49,7 @@ function summaryText(data: SalesAnalysisDto | null) {
 }
 
 function RatioBar({ ratio }: { ratio: number }) {
-  return <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[var(--ref-gold-soft)]"><div className="h-full rounded-full bg-bread" style={{ width: `${Math.max(2, Math.min(100, Math.round(ratio * 100)))}%` }} /></div>;
+  return <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[var(--ref-gold-soft)]"><div className="h-full rounded-full bg-[var(--ref-gold)]" style={{ width: `${Math.max(2, Math.min(100, Math.round(ratio * 100)))}%` }} /></div>;
 }
 
 export function SalesAnalysisPage() {
@@ -84,8 +84,10 @@ export function SalesAnalysisPage() {
         <PageHeader title="매출 분석" description={data ? `${data.year}년 월별 매출과 목표 흐름` : "POS와 POS 외 일일 운영 기록으로 매출 흐름을 확인합니다."} actions={<div className="flex flex-wrap items-end gap-2"><label className="grid gap-1"><span className="field-label">분석 년도</span><select className="ref-filter-control min-w-28 text-sm font-semibold" value={year} onChange={(event) => setYear(event.target.value)} aria-label="분석 년도">{yearOptions.map((option) => <option key={option} value={option}>{option}년</option>)}</select></label><a className="ref-primary-action inline-flex items-center" href={`/staff?tab=notice&goal=sales&year=${year}`}>월별 목표 입력하러 가기</a></div>} />
         <div className="px-4 pb-4 sm:px-5">
           {error ? <p className="mt-3 rounded-control bg-red/10 px-3 py-2 text-sm font-bold text-red" role="status">{error}</p> : null}
-          <div className="mt-3 rounded-control border border-[var(--ref-gold-soft)] bg-[var(--ref-gold-wash)] px-3 py-2"><p className="text-[11px] font-bold text-[var(--ref-gold-strong)]">현장 요약</p><p className="mt-1 text-xs font-semibold text-[var(--ref-text-secondary)]">{summaryText(data)}</p></div>
-          <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-6" role="group" aria-label="연간 매출 핵심 지표">
+          <details className="mt-3 rounded-control border border-[var(--ref-gold-soft)] bg-[var(--ref-gold-wash)]">
+            <summary className="cursor-pointer px-3 py-2 text-xs font-bold text-[var(--ref-gold-strong)]">연간 매출 요약 보기</summary>
+            <div className="border-t border-[var(--ref-gold-soft)] px-3 py-2"><p className="text-xs font-semibold text-[var(--ref-text-secondary)]">{summaryText(data)}</p></div>
+          <div className="grid gap-2 border-t border-[var(--ref-gold-soft)] p-3 sm:grid-cols-2 lg:grid-cols-6" role="group" aria-label="연간 매출 핵심 지표">
             <Kpi label="연간 매출" value={money(data?.totalSales ?? 0)} />
             <Kpi label="등록된 목표 합계" value={data && data.targetAmount > 0 ? money(data.targetAmount) : "목표 미설정"} />
             <Kpi label="매출 건수" value={`${(data?.totalCount ?? 0).toLocaleString("ko-KR")}건`} />
@@ -93,6 +95,7 @@ export function SalesAnalysisPage() {
             <Kpi label="기록일 평균" value={money(data?.dailyAverageSales ?? 0)} meta={`기록 ${(data?.recordedDays ?? 0).toLocaleString("ko-KR")}일 기준`} />
             <Kpi label="전체 달성률" value={percent(data?.targetProgressRate)} className={targetStatusClass(data?.targetProgressRate ?? null)} />
           </div>
+          </details>
         </div>
       </section>
 
@@ -104,25 +107,28 @@ export function SalesAnalysisPage() {
             const targetHeight = maxMonthly > 0 && item.targetAmount > 0 ? Math.max(3, Math.round(item.targetAmount / maxMonthly * 108)) : 0;
             const isSelected = selected?.month === item.month;
             return <div key={item.month} role="listitem"><button type="button" aria-pressed={isSelected} aria-label={`${monthLabel(item.month)} ${item.hasRecord ? `매출 ${money(item.sales)}` : "기록 없음"}`} onClick={() => setSelectedMonth(item.month)} className={`group relative flex min-h-36 w-full flex-col justify-end rounded-control px-1 pb-1 text-center transition hover:bg-[var(--ref-gold-wash)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bread/40 motion-reduce:transition-none ${isSelected ? "bg-[var(--ref-gold-wash)]" : ""}`}>
-              <span className="relative mx-auto flex h-28 w-full max-w-10 items-end justify-center border-b border-[var(--ref-line)]"><span className="absolute bottom-0 w-full rounded-t-sm bg-bread/85" style={{ height: `${salesHeight}px` }} /><span className="absolute bottom-0 z-10 w-[calc(100%+4px)] border-t-2 border-[var(--ref-cocoa)]" style={{ bottom: `${targetHeight}px`, visibility: targetHeight ? "visible" : "hidden" }} /></span><span className={`mt-1 text-[11px] font-bold ${isSelected ? "text-bread" : "text-muted"}`}>{monthNumber(item.month)}월</span>
+              <span className="relative mx-auto flex h-28 w-full max-w-10 items-end justify-center border-b border-[var(--ref-line)]"><span className="absolute bottom-0 w-full rounded-t-sm bg-[color:var(--ref-gold)] opacity-85" style={{ height: `${salesHeight}px` }} /><span className="absolute bottom-0 z-10 w-[calc(100%+4px)] border-t-2 border-[var(--ref-cocoa)]" style={{ bottom: `${targetHeight}px`, visibility: targetHeight ? "visible" : "hidden" }} /></span><span className={`mt-1 text-[11px] font-bold ${isSelected ? "text-[var(--ref-gold-strong)]" : "text-muted"}`}>{monthNumber(item.month)}월</span>
             </button></div>;
           })}
         </div>
         {selected ? <div className="mt-3 grid gap-2 rounded-control border border-[var(--ref-line)] bg-[var(--ref-table-head)] px-3 py-2 text-xs sm:grid-cols-3"><p><b className="text-ink">{monthLabel(selected.month)} 매출</b> {selected.hasRecord ? money(selected.sales) : "기록 없음"}</p><p>목표 {selected.targetAmount > 0 ? money(selected.targetAmount) : "미설정"} · <span className={targetStatusClass(selected.targetProgressRate)}>{precisePercent(selected.targetProgressRate)}</span></p><p className="text-muted">{comparisonText(selected)}</p></div> : null}
       </section>
 
-      <section className="ref-card" aria-label="월별 상세">
+      <details className="ref-card" aria-label="월별 상세">
+        <summary className="cursor-pointer text-[15px] font-extrabold text-ink">월별 상세 보기</summary>
+        <div className="mt-3">
         <div className="flex flex-wrap items-end justify-between gap-2"><div><h2 className="text-[15px] font-extrabold text-ink">월별 상세</h2><p className="mt-1 text-xs text-muted">목표, 실제 매출, 건수와 객단가를 한 행에서 확인합니다.</p></div><p className="text-xs text-muted">최근 기록월 목표 차이: <b className="text-ink">{data?.latestRecordedMonth ? targetGapText(data.latestRecordedMonth.sales, latestTarget) : "목표 미설정"}</b></p></div>
         <div className="mt-3 hidden overflow-x-auto md:block"><div className="min-w-[760px]"><div className="grid grid-cols-[64px_1fr_1fr_76px_88px_1.4fr] ref-table-head"><span>월</span><span className="text-right">목표</span><span className="text-right">매출</span><span className="text-right">달성률</span><span className="text-right">건수</span><span className="text-right">객단가 · 비교</span></div>{monthly.map((item) => <div key={item.month} className={`grid grid-cols-[64px_1fr_1fr_76px_88px_1.4fr] ref-table-row ${selected?.month === item.month ? "bg-[var(--ref-gold-wash)]" : ""}`}><b>{monthLabel(item.month)}</b><span className="text-right">{item.targetAmount > 0 ? money(item.targetAmount) : "—"}</span><span className="text-right font-bold">{item.hasRecord ? money(item.sales) : "—"}</span><span className={`text-right font-bold ${targetStatusClass(item.targetProgressRate)}`}>{precisePercent(item.targetProgressRate)}</span><span className="text-right">{item.hasRecord ? `${item.count.toLocaleString("ko-KR")}건` : "—"}</span><span className="text-right text-[11px] text-muted">{item.hasRecord ? `${money(item.averageTicket)} · ${comparisonText(item)}` : "기록 없음"}</span></div>)}</div></div>
         <div className="mt-3 grid gap-2 md:hidden">{monthly.map((item) => <article key={item.month} className={`rounded-control border border-[var(--ref-line)] px-3 py-3 ${selected?.month === item.month ? "bg-[var(--ref-gold-wash)]" : "bg-white"}`}><div className="flex items-center justify-between"><b>{monthLabel(item.month)}</b><span className={targetStatusClass(item.targetProgressRate)}>{precisePercent(item.targetProgressRate)}</span></div><dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-xs"><div><dt className="text-muted">목표</dt><dd>{item.targetAmount > 0 ? money(item.targetAmount) : "미설정"}</dd></div><div><dt className="text-muted">매출</dt><dd className="font-bold">{item.hasRecord ? money(item.sales) : "기록 없음"}</dd></div><div><dt className="text-muted">건수</dt><dd>{item.hasRecord ? `${item.count.toLocaleString("ko-KR")}건` : "—"}</dd></div><div><dt className="text-muted">객단가</dt><dd>{item.hasRecord ? money(item.averageTicket) : "—"}</dd></div></dl><p className="mt-2 text-[11px] text-muted">{comparisonText(item)}</p></article>)}</div>
-      </section>
+        </div>
+      </details>
 
       <div className="grid gap-3 lg:grid-cols-3">
         <SupportingPanel title="채널별 매출 비중" subtitle="기록된 매출 채널 기준">{(data?.channels ?? []).map((channel) => <div key={channel.name} className="ref-table-row !px-3 !py-2"><div className="flex justify-between gap-2 text-xs"><b>{channel.name}</b><span className="text-bread">{Math.round(channel.ratio * 100)}%</span></div><p className="mt-1 text-[11px] text-muted">{money(channel.amount)} · {channel.count.toLocaleString("ko-KR")}건</p><RatioBar ratio={channel.ratio} /></div>)}</SupportingPanel>
         <SupportingPanel title="많이 팔린 제품" subtitle="판매 수량 상위 제품">{(data?.productTop ?? []).slice(0, 5).map((product) => <p key={product.productName} className="ref-table-row !px-3 !py-2 text-xs"><b>{product.productName}</b><span className="text-muted"> · 판매 {product.soldQty.toLocaleString("ko-KR")}개 · 손실 {product.lossQty.toLocaleString("ko-KR")}개 · 시식 {product.tastingQty.toLocaleString("ko-KR")}개</span></p>)}</SupportingPanel>
         <SupportingPanel title="손실 점검 제품" subtitle="손실 수량과 비율 기준">{(data?.lossTop ?? []).slice(0, 5).map((product) => <p key={product.productName} className="ref-table-row !px-3 !py-2 text-xs"><b>{product.productName}</b><span className="text-muted"> · 손실 {product.lossQty.toLocaleString("ko-KR")}개 · 손실률 {product.lossRate === null ? "계산 없음" : `${Math.round(product.lossRate * 100)}%`}</span></p>)}</SupportingPanel>
       </div>
-      {(data?.dataWarnings.length ?? 0) > 0 ? <section className="ref-card"><h2 className="text-[15px] font-extrabold text-ink">데이터 정리 필요</h2><p className="mt-1 text-xs text-muted">분석 화면에서 임의로 고치지 않고 확인할 후보만 표시합니다.</p><div className="mt-3 grid gap-2 md:grid-cols-2">{data?.dataWarnings.map((warning) => <p key={warning} className="rounded-control border border-[var(--ref-gold-soft)] bg-[var(--ref-gold-wash)] px-3 py-2 text-xs font-semibold text-[var(--ref-text-secondary)]">{warning}</p>)}</div></section> : null}
+      {(data?.dataWarnings.length ?? 0) > 0 ? <details className="ref-card"><summary className="cursor-pointer text-[15px] font-extrabold text-ink">데이터 정리 필요</summary><p className="mt-2 text-xs text-muted">분석 화면에서 임의로 고치지 않고 확인할 후보만 표시합니다.</p><div className="mt-3 grid gap-2 md:grid-cols-2">{data?.dataWarnings.map((warning) => <p key={warning} className="rounded-control border border-[var(--ref-gold-soft)] bg-[var(--ref-gold-wash)] px-3 py-2 text-xs font-semibold text-[var(--ref-text-secondary)]">{warning}</p>)}</div></details> : null}
     </div>
   );
 }

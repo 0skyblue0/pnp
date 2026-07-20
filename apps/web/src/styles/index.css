@@ -325,6 +325,28 @@ body {
   .dc-action {
     @apply rounded-[9px] bg-bread px-4 py-2 text-[13px] font-semibold text-white transition hover:bg-cocoa;
   }
+
+  .daily-entry-board {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (min-width: 1280px) {
+  .daily-entry-board {
+    grid-template-columns: minmax(0, 0.82fr) minmax(0, 1.18fr);
+    align-items: start;
+  }
+
+  .daily-entry-products {
+    grid-column: 2;
+    grid-row: span 3;
+  }
+
+  .daily-entry-basic,
+  .daily-entry-sales,
+  .daily-entry-notes {
+    grid-column: 1;
+  }
 }
 
 .app-numeric {

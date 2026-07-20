@@ -257,7 +257,7 @@ export function AppLayout() {
               지
             </span>
             <div>
-              <p className="text-[12.5px] font-semibold text-ref-header">김지원</p>
+              <p className="text-[12.5px] font-semibold text-ref-header">이름</p>
               <p className="mt-0.5 text-[11px] text-ref-sidebar-muted-soft">오픈 근무</p>
             </div>
           </div>

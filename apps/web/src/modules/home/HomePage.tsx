@@ -4,7 +4,6 @@ import { Link } from "react-router-dom";
 import { apiGet } from "../../shared/api/client.js";
 import type { ListEnvelope } from "../../shared/api/types.js";
 import { todayInStoreTime } from "../../shared/time/storeTime.js";
-import { PageHeader } from "../../shared/ui/PageHeader.js";
 
 type NotificationDto = {
   id: number;
@@ -355,7 +354,10 @@ export function HomePage() {
 
   return (
     <div className="mx-auto grid max-w-none gap-4">
-      <PageHeader title="홈" description="오늘의 운영 현황과 이번 달 목표를 빠르게 확인합니다." eyebrow="Paul & Paulina" />
+      <header className="flex min-h-11 items-center gap-3 border-b border-[var(--ref-line)] pb-3">
+        <h1 className="text-[21px] font-extrabold tracking-[-0.025em] text-ink">홈</h1>
+        <p className="text-sm text-muted">오늘의 운영 현황</p>
+      </header>
       {error ? (
         <div className="rounded-control border border-red/20 bg-red/10 px-3 py-2 text-sm font-semibold text-red">
           {error}
@@ -365,7 +367,7 @@ export function HomePage() {
         <div className="grid gap-3 md:grid-cols-3">
           <Link
             to="/daily-log/today"
-            className="app-card min-h-[92px] px-[18px] py-4 transition hover:border-bread focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bread/30 motion-reduce:transition-none"
+            className="ref-card min-h-[104px] px-[18px] py-4 transition hover:border-bread focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bread/30 motion-reduce:transition-none"
           >
             <span className="block text-[11.5px] font-medium text-muted">일일 운영 작성</span>
             <span className="mt-3 inline-flex rounded-full bg-ref-warning-wash px-3 py-1 text-[12px] font-bold text-ref-warning-strong">
@@ -375,7 +377,7 @@ export function HomePage() {
 
           <Link
             to="/reservation?view=list"
-            className="app-card min-h-[92px] px-[18px] py-4 transition hover:border-bread focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bread/30 motion-reduce:transition-none"
+            className="ref-card min-h-[104px] px-[18px] py-4 transition hover:border-bread focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bread/30 motion-reduce:transition-none"
           >
             <span className="block text-[11.5px] font-medium text-muted">오늘 예약 현황</span>
             <span className="mt-2 flex items-end gap-5">
@@ -396,7 +398,7 @@ export function HomePage() {
 
           <Link
             to="/response"
-            className="app-card min-h-[92px] px-[18px] py-4 transition hover:border-bread focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bread/30 motion-reduce:transition-none"
+            className="ref-card min-h-[104px] px-[18px] py-4 transition hover:border-bread focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bread/30 motion-reduce:transition-none"
           >
             <span className="block text-[11.5px] font-medium text-muted">손님 반응 기록</span>
             <span className="mt-2 block text-[21px] font-extrabold leading-tight text-ink">{todayResponseCount}건</span>
@@ -406,7 +408,7 @@ export function HomePage() {
 
       <section className="grid gap-3 md:grid-cols-3">
         <button
-          className="app-card px-5 py-[18px] text-left transition hover:border-bread focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bread/30 motion-reduce:transition-none"
+          className="ref-card px-5 py-4 text-left transition hover:border-bread focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bread/30 motion-reduce:transition-none"
           type="button"
           onClick={() => salesGoalNotice ? setDetailGoalNoticeKey(goalNoticeKey(salesGoalNotice)) : undefined}
         >
@@ -445,7 +447,7 @@ export function HomePage() {
           </div>
         </button>
         <button
-          className="app-card px-5 py-[18px] text-left transition hover:border-bread focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bread/30 motion-reduce:transition-none"
+          className="ref-card min-h-[154px] px-5 py-4 text-left transition hover:border-bread focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bread/30 motion-reduce:transition-none"
           type="button"
           onClick={() => operationNotice ? setDetailGoalNoticeKey(goalNoticeKey(operationNotice)) : undefined}
         >
@@ -454,7 +456,7 @@ export function HomePage() {
           <p className="mt-1 line-clamp-2 text-[13px] leading-6 text-cocoa">{operationNotice?.value ?? "관리 탭에서 운영 목표를 입력해 주세요."}</p>
         </button>
         <button
-          className="app-card px-5 py-[18px] text-left transition hover:border-bread focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bread/30 motion-reduce:transition-none"
+          className="ref-card min-h-[154px] px-5 py-4 text-left transition hover:border-bread focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bread/30 motion-reduce:transition-none"
           type="button"
           onClick={() => staffNotice ? setDetailGoalNoticeKey(goalNoticeKey(staffNotice)) : undefined}
         >
@@ -466,7 +468,7 @@ export function HomePage() {
       {renderGoalNoticeDetail()}
 
       <section className="grid gap-3 lg:grid-cols-2">
-        <div className="app-card px-5 py-4">
+        <div className="ref-card px-5 py-4">
           <p className="mb-3 text-[11.5px] font-semibold uppercase tracking-[0.03em] text-muted">
             연간 스케줄
           </p>
@@ -491,7 +493,7 @@ export function HomePage() {
           </div>
         </div>
 
-        <div className="app-card px-5 py-4">
+        <div className="ref-card px-5 py-4">
           <p className="mb-3 text-[11.5px] font-semibold uppercase tracking-[0.03em] text-muted">
             알림 ({notifications.length}건)
           </p>

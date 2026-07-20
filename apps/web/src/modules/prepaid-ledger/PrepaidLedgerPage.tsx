@@ -143,12 +143,6 @@ function transactionToneClass(type: string): string {
   return type === "USE" ? "bg-ref-peach-wash text-cocoa" : "bg-ref-info-wash text-ref-info-strong";
 }
 
-function lastTransactionText(customer: PrepaidCustomerDto): string {
-  const last = customer.transactions[0];
-  if (!last) return "거래 내역 없음";
-  return `${formatLedgerDate(last.occurredAt)} ${transactionLabel(last.type)} ${transactionAmountLabel(last)}`;
-}
-
 function parseSharedLimitText(value: string | null | undefined): number {
   if (!value) return 0;
   const match = value.match(/(?:1인\s*한도|한도|각)\s*([0-9,]+)\s*원?/);
@@ -276,7 +270,7 @@ export function PrepaidLedgerPage() {
     setSelectedCustomerId((current) => {
       if (current && envelope.data.items.some((customer) => customer.id === current))
         return current;
-      return null;
+      return envelope.data.items[0]?.id ?? null;
     });
   }, [query]);
 
@@ -600,66 +594,28 @@ export function PrepaidLedgerPage() {
         />
       ) : null}
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.3fr)_minmax(340px,0.9fr)] xl:items-start">
-      <section className="app-card px-5 py-3" role="region" aria-labelledby="prepaid-history-title">
-        <h2 id="prepaid-history-title" className="mb-2 text-base font-bold text-foreground">거래 내역</h2>
-        <div className="grid gap-2 border-b border-border px-1 py-3 text-xs font-semibold text-subtle sm:grid-cols-[1fr_1.25fr_0.9fr_1.6fr_1.7fr]">
-          <div>이름</div>
-          <div>연락처</div>
-          <div>잔액</div>
-          <div>최근 거래</div>
-          <div>액션</div>
-        </div>
-        <div>
+      <div className="grid gap-4 xl:grid-cols-[minmax(300px,0.82fr)_minmax(0,1.18fr)] xl:items-start">
+      <section className="ref-card !p-0" role="region" aria-labelledby="prepaid-history-title">
+        <div className="border-b border-[var(--ref-line)] px-4 py-3"><h2 id="prepaid-history-title" className="text-[15px] font-extrabold text-foreground">선결제 손님</h2><p className="mt-1 text-xs text-muted">손님을 선택하면 거래 내역과 사용 처리를 볼 수 있습니다.</p></div>
+        <div className="p-3">
           {sortedCustomers.map((customer) => (
             <div
               key={customer.id}
-              className="app-data-row grid gap-2 sm:grid-cols-[1fr_1.25fr_0.9fr_1.6fr_1.7fr] sm:items-center"
+              className="mb-2 flex items-center justify-between gap-3 rounded-panel border border-[var(--ref-line)] bg-white p-3 last:mb-0 aria-[current=true]:border-[var(--ref-gold)] aria-[current=true]:bg-[var(--ref-gold-wash)]"
             >
               <button
                 type="button"
-                className="text-left font-bold text-ink underline-offset-4 hover:underline aria-[current=true]:rounded-control aria-[current=true]:bg-ref-gold-wash aria-[current=true]:px-2 aria-[current=true]:text-cocoa"
+                className="min-w-0 flex-1 text-left"
                 aria-current={selectedCustomer?.id === customer.id ? "true" : undefined}
                 onClick={() => openCustomer(customer, "DETAIL")}
               >
-                {customer.customerName}님
+                <span className="block font-extrabold text-ink">{customer.customerName}님</span>
+                <span className="mt-1 block text-[11px] font-semibold text-muted">{customer.contactPhone || "연락처 없음"}</span>
               </button>
-              <div className="text-[12.5px] font-semibold text-muted">
-                {customer.contactPhone || "연락처 없음"}
-              </div>
-              <div className="font-extrabold">{formatCurrency(customer.balance)}원</div>
-              <div className="text-[12.5px] font-semibold text-muted">
-                {lastTransactionText(customer)}
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  className="min-h-11 rounded-control bg-ref-info-wash px-3 py-1.5 text-xs font-bold text-ref-info-strong"
-                  onClick={() => openCustomer(customer, "CHARGE")}
-                >
-                  충전
-                </button>
-                <button
-                  type="button"
-                  className="min-h-11 rounded-control bg-ref-peach-wash px-3 py-1.5 text-xs font-bold text-cocoa"
-                  onClick={() => openCustomer(customer, "USE")}
-                >
-                  사용
-                </button>
-                <button
-                  type="button"
-                  className="min-h-11 rounded-control bg-ref-line-faint px-3 py-1.5 text-xs font-bold text-muted"
-                  onClick={() => openCustomer(customer, "DETAIL")}
-                >
-                  세부내역
-                </button>
-                <button
-                  type="button"
-                  className="min-h-11 rounded-control bg-red/10 px-3 py-1.5 text-xs font-bold text-red"
-                  onClick={() => void deleteCustomer(customer)}
-                >
-                  삭제
-                </button>
+              <div className="text-right">
+                <p className="text-[11px] font-semibold text-muted">잔액</p>
+                <p className="mt-1 font-extrabold text-ink">{formatCurrency(customer.balance)}원</p>
+                <button type="button" className="mt-1 text-[10px] font-semibold text-muted underline-offset-2 hover:text-red hover:underline" onClick={() => void deleteCustomer(customer)}>삭제</button>
               </div>
             </div>
           ))}
@@ -754,7 +710,7 @@ function NewPrepaidForm(props: {
             <input
               aria-label="새 손님 이름"
               className="input"
-              placeholder="홍길동"
+              placeholder="이름"
               value={form.customerName}
               onChange={(event) =>
                 setForm((current) => ({ ...current, customerName: event.target.value }))
@@ -829,7 +785,7 @@ function NewPrepaidForm(props: {
               <textarea
                 aria-label="공동 선결제 참여자"
                 className="input min-h-16 resize-y"
-                placeholder="예: 홍길동 1234, 이영희 5678"
+                placeholder="예: 이름 1234, 이름 5678"
                 value={form.participantsText}
                 onChange={(event) =>
                   setForm((current) => ({ ...current, participantsText: event.target.value }))
@@ -1000,7 +956,7 @@ function SelectedCustomerDetail(props: {
                   <input
                     aria-label={`${customer.customerName} 공동 사용자 이름`}
                     className="input"
-                    placeholder={selectedParticipant?.participantName ?? "홍길동"}
+                    placeholder={selectedParticipant?.participantName ?? "이름"}
                     value={sharedUseForm.name}
                     onChange={(event) =>
                       setSharedUseForm(customer.id, { name: event.target.value })

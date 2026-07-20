@@ -13,7 +13,16 @@ const mobileRoutes = ["/home", "/daily-log/today", "/sales-analysis", "/staff"] 
 
 async function expectNoPageOverflow(page: Page) {
   await expect
-    .poll(() => page.locator("body").evaluate((body) => body.scrollWidth <= window.innerWidth))
+    .poll(() =>
+      page.evaluate(() => {
+        const main = document.querySelector("main");
+        return (
+          document.documentElement.scrollWidth <= window.innerWidth &&
+          main instanceof HTMLElement &&
+          main.scrollWidth <= main.clientWidth
+        );
+      })
+    )
     .toBe(true);
 }
 

@@ -190,3 +190,37 @@ test("keeps the reference shell menu available in the mobile drawer", async ({ p
   await expect(drawer.getByText("운영", { exact: true })).toBeVisible();
   await expect(drawer.getByText("고객", { exact: true })).toBeVisible();
 });
+
+test("verifies the desktop reference shell frame at 1440px", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.clock.install({ time: new Date("2026-07-20T09:00:00+09:00") });
+  await page.context().clearCookies();
+  await page.addInitScript(() => {
+    localStorage.clear();
+    sessionStorage.clear();
+  });
+  await page.route("**/api/v1/**", async (route) => {
+    const path = new URL(route.request().url()).pathname.replace("/api/v1", "");
+    const fixture = fixtures[path];
+    if (!fixture) {
+      throw new Error(`Missing reference shell fixture for ${path}`);
+    }
+    await route.fulfill({ contentType: "application/json", body: JSON.stringify(success(fixture)) });
+  });
+
+  await page.goto("/home", { waitUntil: "networkidle" });
+  await expect(page.locator('meta[name="pnp-ui-reference-shell"]')).toHaveAttribute(
+    "content",
+    "reference-fidelity-alignment-task-2"
+  );
+
+  const sidebar = page.locator("aside");
+  await expect(sidebar).toHaveCSS("width", "210px");
+  await expect(sidebar).toHaveCSS("background-color", "rgb(38, 30, 24)");
+  await expect(page.getByText("운영", { exact: true }).first()).toHaveCSS("color", "rgb(138, 124, 107)");
+  await expect(page.getByRole("link", { name: "일일 운영" }).first()).toHaveCSS("color", "rgb(201, 188, 171)");
+  await expect(page.getByRole("link", { name: "홈", exact: true }).first()).toHaveCSS("background-color", "rgb(200, 145, 47)");
+  await expect(page.locator("aside + div")).toHaveCSS("background-color", "rgb(244, 240, 233)");
+  await expect(page.locator("header.ref-page-header")).toHaveCSS("background-color", "rgb(251, 248, 243)");
+  await expect(page).toHaveScreenshot("reference-shell-desktop-1440.png", { fullPage: true });
+});

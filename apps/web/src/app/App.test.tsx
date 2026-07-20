@@ -61,6 +61,14 @@ describe("App", () => {
     vi.unstubAllGlobals();
   });
 
+  it("opens the labelled mobile navigation control", () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "메뉴 열기" }));
+
+    expect(screen.getByRole("link", { name: "매출 분석" })).toBeVisible();
+  });
+
   it("shows the main bakery work tabs", () => {
     render(
       <MemoryRouter initialEntries={["/home"]}>

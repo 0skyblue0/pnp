@@ -525,8 +525,8 @@ export function PrepaidLedgerPage() {
   }
 
   return (
-    <div className="app-page grid gap-4">
-      <section className="app-card">
+    <div className="mx-auto grid w-full max-w-[1196px] gap-3 pb-6">
+      <section className="border-b border-[var(--ref-line)] pb-3">
         <PageHeader
           title="선결제 장부"
           description="손님별 잔액과 거래 내역을 확인하고 충전·사용을 처리합니다."
@@ -556,7 +556,9 @@ export function PrepaidLedgerPage() {
           }
         />
 
-        <div className="mt-4 app-card-muted px-5 py-4">
+        <details className="mt-3 rounded-control border border-[var(--ref-line)] bg-[var(--ref-table-head)] px-4 py-2">
+          <summary className="cursor-pointer text-xs font-bold text-muted">선결제 요약 보기</summary>
+          <div className="mt-2 flex flex-wrap gap-8 border-t border-[var(--ref-line)] pt-3">
           <div className="flex flex-wrap gap-8">
             <div>
               <p className="text-[11px] font-semibold text-muted">검색된 손님 수</p>
@@ -571,7 +573,8 @@ export function PrepaidLedgerPage() {
               </p>
             </div>
           </div>
-        </div>
+          </div>
+        </details>
       </section>
 
       {message ? (
@@ -594,7 +597,7 @@ export function PrepaidLedgerPage() {
         />
       ) : null}
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(300px,0.82fr)_minmax(0,1.18fr)] xl:items-start">
+      <div className="grid gap-3 xl:grid-cols-[minmax(300px,0.72fr)_minmax(0,1.28fr)] xl:items-start">
       <section className="ref-card !p-0" role="region" aria-labelledby="prepaid-history-title">
         <div className="border-b border-[var(--ref-line)] px-4 py-3"><h2 id="prepaid-history-title" className="text-[15px] font-extrabold text-foreground">선결제 손님</h2><p className="mt-1 text-xs text-muted">손님을 선택하면 거래 내역과 사용 처리를 볼 수 있습니다.</p></div>
         <div className="p-3">

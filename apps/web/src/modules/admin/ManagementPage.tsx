@@ -2126,6 +2126,15 @@ export function ManagementPage() {
             </div>
           </div>
         ) : null}
+        {adminTabs.filter((tab) => tab.key !== activeAdminTab).map((tab) => (
+          <div
+            key={tab.key}
+            aria-labelledby={`management-tab-${tab.key}`}
+            id={`management-panel-${tab.key}`}
+            role="tabpanel"
+            hidden
+          />
+        ))}
       </section>
 
       <section className="hidden order-2" aria-hidden="true">

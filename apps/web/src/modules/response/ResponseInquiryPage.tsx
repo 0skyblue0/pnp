@@ -170,10 +170,22 @@ export function ResponseInquiryPage() {
           <ResponseEntryPage />
         </div>
       ) : (
+        <div aria-labelledby="response-mode-tab-entry" id="response-mode-panel-entry" role="tabpanel" hidden />
+      )}
+      {activeMode === "lookup" ? (
         <div aria-labelledby="response-mode-tab-lookup" id="response-mode-panel-lookup" role="tabpanel">
           <div aria-labelledby={tabIds[activeTab].tab} id={tabIds[activeTab].panel} role="tabpanel">
             {activeTab === "stats" ? <StatisticsPage /> : <ResponseListPage />}
           </div>
+          {tabOptions.filter((option) => option.value !== activeTab).map((option) => (
+            <div key={option.value} aria-labelledby={tabIds[option.value].tab} id={tabIds[option.value].panel} role="tabpanel" hidden />
+          ))}
+        </div>
+      ) : (
+        <div aria-labelledby="response-mode-tab-lookup" id="response-mode-panel-lookup" role="tabpanel" hidden>
+          {tabOptions.map((option) => (
+            <div key={option.value} aria-labelledby={tabIds[option.value].tab} id={tabIds[option.value].panel} role="tabpanel" hidden />
+          ))}
         </div>
       )}
     </div>

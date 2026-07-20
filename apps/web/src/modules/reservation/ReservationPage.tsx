@@ -571,17 +571,17 @@ export function ReservationPage() {
             <div className="mb-3 text-[16px] font-bold text-ink">{editingId ? "예약 수정" : "새 예약 등록"}</div>
 
             {message ? (
-              <div className="mb-3 rounded-[9px] bg-green/10 px-[13px] py-[8px] text-[12px] font-semibold text-green">
+              <div role="status" className="mb-3 rounded-[9px] bg-green/10 px-[13px] py-[8px] text-[12px] font-semibold text-green">
                 {message}
               </div>
             ) : null}
             {error ? (
-              <div className="mb-3 rounded-[9px] bg-[#F7E3E1] px-[13px] py-[8px] text-[12px] font-semibold text-red">
+              <div role="alert" className="mb-3 rounded-[9px] bg-[#F7E3E1] px-[13px] py-[8px] text-[12px] font-semibold text-red">
                 {error}
               </div>
             ) : null}
             {formErrors.length > 0 ? (
-              <div className="mb-3 rounded-[9px] bg-[#F7E3E1] px-[13px] py-[8px] text-[12px] font-semibold text-red">
+              <div role="alert" className="mb-3 rounded-[9px] bg-[#F7E3E1] px-[13px] py-[8px] text-[12px] font-semibold text-red">
                 <p>저장 전 확인해 주세요.</p>
                 <ul className="mt-1 list-disc pl-5">
                   {formErrors.map((formError) => (

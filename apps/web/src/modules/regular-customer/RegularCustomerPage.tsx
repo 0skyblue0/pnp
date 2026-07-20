@@ -70,8 +70,8 @@ export function RegularCustomerPage() {
   return (
     <div className="app-page grid gap-4">
       <section className="app-card">
-        <PageHeader title="단골손님 리스트" description="예약·선결제에서 자주 보이는 손님과 직원이 저장한 고정 메모를 모아 봅니다." actions={<div className="flex gap-2">
-            <input className="input min-w-56" aria-label="단골손님 검색" placeholder="이름 또는 연락처" value={query} onChange={(event) => setQuery(event.target.value)} />
+        <PageHeader title="단골손님 리스트" description="예약·선결제에서 자주 보이는 손님과 직원이 저장한 고정 메모를 모아 봅니다." actions={<div className="flex w-full flex-wrap gap-2 sm:w-auto sm:flex-nowrap">
+            <input className="input w-full min-w-0 sm:w-auto sm:min-w-56" aria-label="단골손님 검색" placeholder="이름 또는 연락처" value={query} onChange={(event) => setQuery(event.target.value)} />
             <button className="min-h-11 rounded-control bg-bread px-4 py-2 text-sm font-bold text-white" type="button" onClick={() => void load()}>검색</button>
           </div>} />
         {message ? <p role="status" className="mt-3 rounded-control bg-green/10 px-3 py-2 text-sm font-bold text-green">{message}</p> : null}

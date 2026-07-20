@@ -29,9 +29,9 @@ const ToastContext = createContext<ToastContextValue | null>(null);
 const TOAST_DURATION_MS = 3500;
 
 const toneStyles: Record<ToastTone, string> = {
-  success: "border-green/30 bg-[#f6fbf7] text-ink",
-  error: "border-red/40 bg-[#fff5f4] text-ink",
-  info: "border-blue/30 bg-[#f4f8ff] text-ink"
+  success: "border-green/30 bg-ref-success-wash text-ink",
+  error: "border-red/40 bg-ref-danger-wash text-ink",
+  info: "border-blue/30 bg-ref-info-soft text-ink"
 };
 
 const toneIconClass: Record<ToastTone, string> = {

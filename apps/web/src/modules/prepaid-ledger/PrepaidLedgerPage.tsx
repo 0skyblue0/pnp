@@ -140,7 +140,7 @@ function transactionAmountLabel(transaction: PrepaidTransactionDto): string {
 }
 
 function transactionToneClass(type: string): string {
-  return type === "USE" ? "bg-[#F4E3D8] text-[#8C4A32]" : "bg-[#EAF1F7] text-[#3B6EA5]";
+  return type === "USE" ? "bg-ref-peach-wash text-cocoa" : "bg-ref-info-wash text-ref-info-strong";
 }
 
 function lastTransactionText(customer: PrepaidCustomerDto): string {
@@ -618,7 +618,7 @@ export function PrepaidLedgerPage() {
             >
               <button
                 type="button"
-                className="text-left font-bold text-ink underline-offset-4 hover:underline aria-[current=true]:rounded-control aria-[current=true]:bg-[#fdf8ec] aria-[current=true]:px-2 aria-[current=true]:text-cocoa"
+                className="text-left font-bold text-ink underline-offset-4 hover:underline aria-[current=true]:rounded-control aria-[current=true]:bg-ref-gold-wash aria-[current=true]:px-2 aria-[current=true]:text-cocoa"
                 aria-current={selectedCustomer?.id === customer.id ? "true" : undefined}
                 onClick={() => openCustomer(customer, "DETAIL")}
               >
@@ -634,21 +634,21 @@ export function PrepaidLedgerPage() {
               <div className="flex flex-wrap gap-2">
                 <button
                   type="button"
-                  className="min-h-11 rounded-control bg-[#EAF1F7] px-3 py-1.5 text-xs font-bold text-[#3B6EA5]"
+                  className="min-h-11 rounded-control bg-ref-info-wash px-3 py-1.5 text-xs font-bold text-ref-info-strong"
                   onClick={() => openCustomer(customer, "CHARGE")}
                 >
                   충전
                 </button>
                 <button
                   type="button"
-                  className="min-h-11 rounded-control bg-[#F4E3D8] px-3 py-1.5 text-xs font-bold text-[#8C4A32]"
+                  className="min-h-11 rounded-control bg-ref-peach-wash px-3 py-1.5 text-xs font-bold text-cocoa"
                   onClick={() => openCustomer(customer, "USE")}
                 >
                   사용
                 </button>
                 <button
                   type="button"
-                  className="min-h-11 rounded-control bg-[#F5F0E7] px-3 py-1.5 text-xs font-bold text-muted"
+                  className="min-h-11 rounded-control bg-ref-line-faint px-3 py-1.5 text-xs font-bold text-muted"
                   onClick={() => openCustomer(customer, "DETAIL")}
                 >
                   세부내역
@@ -800,7 +800,7 @@ function NewPrepaidForm(props: {
           </label>
         </div>
         {form.ledgerType === "SHARED" ? (
-          <div className="mt-3 grid gap-3 rounded-[12px] border border-[#E8D6C7] bg-[#FFFBF6] p-3 md:grid-cols-[0.8fr_1.4fr]">
+          <div className="mt-3 grid gap-3 rounded-[12px] border border-ref-alert-line bg-ref-alert-wash p-3 md:grid-cols-[0.8fr_1.4fr]">
             <label className="grid gap-1">
               <span className="field-label">1인 한도</span>
               <span className="relative block">
@@ -955,7 +955,7 @@ function SelectedCustomerDetail(props: {
       aria-label={`${customer.customerName} 선결제 장부`}
       className="rounded-[14px] border border-latte bg-white p-5"
     >
-      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[#EFE8DC] pb-4">
+      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-ref-line-warm pb-4">
         <div>
           <p className="text-xs font-extrabold text-bread">현재 선택한 손님</p>
           <h3 className="mt-1 text-2xl font-extrabold text-ink">{customer.customerName}님</h3>
@@ -972,11 +972,11 @@ function SelectedCustomerDetail(props: {
       </div>
 
       {mode === "USE" ? (
-        <section className="mt-4 rounded-[12px] bg-[#F4E3D8]/60 p-4">
+        <section className="mt-4 rounded-[12px] bg-ref-peach-wash/60 p-4">
           <h3 className="text-base font-extrabold text-ink">사용</h3>
 
           {isSharedLedger ? (
-            <div className="mt-3 rounded-[12px] border border-[#E8D6C7] bg-white/70 p-4">
+            <div className="mt-3 rounded-[12px] border border-ref-alert-line bg-white/70 p-4">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-start gap-2">
                   <Users className="mt-0.5 h-4 w-4 text-cocoa" aria-hidden="true" />
@@ -1068,7 +1068,7 @@ function SelectedCustomerDetail(props: {
           ) : null}
 
           {isSharedLedger ? (
-            <div className="mt-3 rounded-[12px] border border-[#E8D6C7] bg-white/60 p-3">
+            <div className="mt-3 rounded-[12px] border border-ref-alert-line bg-white/60 p-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
                   <p className="text-xs font-extrabold text-cocoa">공동 사용이 아닌 경우</p>
@@ -1128,7 +1128,7 @@ function SelectedCustomerDetail(props: {
       ) : null}
 
       {mode === "CHARGE" ? (
-        <section className="mt-4 rounded-[12px] bg-[#EAF1F7] p-4">
+        <section className="mt-4 rounded-[12px] bg-ref-info-wash p-4">
           <h3 className="text-base font-extrabold text-ink">충전</h3>
           <div className="mt-3 grid gap-2 md:grid-cols-[1fr_1.5fr_auto_auto] md:items-end">
             <label className="grid gap-1">
@@ -1154,7 +1154,7 @@ function SelectedCustomerDetail(props: {
                 onChange={(event) => setChargeForm(customer.id, { note: event.target.value })}
               />
             </label>
-            <label className="inline-flex min-h-11 items-center gap-2 rounded-control border border-[#CADCEC] bg-white px-3 text-xs font-extrabold text-cocoa">
+            <label className="inline-flex min-h-11 items-center gap-2 rounded-control border border-ref-info-line bg-white px-3 text-xs font-extrabold text-cocoa">
               <input
                 aria-label={`${customer.customerName} 포인트 적립 완료`}
                 type="checkbox"
@@ -1180,7 +1180,7 @@ function SelectedCustomerDetail(props: {
 
       <section className="mt-4">
         {sharedSummaries.length > 0 ? (
-          <div className="mb-4 rounded-[12px] border border-[#E8D6C7] bg-[#FFFBF6] p-4">
+          <div className="mb-4 rounded-[12px] border border-ref-alert-line bg-ref-alert-wash p-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h3 className="text-base font-extrabold text-ink">공동 사용 현황</h3>
               {sharedLimit > 0 ? (
@@ -1189,7 +1189,7 @@ function SelectedCustomerDetail(props: {
                 </p>
               ) : null}
             </div>
-            <div className="mt-3 grid grid-cols-[1fr_0.9fr_0.9fr_0.9fr] gap-2 border-b border-[#EFE8DC] px-1 py-2 text-[11.5px] font-bold text-muted">
+            <div className="mt-3 grid grid-cols-[1fr_0.9fr_0.9fr_0.9fr] gap-2 border-b border-ref-line-warm px-1 py-2 text-[11.5px] font-bold text-muted">
               <div>사용자</div>
               <div>사용 합계</div>
               <div>남은 한도</div>
@@ -1198,7 +1198,7 @@ function SelectedCustomerDetail(props: {
             {sharedSummaries.map((summary) => (
               <div
                 key={summary.id}
-                className="grid grid-cols-[1fr_0.9fr_0.9fr_0.9fr] gap-2 border-b border-[#F5F0E7] px-1 py-2 text-sm last:border-b-0"
+                className="grid grid-cols-[1fr_0.9fr_0.9fr_0.9fr] gap-2 border-b border-ref-line-faint px-1 py-2 text-sm last:border-b-0"
               >
                 <div className="font-bold text-ink">
                   {summary.participantName}({summary.phoneLast4})
@@ -1222,7 +1222,7 @@ function SelectedCustomerDetail(props: {
             잘못 입력한 내역은 이곳에서 삭제합니다.
           </p>
         </div>
-        <div className="mt-3 grid grid-cols-[0.7fr_0.8fr_0.9fr_2fr_auto] gap-2 border-b border-[#EFE8DC] px-1 py-2 text-[11.5px] font-bold text-muted">
+        <div className="mt-3 grid grid-cols-[0.7fr_0.8fr_0.9fr_2fr_auto] gap-2 border-b border-ref-line-warm px-1 py-2 text-[11.5px] font-bold text-muted">
           <div>구분</div>
           <div>금액</div>
           <div>날짜</div>
@@ -1232,7 +1232,7 @@ function SelectedCustomerDetail(props: {
         {customer.transactions.map((transaction) => (
           <div
             key={transaction.id}
-            className="grid grid-cols-[0.7fr_0.8fr_0.9fr_2fr_auto] items-center gap-2 border-b border-[#F5F0E7] px-1 py-3 text-sm last:border-b-0"
+            className="grid grid-cols-[0.7fr_0.8fr_0.9fr_2fr_auto] items-center gap-2 border-b border-ref-line-faint px-1 py-3 text-sm last:border-b-0"
           >
             <div>
               <span
@@ -1258,7 +1258,7 @@ function SelectedCustomerDetail(props: {
         ) : null}
       </section>
 
-      <section className="mt-4 border-t border-[#EFE8DC] pt-4">
+      <section className="mt-4 border-t border-ref-line-warm pt-4">
         <h3 className="text-base font-extrabold text-ink">손님 메모</h3>
         <label className="mt-3 grid gap-1">
           <span className="text-xs font-bold text-muted">기타 메모</span>

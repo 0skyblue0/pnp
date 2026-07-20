@@ -368,7 +368,7 @@ export function HomePage() {
             className="app-card min-h-[92px] px-[18px] py-4 transition hover:border-bread focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bread/30 motion-reduce:transition-none"
           >
             <span className="block text-[11.5px] font-medium text-muted">일일 운영 작성</span>
-            <span className="mt-3 inline-flex rounded-full bg-[#F7E6C8] px-3 py-1 text-[12px] font-bold text-[#B86A23]">
+            <span className="mt-3 inline-flex rounded-full bg-ref-warning-wash px-3 py-1 text-[12px] font-bold text-ref-warning-strong">
               {dailyOperationSaved ? "작성 완료" : "작성 전"}
             </span>
           </Link>
@@ -384,7 +384,7 @@ export function HomePage() {
                 <span className="text-[10.5px] font-medium text-muted">전체</span>
               </span>
               <span className="grid gap-0.5">
-                <span className="text-[19px] font-extrabold leading-none text-[#C7851E]">{pendingReservationCount}</span>
+                <span className="text-[19px] font-extrabold leading-none text-ref-gold">{pendingReservationCount}</span>
                 <span className="text-[10.5px] font-medium text-muted">대기</span>
               </span>
               <span className="grid gap-0.5">
@@ -479,7 +479,7 @@ export function HomePage() {
                 <span className="text-[11px] font-bold text-muted">
                   {String(item.month).padStart(2, "0")}.{String(item.day).padStart(2, "0")}
                 </span>
-                <span className="rounded-full bg-[#F4E3D8] px-2 py-0.5 text-center text-[10.5px] text-cocoa">
+                <span className="rounded-full bg-ref-peach-wash px-2 py-0.5 text-center text-[10.5px] text-cocoa">
                   {scheduleBadgeLabel(item.tone)}
                 </span>
                 <span className="truncate text-ink">{item.title} 일정</span>

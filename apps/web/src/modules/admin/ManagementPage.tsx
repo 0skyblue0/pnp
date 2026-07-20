@@ -1212,8 +1212,8 @@ export function ManagementPage() {
                 className={[
                   "min-h-11 rounded-[9px] px-4 py-2 text-[12.5px] font-semibold transition motion-reduce:transition-none",
                   isActive
-                    ? "border-[#c8912f] border-b-2 bg-[#fdf8ec] text-[#a86e1f]"
-                    : "border-transparent border-b-2 bg-transparent text-cocoa hover:bg-[#fdf8ec]"
+                    ? "border-ref-gold border-b-2 bg-ref-gold-wash text-ref-gold-strong"
+                    : "border-transparent border-b-2 bg-transparent text-cocoa hover:bg-ref-gold-wash"
                 ].join(" ")}
                 role="tab"
                 aria-selected={isActive}
@@ -1384,7 +1384,7 @@ export function ManagementPage() {
               ) : null}
 
               <div ref={productListRef} className="mt-4 max-h-[460px] overflow-y-auto rounded-[12px] border border-latte bg-white px-4 py-2" onDragOver={scrollProductListDuringDrag}>
-                <div className="sticky top-0 z-10 grid grid-cols-[5.6rem_minmax(7rem,1.4fr)_minmax(5rem,0.8fr)_minmax(4rem,0.6fr)_minmax(8rem,1fr)_8rem] gap-2 border-b border-[#EFE8DC] bg-white py-2 text-[11px] font-semibold text-muted">
+                <div className="sticky top-0 z-10 grid grid-cols-[5.6rem_minmax(7rem,1.4fr)_minmax(5rem,0.8fr)_minmax(4rem,0.6fr)_minmax(8rem,1fr)_8rem] gap-2 border-b border-ref-line-warm bg-white py-2 text-[11px] font-semibold text-muted">
                   <div>순서</div><div>제품명</div><div>카테고리</div><div>시즌</div><div>기간</div><div>수정·삭제</div>
                 </div>
                 {visibleProducts.map((product) => (
@@ -1397,7 +1397,7 @@ export function ManagementPage() {
                     onDrop={() => void moveProductBefore(product.id)}
                     onDragEnd={() => setDraggedProductId(null)}
                     className={[
-                      "grid grid-cols-[5.6rem_minmax(7rem,1.4fr)_minmax(5rem,0.8fr)_minmax(4rem,0.6fr)_minmax(8rem,1fr)_8rem] items-center gap-2 border-b border-[#F5F0E7] py-3 text-[13px] last:border-b-0",
+                      "grid grid-cols-[5.6rem_minmax(7rem,1.4fr)_minmax(5rem,0.8fr)_minmax(4rem,0.6fr)_minmax(8rem,1fr)_8rem] items-center gap-2 border-b border-ref-line-faint py-3 text-[13px] last:border-b-0",
                       product.isActive ? "text-ink" : "bg-stone-50 text-muted"
                     ].join(" ")}
                   >
@@ -1469,13 +1469,13 @@ export function ManagementPage() {
 
           {activeAdminTab === "staff" ? (
             <div className="rounded-[14px] border border-latte bg-white px-[22px] pb-[6px] pt-2">
-              <div className="grid grid-cols-[1fr_1.4fr_1fr_0.8fr] gap-2 border-b border-[#EFE8DC] px-1 py-[11px] text-[11px] font-semibold text-muted">
+              <div className="grid grid-cols-[1fr_1.4fr_1fr_0.8fr] gap-2 border-b border-ref-line-warm px-1 py-[11px] text-[11px] font-semibold text-muted">
                 <div>아이디</div><div>표시 이름</div><div>역할</div><div>상태</div>
               </div>
               {staff.map((person) => (
                 <div
                   key={person.id}
-                  className="grid grid-cols-[1fr_1.4fr_1fr_0.8fr] items-center gap-2 border-b border-[#F5F0E7] px-1 py-[11px] text-[13px] text-ink last:border-b-0"
+                  className="grid grid-cols-[1fr_1.4fr_1fr_0.8fr] items-center gap-2 border-b border-ref-line-faint px-1 py-[11px] text-[13px] text-ink last:border-b-0"
                 >
                   <div className="text-muted">{person.username}</div>
                   <div className="font-semibold">{person.displayName ?? person.username}</div>
@@ -1543,12 +1543,12 @@ export function ManagementPage() {
                     </div>
                     <div className="flex flex-wrap gap-2">
                       <button className={[
-                        "rounded-[9px] px-3 py-2 text-xs font-bold",
-                        goalNoticeForm.category === "sales" ? "border border-[#c8912f] bg-[#fdf8ec] text-[#a86e1f]" : "border border-transparent bg-cream text-cocoa"
+                        "min-h-11 rounded-[9px] px-3 py-2 text-xs font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ref-gold focus-visible:ring-offset-1",
+                        goalNoticeForm.category === "sales" ? "border border-ref-gold bg-ref-gold-wash text-ref-gold-strong" : "border border-transparent bg-cream text-cocoa"
                       ].join(" ")} type="button" onClick={() => setGoalNoticeForm((current) => ({ ...salesGoalFormForYear(current.targetYear), monthlyTargets: current.monthlyTargets }))}>매출 목표</button>
                       <button className={[
-                        "rounded-[9px] px-3 py-2 text-xs font-bold",
-                        goalNoticeForm.category !== "sales" ? "border border-[#c8912f] bg-[#fdf8ec] text-[#a86e1f]" : "border border-transparent bg-cream text-cocoa"
+                        "min-h-11 rounded-[9px] px-3 py-2 text-xs font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ref-gold focus-visible:ring-offset-1",
+                        goalNoticeForm.category !== "sales" ? "border border-ref-gold bg-ref-gold-wash text-ref-gold-strong" : "border border-transparent bg-cream text-cocoa"
                       ].join(" ")} type="button" onClick={() => setGoalNoticeForm((current) => ({ ...current, category: "staff", title: "", value: "", note: "" }))}>직원 공지</button>
                     </div>
                   </div>
@@ -1627,12 +1627,12 @@ export function ManagementPage() {
 
               <div className="mt-4 grid gap-3 lg:grid-cols-3">
                 {goalNotices.map((notice) => (
-                  <div key={notice.id} className="rounded-[12px] border border-[#EFE8DC] bg-white p-4">
+                  <div key={notice.id} className="rounded-[12px] border border-ref-line-warm bg-white p-4">
                     <div className="mb-3 flex items-center justify-between gap-2">
                       <span className="rounded-full bg-blue/10 px-2 py-1 text-xs font-bold text-blue">{goalNoticeCategoryLabels[notice.category]}</span>
                       <div className="flex gap-1">
-                        <button className="rounded-[8px] border border-latte px-2 py-1 text-xs font-bold text-cocoa" type="button" aria-label={`${notice.title} 수정`} onClick={() => openGoalNoticeEdit(notice)}>수정</button>
-                        <button className="rounded-[8px] border border-red/30 px-2 py-1 text-xs font-bold text-red" type="button" aria-label={`${notice.title} 삭제`} onClick={() => void deleteGoalNotice(notice)}>삭제</button>
+                        <button className="inline-flex min-h-11 items-center justify-center rounded-[8px] border border-latte px-3 py-1 text-xs font-bold text-cocoa focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ref-gold focus-visible:ring-offset-1" type="button" aria-label={`${notice.title} 수정`} onClick={() => openGoalNoticeEdit(notice)}>수정</button>
+                        <button className="inline-flex min-h-11 items-center justify-center rounded-[8px] border border-red/30 px-3 py-1 text-xs font-bold text-red focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ref-danger focus-visible:ring-offset-1" type="button" aria-label={`${notice.title} 삭제`} onClick={() => void deleteGoalNotice(notice)}>삭제</button>
                       </div>
                     </div>
                     <p className="font-bold text-ink">{notice.title}</p>
@@ -1660,7 +1660,7 @@ export function ManagementPage() {
                 </div>
                 <div className="flex items-center gap-2 rounded-[12px] border border-latte bg-cream/50 px-3 py-2">
                   <button
-                    className="flex h-11 w-11 items-center justify-center rounded-full border border-latte bg-white text-lg font-extrabold text-cocoa hover:bg-[#EFE6DA]"
+                    className="flex h-11 w-11 items-center justify-center rounded-full border border-latte bg-white text-lg font-extrabold text-cocoa hover:bg-ref-peach-wash"
                     type="button"
                     aria-label="이전 달"
                     onClick={() => {
@@ -1673,7 +1673,7 @@ export function ManagementPage() {
                   </button>
                   <h4 className="min-w-[8.5rem] text-center text-lg font-extrabold text-ink">{scheduleMonthLabel(scheduleMonth)}</h4>
                   <button
-                    className="flex h-11 w-11 items-center justify-center rounded-full border border-latte bg-white text-lg font-extrabold text-cocoa hover:bg-[#EFE6DA]"
+                    className="flex h-11 w-11 items-center justify-center rounded-full border border-latte bg-white text-lg font-extrabold text-cocoa hover:bg-ref-peach-wash"
                     type="button"
                     aria-label="다음 달"
                     onClick={() => {
@@ -1689,9 +1689,9 @@ export function ManagementPage() {
 
               <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
                 <div className="overflow-hidden rounded-[12px] border border-latte bg-white">
-                  <div className="grid grid-cols-7 border-b border-[#EFE8DC] bg-cream/60 text-center text-[10px] font-extrabold text-cocoa">
+                  <div className="grid grid-cols-7 border-b border-ref-line-warm bg-cream/60 text-center text-[10px] font-extrabold text-cocoa">
                     {["일", "월", "화", "수", "목", "금", "토"].map((day) => (
-                      <div key={day} className="border-r border-[#EFE8DC] py-1.5 last:border-r-0">{day}</div>
+                      <div key={day} className="border-r border-ref-line-warm py-1.5 last:border-r-0">{day}</div>
                     ))}
                   </div>
                   <div className="grid grid-cols-7">
@@ -1717,7 +1717,7 @@ export function ManagementPage() {
                                 }
                           }
                           className={[
-                            "min-h-[5.5rem] border-r border-b border-[#F5F0E7] p-1.5 text-left last:border-r-0",
+                            "min-h-[5.5rem] border-r border-b border-ref-line-faint p-1.5 text-left last:border-r-0",
                             cell.day === null ? "bg-stone-50/60" : "cursor-pointer bg-white hover:bg-cream/40 focus:outline focus:outline-2 focus:outline-bread",
                             isSelectedScheduleDate ? "bg-cream/80 ring-2 ring-inset ring-bread/50" : "",
                             isRecentlySavedScheduleDate ? "bg-green/10" : ""

@@ -622,6 +622,10 @@ describe("App", () => {
     expect(screen.getByText("총합 48,000,000원")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "월별 목표 입력" }));
     expect(screen.getByText("월별 매출 목표 입력")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "매출 목표" })).toHaveClass("min-h-11");
+    expect(screen.getByRole("button", { name: "직원 공지" })).toHaveClass("min-h-11");
+    expect(screen.getByRole("button", { name: "올해 매출 목표 수정" })).toHaveClass("min-h-11");
+    expect(screen.getByRole("button", { name: "올해 매출 목표 삭제" })).toHaveClass("min-h-11");
     fireEvent.change(screen.getByLabelText("모든 달 같은 목표액"), { target: { value: "70000000" } });
     fireEvent.click(screen.getByRole("button", { name: "1~12월 전체 채우기" }));
     expect(screen.getByLabelText("1월 매출 목표")).toHaveValue("70,000,000");

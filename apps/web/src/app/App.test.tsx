@@ -258,18 +258,20 @@ describe("App", () => {
     expect(screen.getByText("350,000원")).toBeInTheDocument();
     expect(screen.getByText("현장 요약")).toBeInTheDocument();
     expect(screen.getByRole("group", { name: "연간 매출 핵심 지표" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "매출 비교 시각화" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "월별 상세" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "월별 목표 입력하러 가기" })).toHaveAttribute(
       "href",
       `/staff?tab=notice&goal=sales&year=${new Date().getFullYear()}`
     );
-    expect(screen.getByRole("heading", { name: "월별 목표 달성 흐름" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "월별 매출 비교" })).toBeInTheDocument();
     expect(screen.getByText("등록된 목표 합계")).toBeInTheDocument();
     expect(screen.getByText("700,000원")).toBeInTheDocument();
     expect(screen.getByText("전체 달성률")).toBeInTheDocument();
     expect(screen.getAllByText("50%").length).toBeGreaterThan(0);
-    expect(screen.getByText("최근 기록월 목표 차이")).toBeInTheDocument();
+    expect(screen.getByText(/최근 기록월 목표 차이:/)).toBeInTheDocument();
     expect(screen.getByText("200,000원 부족")).toBeInTheDocument();
-    expect(screen.getByText(/목표 400,000원 · 달성률/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "2월 매출 200,000원" })).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByText("기록일 평균")).toBeInTheDocument();
     expect(screen.getByText("채널별 매출 비중")).toBeInTheDocument();
     expect(screen.getAllByText(/바게트/).length).toBeGreaterThan(0);

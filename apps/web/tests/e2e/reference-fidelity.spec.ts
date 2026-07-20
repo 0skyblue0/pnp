@@ -132,7 +132,7 @@ const comparisonViewports = [
   { width: 375, height: 812, label: "375" }
 ] as const;
 
-test("captures deterministic reference routes at the comparison viewports", async ({ page }) => {
+test("captures deterministic reference routes including sales analysis at the comparison viewports", async ({ page }) => {
   const requestedApiPaths = new Set<string>();
   await page.clock.install({ time: new Date("2026-07-20T09:00:00+09:00") });
   await page.context().clearCookies();

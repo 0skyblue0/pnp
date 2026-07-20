@@ -16,7 +16,7 @@ import { todayInStoreTime } from "../shared/time/storeTime.js";
 import { ConfirmProvider } from "../shared/ui/ConfirmDialog.js";
 import { ToastProvider } from "../shared/ui/Toast.js";
 
-const ACTIVE_NAV_CLASS = "from-cocoa";
+const ACTIVE_NAV_CLASS = "bg-ref-gold";
 const monthlyTargetsFixture = {
   "01": 0,
   "02": 0,
@@ -156,6 +156,22 @@ describe("App", () => {
       "href",
       "/home"
     );
+  });
+
+  it("groups desktop navigation and marks the active route in the reference sidebar", () => {
+    render(
+      <MemoryRouter initialEntries={["/sales-analysis"]}>
+        <Routes>
+          <Route element={<AppLayout />}>
+            <Route path="/sales-analysis" element={<div />} />
+          </Route>
+        </Routes>
+      </MemoryRouter>
+    );
+
+    expect(screen.getByText("운영")).toBeInTheDocument();
+    expect(screen.getByText("고객")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "매출 분석" })).toHaveAttribute("aria-current", "page");
   });
 
   it("shows yearly sales analysis with visual monthly bars", async () => {

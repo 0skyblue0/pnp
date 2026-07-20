@@ -18,15 +18,28 @@ import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { apiGet } from "../../shared/api/client.js";
 import type { ListEnvelope } from "../../shared/api/types.js";
 
-const navItems = [
-  { to: "/home", label: "홈", icon: Home },
-  { to: "/daily-log/today", label: "일일 운영", icon: ClipboardList },
-  { to: "/sales-analysis", label: "매출 분석", icon: BarChart3 },
-  { to: "/response", label: "손님 반응", icon: MessageCircleHeart },
-  { to: "/reservation", label: "예약", icon: CalendarDays },
-  { to: "/regular-customer", label: "단골손님", icon: Users },
-  { to: "/prepaid-ledger", label: "선결제 장부", icon: BookOpen },
-  { to: "/staff", label: "관리", icon: Settings }
+const navigationGroups = [
+  {
+    label: "운영",
+    items: [
+      { to: "/home", label: "홈", icon: Home },
+      { to: "/daily-log/today", label: "일일 운영", icon: ClipboardList },
+      { to: "/sales-analysis", label: "매출 분석", icon: BarChart3 }
+    ]
+  },
+  {
+    label: "고객",
+    items: [
+      { to: "/response", label: "손님 반응", icon: MessageCircleHeart },
+      { to: "/reservation", label: "예약", icon: CalendarDays },
+      { to: "/regular-customer", label: "단골손님", icon: Users },
+      { to: "/prepaid-ledger", label: "선결제 장부", icon: BookOpen }
+    ]
+  },
+  {
+    label: "설정",
+    items: [{ to: "/staff", label: "관리", icon: Settings }]
+  }
 ];
 
 function todayLabel() {
@@ -63,36 +76,45 @@ function useLargeScreen() {
   return isLargeScreen;
 }
 
-function Brand() {
+function Brand({ inverse = false }: { inverse?: boolean }) {
   return (
     <NavLink to="/home" className="inline-block rounded-sm" aria-label="Paul & Paulina 홈" title="홈으로 이동">
-      <span className="block font-serif text-[19px] font-bold tracking-[0.01em] text-ink">Paul&amp;Paulina</span>
-      <span className="mt-0.5 block text-[10px] text-muted">운영 시스템</span>
+      <span className={`block font-serif text-[19px] font-bold tracking-[0.01em] ${inverse ? "text-ref-header" : "text-ref-text"}`}>
+        Paul&amp;Paulina
+      </span>
+      <span className={`mt-0.5 block text-[10px] tracking-[0.16em] ${inverse ? "text-ref-sidebar-muted-soft" : "text-ref-muted"}`}>
+        BAKERY OPS
+      </span>
     </NavLink>
   );
 }
 
 function Navigation({ onNavigate }: { onNavigate?: () => void }) {
   return (
-    <nav className="grid gap-1" aria-label="주요 메뉴">
-      {navItems.map(({ to, label, icon: Icon }) => (
-        <NavLink
-          key={to}
-          to={to}
-          end={false}
-          onClick={onNavigate}
-          className={({ isActive }) =>
-            [
-              "flex min-h-11 items-center gap-3 rounded-control px-3 text-[13px] font-semibold transition motion-reduce:transition-none",
-              isActive
-                ? "from-cocoa bg-brand text-white shadow-control"
-                : "text-subtle hover:bg-surface-muted hover:text-foreground"
-            ].join(" ")
-          }
-        >
-          <Icon aria-hidden="true" className="h-[18px] w-[18px] shrink-0" strokeWidth={2} />
-          <span>{label}</span>
-        </NavLink>
+    <nav className="flex flex-col gap-2" aria-label="주요 메뉴">
+      {navigationGroups.map(({ label: groupLabel, items }) => (
+        <section key={groupLabel} aria-label={groupLabel} className="flex flex-col gap-0.5">
+          <p className="px-2.5 pb-1 pt-1 text-[10.5px] font-medium tracking-[0.1em] text-ref-sidebar-muted">{groupLabel}</p>
+          {items.map(({ to, label, icon: Icon }) => (
+            <NavLink
+              key={to}
+              to={to}
+              end={false}
+              onClick={onNavigate}
+              className={({ isActive }) =>
+                [
+                  "flex min-h-11 items-center gap-2.5 rounded-sm px-2.5 text-[13.5px] font-medium transition-colors motion-reduce:transition-none",
+                  isActive
+                    ? "bg-ref-gold font-bold text-ref-cocoa"
+                    : "text-ref-sidebar-inactive hover:bg-white/10 hover:text-ref-header"
+                ].join(" ")
+              }
+            >
+              <Icon aria-hidden="true" className="h-4 w-4 shrink-0 opacity-70" strokeWidth={1.75} />
+              <span>{label}</span>
+            </NavLink>
+          ))}
+        </section>
       ))}
     </nav>
   );
@@ -105,8 +127,8 @@ function NotificationLink({ unreadCount, onNavigate }: { unreadCount: number; on
       onClick={onNavigate}
       className={({ isActive }) =>
         [
-          "relative flex min-h-11 items-center gap-3 rounded-control px-3 text-[13px] font-semibold transition motion-reduce:transition-none",
-          isActive ? "from-cocoa bg-brand text-white shadow-control" : "text-subtle hover:bg-surface-muted hover:text-foreground"
+          "relative flex min-h-11 items-center gap-2.5 rounded-sm px-2.5 text-[13.5px] font-medium transition-colors motion-reduce:transition-none",
+          isActive ? "bg-ref-gold font-bold text-ref-cocoa" : "text-ref-sidebar-inactive hover:bg-white/10 hover:text-ref-header"
         ].join(" ")
       }
     >
@@ -215,42 +237,44 @@ export function AppLayout() {
   }
 
   return (
-    <div className="min-h-screen bg-canvas text-foreground lg:flex">
+    <div className="min-h-screen bg-ref-canvas text-ref-text lg:flex">
       <aside
         aria-hidden={isDrawerOpen}
-        className="hidden w-[210px] shrink-0 border-r border-border bg-surface lg:flex lg:min-h-screen lg:flex-col"
+        className="hidden w-[210px] shrink-0 bg-ref-cocoa lg:flex lg:min-h-screen lg:flex-col"
       >
-        <div className="sticky top-0 flex h-screen w-[210px] flex-col p-4">
-          <Brand />
-          <p className="mt-7 px-3 text-xs font-semibold uppercase tracking-[0.08em] text-subtle">메뉴</p>
-          <div className="mt-2">
+        <div className="sticky top-0 flex h-screen w-[210px] flex-col px-3 pb-4 pt-[22px]">
+          <div className="border-b border-white/10 px-2.5 pb-4">
+            <Brand inverse />
+          </div>
+          <div className="mt-3.5">
             <Navigation />
           </div>
-          <div className="mt-2 border-t border-border pt-2">
+          <div className="mt-1.5">
             <NotificationLink unreadCount={unreadCount} />
           </div>
-          <div className="mt-auto rounded-panel border border-border bg-surface-muted p-3">
-            <p className="text-xs font-semibold text-foreground">Paul &amp; Paulina</p>
-            <p className="mt-1 flex items-center gap-1.5 text-xs text-subtle">
-              <span aria-hidden="true" className="h-2 w-2 rounded-full bg-success" />
-              운영 중
-            </p>
-            <p className="mt-3 text-[11px] text-subtle">{dateText}</p>
+          <div className="mt-auto flex items-center gap-2.5 rounded-[10px] bg-white/5 p-2.5">
+            <span aria-hidden="true" className="grid h-[30px] w-[30px] place-items-center rounded-full bg-ref-gold text-[13px] font-bold text-ref-cocoa">
+              지
+            </span>
+            <div>
+              <p className="text-[12.5px] font-semibold text-ref-header">김지원</p>
+              <p className="mt-0.5 text-[11px] text-ref-sidebar-muted-soft">오픈 근무</p>
+            </div>
           </div>
         </div>
       </aside>
 
-      <div className="min-w-0 flex-1">
-        <header className="sticky top-0 z-20 border-b border-border bg-surface/95 px-4 py-3 backdrop-blur sm:px-6 lg:hidden">
+      <div className="min-w-0 flex-1 bg-ref-work-surface">
+        <header className="sticky top-0 z-20 border-b border-ref-line bg-ref-header/95 px-4 py-3 backdrop-blur sm:px-6 lg:hidden">
           <div className="flex min-h-11 items-center justify-between gap-3">
             <div aria-label="Paul & Paulina" className="min-w-0">
-              <span className="block truncate font-serif text-[19px] font-bold tracking-[0.01em] text-ink">Paul&amp;Paulina</span>
-              <span className="mt-0.5 block text-[10px] text-muted">운영 시스템</span>
+              <span className="block truncate font-serif text-[19px] font-bold tracking-[0.01em] text-ref-text">Paul&amp;Paulina</span>
+              <span className="mt-0.5 block text-[10px] tracking-[0.16em] text-ref-muted">BAKERY OPS</span>
             </div>
             <div className="flex items-center gap-2">
               <NavLink
                 to="/notification"
-                className="relative inline-flex min-h-11 min-w-11 items-center justify-center rounded-control text-subtle transition hover:bg-surface-muted hover:text-foreground motion-reduce:transition-none"
+                className="relative inline-flex min-h-11 min-w-11 items-center justify-center rounded-control text-ref-muted transition-colors hover:bg-ref-gold-wash hover:text-ref-text motion-reduce:transition-none"
                 aria-label="알림"
               >
                 <Bell aria-hidden="true" className="h-5 w-5" />
@@ -267,7 +291,7 @@ export function AppLayout() {
                 aria-expanded={isDrawerOpen}
                 aria-label="메뉴 열기"
                 onClick={() => setIsMenuOpen(true)}
-                className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-control text-subtle transition hover:bg-surface-muted hover:text-foreground motion-reduce:transition-none"
+                className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-control text-ref-muted transition-colors hover:bg-ref-gold-wash hover:text-ref-text motion-reduce:transition-none"
               >
                 <Menu aria-hidden="true" className="h-5 w-5" />
               </button>
@@ -290,16 +314,16 @@ export function AppLayout() {
               aria-label="주요 메뉴"
               ref={drawerRef}
               onKeyDown={handleDrawerKeyDown}
-              className="relative flex h-full w-[min(86vw,320px)] flex-col bg-surface p-4 shadow-elegant"
+              className="relative flex h-full w-[min(86vw,320px)] flex-col bg-ref-cocoa p-4 shadow-elegant"
             >
               <div className="flex min-h-11 items-center justify-between">
-                <Brand />
+                <Brand inverse />
                 <button
                   type="button"
                   ref={closeButtonRef}
                   aria-label="메뉴 닫기"
                   onClick={closeMenu}
-                  className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-control text-subtle transition hover:bg-surface-muted hover:text-foreground motion-reduce:transition-none"
+                  className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-control text-ref-sidebar-inactive transition-colors hover:bg-white/10 hover:text-ref-header motion-reduce:transition-none"
                 >
                   <X aria-hidden="true" className="h-5 w-5" />
                 </button>
@@ -307,15 +331,20 @@ export function AppLayout() {
               <div className="mt-7">
                 <Navigation onNavigate={closeMenu} />
               </div>
-              <div className="mt-2 border-t border-border pt-2">
+              <div className="mt-1.5">
                 <NotificationLink unreadCount={unreadCount} onNavigate={closeMenu} />
               </div>
-              <p className="mt-auto px-3 text-xs text-subtle">{dateText}</p>
+              <p className="mt-auto px-2.5 text-xs text-ref-sidebar-muted-soft">{dateText}</p>
             </section>
           </div>
         ) : null}
 
-        <main className="min-w-0 overflow-x-hidden px-4 py-6 sm:px-6 lg:px-8">
+        <header className="ref-page-header hidden items-center justify-between lg:flex">
+          <p className="text-[13px] font-semibold text-ref-text-secondary">Paul &amp; Paulina 운영 대시보드</p>
+          <p className="text-[12px] text-ref-muted">{dateText}</p>
+        </header>
+
+        <main className="min-w-0 overflow-x-hidden px-4 py-6 sm:px-6 lg:px-[26px] lg:py-[18px]">
           <Outlet />
         </main>
       </div>

@@ -178,3 +178,15 @@ test("captures deterministic reference routes at the comparison viewports", asyn
     }
   }
 });
+
+test("keeps the reference shell menu available in the mobile drawer", async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 812 });
+  await page.goto("/home");
+
+  await page.getByRole("button", { name: "메뉴 열기" }).click();
+
+  const drawer = page.getByRole("dialog", { name: "주요 메뉴" });
+  await expect(drawer).toBeVisible();
+  await expect(drawer.getByText("운영", { exact: true })).toBeVisible();
+  await expect(drawer.getByText("고객", { exact: true })).toBeVisible();
+});

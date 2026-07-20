@@ -1,11 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-
-const dashboardRoutes = ["/home", "/daily-log/today", "/sales-analysis", "/staff"] as const;
-const targetViewports = [
-  { width: 1440, height: 900 },
-  { width: 768, height: 900 },
-  { width: 375, height: 812 }
-] as const;
+import { acceptanceViewports, renderableRoutes } from "./renderableRoutes.js";
 
 const desktopRoutes = ["/home", "/daily-log/today", "/sales-analysis", "/regular-customer", "/prepaid-ledger", "/staff"] as const;
 const tabletRoutes = ["/home", "/sales-analysis", "/prepaid-ledger"] as const;
@@ -26,13 +20,17 @@ async function expectNoPageOverflow(page: Page) {
     .toBe(true);
 }
 
-test("dashboard routes fit every target viewport", async ({ page }) => {
-  for (const viewport of targetViewports) {
+test("every renderable route fits every acceptance viewport", async ({ page }) => {
+  for (const viewport of acceptanceViewports) {
     await page.setViewportSize(viewport);
 
-    for (const route of dashboardRoutes) {
+    for (const route of renderableRoutes) {
       await page.goto(route, { waitUntil: "domcontentloaded" });
       await expect(page.getByRole("main")).toBeVisible();
+      await expect(page.locator('meta[name="pnp-ui-source"]')).toHaveAttribute(
+        "content",
+        "reference-fidelity-alignment-task-1"
+      );
 
       await expectNoPageOverflow(page);
       if (route === "/daily-log/today" && viewport.width === 375) {

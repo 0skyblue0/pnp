@@ -68,7 +68,7 @@ export function RegularCustomerPage() {
   }
 
   return (
-    <div className="mx-auto grid w-full max-w-[1240px] gap-3 pb-6">
+    <div className="mx-auto grid w-full max-w-[1196px] gap-3 pb-6">
       <section className="ref-card !p-0">
         <PageHeader title="단골손님 리스트" description="예약·선결제에서 자주 보이는 손님과 직원이 저장한 고정 메모를 모아 봅니다." actions={<div className="flex w-full flex-wrap gap-2 sm:w-auto sm:flex-nowrap">
             <input className="input w-full min-w-0 sm:w-auto sm:min-w-56" aria-label="단골손님 검색" placeholder="이름 또는 연락처" value={query} onChange={(event) => setQuery(event.target.value)} />

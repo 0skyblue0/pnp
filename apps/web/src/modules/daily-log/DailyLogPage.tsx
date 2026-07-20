@@ -703,7 +703,7 @@ export function DailyLogPage() {
   }
 
   return (
-    <div className="mx-auto grid max-w-none gap-[14px]">
+    <div className="mx-auto grid w-full max-w-[1196px] gap-[14px]">
       <section ref={entryPanelRef} className="min-w-0">
         <PageHeader
           title="일일 운영 기록"

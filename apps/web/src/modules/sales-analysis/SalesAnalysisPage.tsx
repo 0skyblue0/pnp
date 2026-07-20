@@ -79,7 +79,7 @@ export function SalesAnalysisPage() {
   const latestTarget = data?.latestRecordedMonth ? monthly.find((item) => item.month === data.latestRecordedMonth?.month)?.targetAmount ?? 0 : 0;
 
   return (
-    <div className="mx-auto grid min-w-0 max-w-[1240px] gap-3 pb-6">
+    <div className="mx-auto grid min-w-0 w-full max-w-[1196px] gap-3 pb-6">
       <section className="ref-card !p-0">
         <PageHeader title="매출 분석" description={data ? `${data.year}년 월별 매출과 목표 흐름` : "POS와 POS 외 일일 운영 기록으로 매출 흐름을 확인합니다."} actions={<div className="flex flex-wrap items-end gap-2"><label className="grid gap-1"><span className="field-label">분석 년도</span><select className="ref-filter-control min-w-28 text-sm font-semibold" value={year} onChange={(event) => setYear(event.target.value)} aria-label="분석 년도">{yearOptions.map((option) => <option key={option} value={option}>{option}년</option>)}</select></label><a className="ref-primary-action inline-flex items-center" href={`/staff?tab=notice&goal=sales&year=${year}`}>월별 목표 입력하러 가기</a></div>} />
         <div className="px-4 pb-4 sm:px-5">

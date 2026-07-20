@@ -15,7 +15,7 @@ export function Button({
   return (
     <button
       className={[
-        "inline-flex min-h-11 items-center justify-center gap-2 rounded-control bg-brand px-4 text-[13px] font-semibold text-white shadow-control transition hover:bg-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transition-none",
+        "ref-primary-action inline-flex min-h-11 items-center justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transition-none",
         className
       ].join(" ")}
       {...props}
@@ -39,7 +39,7 @@ export function ButtonLink({
   return (
     <Link
       className={[
-        "inline-flex min-h-11 items-center justify-center gap-2 rounded-control bg-brand px-4 text-[13px] font-semibold text-white shadow-control transition hover:bg-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 motion-reduce:transition-none",
+        "ref-primary-action inline-flex min-h-11 items-center justify-center gap-2 motion-reduce:transition-none",
         className
       ].join(" ")}
       {...props}

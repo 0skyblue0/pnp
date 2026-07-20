@@ -29,9 +29,9 @@ const ToastContext = createContext<ToastContextValue | null>(null);
 const TOAST_DURATION_MS = 3500;
 
 const toneStyles: Record<ToastTone, string> = {
-  success: "border-green/30 bg-white text-ink",
-  error: "border-red/30 bg-white text-ink",
-  info: "border-latte bg-white text-ink"
+  success: "border-green/30 bg-[#f6fbf7] text-ink",
+  error: "border-red/40 bg-[#fff5f4] text-ink",
+  info: "border-blue/30 bg-[#f4f8ff] text-ink"
 };
 
 const toneIconClass: Record<ToastTone, string> = {
@@ -96,7 +96,7 @@ export function ToastProvider({ children }: PropsWithChildren) {
               <span className="min-w-0 flex-1 leading-5">{toast.message}</span>
               <button
                 type="button"
-                className="shrink-0 rounded-full p-0.5 text-muted transition hover:text-ink"
+                className="flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-full text-muted transition hover:bg-white/80 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bread"
                 aria-label="알림 닫기"
                 onClick={() => dismiss(toast.id)}
               >

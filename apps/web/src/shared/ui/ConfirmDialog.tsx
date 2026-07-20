@@ -68,7 +68,7 @@ export function ConfirmProvider({ children }: PropsWithChildren) {
       {pending
         ? createPortal(
             <div
-              className="fixed inset-0 z-[110] grid place-items-center bg-ink/40 px-4"
+              className="fixed inset-0 z-[110] grid place-items-center bg-[#261e18]/45 px-4"
               onMouseDown={(event) => {
                 if (event.target === event.currentTarget) {
                   close(false);
@@ -80,7 +80,7 @@ export function ConfirmProvider({ children }: PropsWithChildren) {
                 aria-modal="true"
                 aria-labelledby="confirm-dialog-title"
                 aria-describedby="confirm-dialog-message"
-                className="w-full max-w-sm rounded-panel bg-white p-5 shadow-elegant"
+                className="w-full max-w-sm rounded-panel border border-[#e7dfd3] bg-white p-5 shadow-elegant"
               >
                 <h2 id="confirm-dialog-title" className="text-base font-bold text-ink">
                   {pending.title ?? "확인"}
@@ -91,7 +91,7 @@ export function ConfirmProvider({ children }: PropsWithChildren) {
                 <div className="mt-5 flex justify-end gap-2">
                   <button
                     type="button"
-                    className="min-h-10 rounded-control border border-latte bg-white px-4 text-sm font-semibold text-cocoa transition hover:bg-cream"
+                    className="ref-secondary-action min-h-11 text-sm"
                     onClick={() => close(false)}
                   >
                     {pending.cancelLabel ?? "취소"}
@@ -100,8 +100,8 @@ export function ConfirmProvider({ children }: PropsWithChildren) {
                     ref={confirmButtonRef}
                     type="button"
                     className={[
-                      "min-h-10 rounded-control px-4 text-sm font-semibold text-white transition",
-                      pending.tone === "danger" ? "bg-red hover:bg-red/90" : "bg-bread hover:bg-cocoa"
+                      "min-h-11 px-4 text-sm",
+                      pending.tone === "danger" ? "rounded-control border border-red bg-red text-white transition hover:bg-red/90" : "ref-primary-action"
                     ].join(" ")}
                     onClick={() => close(true)}
                   >

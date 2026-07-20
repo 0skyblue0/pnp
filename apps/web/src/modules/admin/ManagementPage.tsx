@@ -1211,7 +1211,9 @@ export function ManagementPage() {
                 type="button"
                 className={[
                   "min-h-11 rounded-[9px] px-4 py-2 text-[12.5px] font-semibold transition motion-reduce:transition-none",
-                  isActive ? "bg-bread text-white" : "bg-cream text-cocoa hover:bg-[#EFE6DA]"
+                  isActive
+                    ? "border-[#c8912f] border-b-2 bg-[#fdf8ec] text-[#a86e1f]"
+                    : "border-transparent border-b-2 bg-transparent text-cocoa hover:bg-[#fdf8ec]"
                 ].join(" ")}
                 role="tab"
                 aria-selected={isActive}
@@ -1236,7 +1238,7 @@ export function ManagementPage() {
                   </p>
                 </div>
                 <button
-                  className="rounded-[9px] bg-bread px-4 py-2 text-[12.5px] font-bold text-white"
+                  className="ref-primary-action"
                   type="button"
                   onClick={openNewProductForm}
                 >
@@ -1507,7 +1509,7 @@ export function ManagementPage() {
                   <h3 className="text-[15px] font-bold text-ink">월별 매출 목표 · 홈 공지</h3>
                   <p className="mt-1 text-[12.5px] text-muted">매출 분석 달성률에 쓰는 월별 목표액과 홈 화면 공지를 관리합니다.</p>
                 </div>
-                <button className="rounded-[9px] bg-bread px-4 py-2 text-[12.5px] font-bold text-white" type="button" onClick={() => {
+                <button className="ref-primary-action" type="button" onClick={() => {
                   setEditingGoalNoticeId(null);
                   setGoalNoticeForm(salesGoalFormForYear(String(new Date().getFullYear())));
                   setSameMonthlyTarget("");
@@ -1542,11 +1544,11 @@ export function ManagementPage() {
                     <div className="flex flex-wrap gap-2">
                       <button className={[
                         "rounded-[9px] px-3 py-2 text-xs font-bold",
-                        goalNoticeForm.category === "sales" ? "bg-bread text-white" : "bg-cream text-cocoa"
+                        goalNoticeForm.category === "sales" ? "border border-[#c8912f] bg-[#fdf8ec] text-[#a86e1f]" : "border border-transparent bg-cream text-cocoa"
                       ].join(" ")} type="button" onClick={() => setGoalNoticeForm((current) => ({ ...salesGoalFormForYear(current.targetYear), monthlyTargets: current.monthlyTargets }))}>매출 목표</button>
                       <button className={[
                         "rounded-[9px] px-3 py-2 text-xs font-bold",
-                        goalNoticeForm.category !== "sales" ? "bg-bread text-white" : "bg-cream text-cocoa"
+                        goalNoticeForm.category !== "sales" ? "border border-[#c8912f] bg-[#fdf8ec] text-[#a86e1f]" : "border border-transparent bg-cream text-cocoa"
                       ].join(" ")} type="button" onClick={() => setGoalNoticeForm((current) => ({ ...current, category: "staff", title: "", value: "", note: "" }))}>직원 공지</button>
                     </div>
                   </div>
@@ -1584,7 +1586,7 @@ export function ManagementPage() {
                             <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-muted">원</span>
                           </span>
                         </label>
-                        <button className="rounded-control bg-cocoa px-4 py-2 text-sm font-extrabold text-white" type="button" onClick={applySameMonthlyTarget}>1~12월 전체 채우기</button>
+                        <button className="ref-primary-action" type="button" onClick={applySameMonthlyTarget}>1~12월 전체 채우기</button>
                       </div>
                       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
                         {monthKeys.map((month) => (
@@ -1617,8 +1619,8 @@ export function ManagementPage() {
                     <textarea className="input min-h-20 py-3" aria-label="공지 메모" placeholder={goalNoticeForm.category === "sales" ? "선택: 목표를 정한 이유나 참고사항" : "홈에 같이 보여줄 메모"} value={goalNoticeForm.note} onChange={(event) => setGoalNoticeForm((current) => ({ ...current, note: event.target.value }))} />
                   </label>
                   <div className="mt-3 flex justify-end gap-2">
-                    <button className="rounded-control border border-stone-300 bg-white px-4 py-2 font-bold text-cocoa" type="button" onClick={closeGoalNoticeForm}>취소</button>
-                    <button className="rounded-control bg-bread px-4 py-2 font-bold text-white" type="button" onClick={() => void saveGoalNotice()}>공지 저장</button>
+                    <button className="ref-secondary-action" type="button" onClick={closeGoalNoticeForm}>취소</button>
+                    <button className="ref-primary-action" type="button" onClick={() => void saveGoalNotice()}>공지 저장</button>
                   </div>
                 </div>
               ) : null}

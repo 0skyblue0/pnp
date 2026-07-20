@@ -17,15 +17,15 @@ export function SegmentedControl<TValue extends string>({
   return (
     <div>
       <span className="field-label">{label}</span>
-      <div className="flex flex-wrap gap-1 rounded-control border border-latte bg-white p-1">
+      <div className="flex flex-wrap gap-1 rounded-control border border-border bg-surface-muted p-1">
         {options.map((option) => (
           <button
             key={option.value}
             className={[
-              "min-h-9 rounded-[7px] border px-3 text-[12.5px] font-semibold transition",
+              "min-h-11 rounded-[7px] border px-3 text-[12.5px] font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bread focus-visible:ring-offset-1",
               value === option.value
-                ? "border-bread bg-bread text-white shadow-none"
-                : "border-transparent bg-transparent text-cocoa/75 hover:bg-white/90 hover:text-cocoa hover:shadow-sm"
+                ? "border-[#c8912f] bg-[#fdf8ec] text-[#a86e1f] shadow-none"
+                : "border-transparent bg-transparent text-cocoa/75 hover:bg-white hover:text-cocoa"
             ].join(" ")}
             type="button"
             onClick={() => onChange(option.value)}

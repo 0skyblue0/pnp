@@ -2,6 +2,7 @@ import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { PageHeader } from "./PageHeader.js";
+import { Button } from "./Button.js";
 
 describe("PageHeader", () => {
   afterEach(cleanup);
@@ -35,5 +36,13 @@ describe("PageHeader", () => {
     expect(screen.getByRole("button", { name: "목표 설정" }).closest(".app-page-actions")).toHaveClass(
       "[&_button]:min-h-11"
     );
+  });
+
+  it("uses the reference primary action treatment without removing the 44px target", () => {
+    render(<Button>저장</Button>);
+
+    const action = screen.getByRole("button", { name: "저장" });
+    expect(action).toHaveClass("ref-primary-action");
+    expect(action).toHaveClass("min-h-11");
   });
 });

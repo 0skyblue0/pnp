@@ -570,7 +570,9 @@ describe("App", () => {
     expect(screen.getByText("활성 제품")).toBeInTheDocument();
     expect(screen.getByText("전체 직원")).toBeInTheDocument();
     expect(screen.getByText("활성 직원")).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "제품 관리" })).toBeInTheDocument();
+    const productManagementTab = screen.getByRole("tab", { name: "제품 관리" });
+    expect(productManagementTab).toHaveAttribute("aria-selected", "true");
+    expect(document.getElementById(productManagementTab.getAttribute("aria-controls") ?? "")).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "직원 관리" })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "반응 기준 관리" })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "홈 공지 관리" })).toBeInTheDocument();

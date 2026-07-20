@@ -82,7 +82,7 @@ export function NotificationPage() {
     <section className="app-page grid gap-4">
       <PageHeader title="알림" description="운영 중 확인이 필요한 상태를 모아 봅니다." actions={<>
         <button
-          className="text-[12.5px] font-semibold text-bread hover:text-cocoa"
+          className="ref-secondary-action text-[12.5px]"
           disabled={isLoading}
           type="button"
           onClick={() => void markAllRead()}
@@ -92,7 +92,7 @@ export function NotificationPage() {
       </>} />
 
       {error ? (
-        <div role="alert" className="mb-4 rounded-control border border-red/20 bg-red/10 px-3 py-2 text-sm font-semibold text-red">
+        <div role="alert" className="mb-4 rounded-control border border-red/30 bg-[#fff5f4] px-3 py-2 text-sm font-semibold text-red">
           {error}
         </div>
       ) : null}
@@ -112,7 +112,10 @@ export function NotificationPage() {
             return (
               <Link
                 key={notification.id}
-                className="flex items-center gap-3 border-b border-[#F1EAE0] py-3.5 opacity-100 last:border-b-0 hover:bg-cream/40"
+                className={[
+                  "flex items-center gap-3 border-b border-[#F1EAE0] py-3.5 opacity-100 last:border-b-0 hover:bg-[#fdf8ec]",
+                  notification.isRead ? "" : "bg-[#fdf8ec]"
+                ].join(" ")}
                 to={notification.link}
               >
                 {content}
@@ -123,7 +126,10 @@ export function NotificationPage() {
           return (
             <div
               key={notification.id}
-              className="flex items-center gap-3 border-b border-[#F1EAE0] py-3.5 opacity-100 last:border-b-0"
+              className={[
+                "flex items-center gap-3 border-b border-[#F1EAE0] py-3.5 opacity-100 last:border-b-0",
+                notification.isRead ? "" : "bg-[#fdf8ec]"
+              ].join(" ")}
             >
               {content}
             </div>

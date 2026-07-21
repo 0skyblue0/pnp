@@ -902,6 +902,8 @@ function SelectedCustomerDetail(props: {
     : undefined;
   const selectedSharedRemaining = selectedParticipant?.remainingAmount ?? sharedLimit;
   const isSharedLedger = customer.ledgerType === "SHARED";
+  const totalCharged = customer.transactions.filter((item) => item.type !== "USE").reduce((total, item) => total + item.amount, 0);
+  const totalUsed = customer.transactions.filter((item) => item.type === "USE").reduce((total, item) => total + item.amount, 0);
   const [directUseOpen, setDirectUseOpen] = useState(!isSharedLedger);
 
   useEffect(() => {
@@ -928,6 +930,11 @@ function SelectedCustomerDetail(props: {
             {formatCurrency(customer.balance)}원
           </p>
         </div>
+      </div>
+      <div className="mt-3 grid gap-2 sm:grid-cols-3">
+        <div className="rounded-control bg-ref-table-head px-3 py-2"><p className="text-[11px] text-muted">현재 잔액</p><p className="mt-1 text-lg font-extrabold text-bread">{formatCurrency(customer.balance)}원</p></div>
+        <div className="rounded-control bg-ref-table-head px-3 py-2"><p className="text-[11px] text-muted">누적 충전</p><p className="mt-1 text-lg font-extrabold text-ink">{formatCurrency(totalCharged)}원</p></div>
+        <div className="rounded-control bg-ref-table-head px-3 py-2"><p className="text-[11px] text-muted">누적 사용</p><p className="mt-1 text-lg font-extrabold text-ink">{formatCurrency(totalUsed)}원</p></div>
       </div>
 
       {mode === "USE" ? (
@@ -1217,8 +1224,8 @@ function SelectedCustomerDetail(props: {
         ) : null}
       </section>
 
-      <section className="mt-4 border-t border-ref-line-warm pt-4">
-        <h3 className="text-base font-extrabold text-ink">손님 메모</h3>
+      <details className="mt-4 border-t border-ref-line-warm pt-4">
+        <summary className="cursor-pointer text-base font-extrabold text-ink">손님 메모 편집</summary>
         <label className="mt-3 grid gap-1">
           <span className="text-xs font-bold text-muted">기타 메모</span>
           <textarea
@@ -1240,7 +1247,7 @@ function SelectedCustomerDetail(props: {
         >
           기타 메모 수정
         </button>
-      </section>
+      </details>
     </article>
   );
 }

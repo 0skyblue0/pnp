@@ -858,15 +858,15 @@ export function DailyLogPage() {
                 averageSpend={averageSpend}
               />
             </section>
-            <section className="daily-entry-notes dc-card-pad">
-              <h3 className="sr-only">메모 · 점검</h3>
-              <NotesSection
+            <details className="daily-entry-notes dc-card-pad">
+              <summary className="cursor-pointer text-[11.5px] font-semibold uppercase tracking-[0.03em] text-muted">메모 · 점검 입력 열기</summary>
+              <div className="mt-3"><NotesSection
                 draft={draft}
                 staffSpecialRows={staffSpecialRows}
                 updateDraft={updateDraft}
                 updateStaffSpecialRow={updateStaffSpecialRow}
-              />
-            </section>
+              /></div>
+            </details>
           </>
         ) : (
           <DailyLookupSection

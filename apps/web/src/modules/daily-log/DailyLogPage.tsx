@@ -835,6 +835,15 @@ export function DailyLogPage() {
                 totals={productTotals}
                 updateRow={updateProductRow}
               />
+              <div className="mt-4 grid gap-3 md:grid-cols-3" aria-label="일일 운영 핵심 요약">
+                <div className="rounded-[12px] bg-ref-cocoa px-4 py-3 text-ref-header"><p className="text-[11px] text-ref-sidebar-inactive">총 판매량</p><p className="mt-1 text-xl font-extrabold">{productTotals.sold.toLocaleString("ko-KR")}개</p></div>
+                <div className="rounded-[12px] bg-ref-cocoa px-4 py-3 text-ref-header"><p className="text-[11px] text-ref-sidebar-inactive">총 매출</p><p className="mt-1 text-xl font-extrabold">{formatCurrency(totalSales)}</p></div>
+                <div className="rounded-[12px] bg-ref-cocoa px-4 py-3 text-ref-header"><p className="text-[11px] text-ref-sidebar-inactive">객단가</p><p className="mt-1 text-xl font-extrabold">{formatCurrency(averageSpend)}</p></div>
+              </div>
+              <div className="mt-3 rounded-[10px] border border-latte bg-ref-table-head px-3 py-3 text-xs">
+                <div className="flex items-center justify-between"><p className="font-extrabold text-ink">일일업무보고서 미리보기</p><span className="text-muted">저장 후 기록됩니다</span></div>
+                <div className="mt-2 grid grid-cols-4 gap-2 border-t border-latte pt-2 text-muted"><span>날짜</span><span>총 매출</span><span>판매량</span><span>특이사항</span></div>
+              </div>
             </section>
             <section className="daily-entry-sales">
               <h3 className="sr-only">매출 요약</h3>

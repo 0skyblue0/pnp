@@ -464,6 +464,11 @@ export function HomePage() {
           <p className="mt-2 text-base font-bold text-ink">{staffNotice?.title ?? "직원 공지 미등록"}</p>
           <p className="mt-1 line-clamp-2 text-[13px] leading-6 text-cocoa">{staffNotice?.value ?? "관리 탭에서 직원 공지를 입력해 주세요."}</p>
         </button>
+        <div className="ref-card min-h-[154px] px-5 py-4">
+          <p className="text-[11.5px] text-muted">연간 일정</p>
+          <p className="mt-2 text-base font-bold text-ink">다가오는 일정 {upcomingScheduleItems.length}건</p>
+          <p className="mt-1 line-clamp-2 text-[13px] leading-6 text-cocoa">연간 운영 일정을 확인하고 관리합니다.</p>
+        </div>
       </section>
       {renderGoalNoticeDetail()}
 

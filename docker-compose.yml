@@ -1,4 +1,36 @@
 services:
+  hermes:
+    image: ghcr.io/astral-sh/uv:python3.14-bookworm-slim
+    environment:
+      HOME: /home/layered
+      USER: layered
+      HERMES_ACCEPT_HOOKS: "1"
+    command:
+      - /home/layered/.hermes/hermes-agent/venv/bin/python
+      - -m
+      - hermes_cli.main
+      - --profile
+      - pnpclassifier
+      - gateway
+      - run
+    ports:
+      - "127.0.0.1:8642:8642"
+    volumes:
+      - /home/pnp:/home/pnp
+      - /home/layered:/home/layered
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "/home/layered/.hermes/hermes-agent/venv/bin/python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8642/health', timeout=5)"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+
   api:
     build:
       context: .
@@ -13,7 +45,7 @@ services:
       BOOTSTRAP_USERNAME: owner
       BOOTSTRAP_PASSWORD_HASH: $$2a$$12$$dE7HlHWASnJP9txW.Xd1.eaC9mQnxa.u65Xox33aT0/B.33uTqu7a
       CORS_ORIGIN: http://localhost:5173,https://localhost:5173,https://127.0.0.1:5173,https://1.226.52.124:5173
-      HERMES_API_BASE_URL: ${HERMES_API_BASE_URL:-http://host.docker.internal:8642/v1}
+      HERMES_API_BASE_URL: ${HERMES_API_BASE_URL:-http://hermes:8642/v1}
       HERMES_API_KEY: ${HERMES_API_KEY:-}
       HERMES_API_MODEL: ${HERMES_API_MODEL:-pnpclassifier}
       HERMES_API_TIMEOUT_MS: ${HERMES_API_TIMEOUT_MS:-60000}
@@ -23,6 +55,9 @@ services:
       sh -c "npm run prisma:generate -w @pnp/api
       && npm run prisma:migrate:deploy -w @pnp/api
       && npm run dev -w @pnp/api"
+    depends_on:
+      hermes:
+        condition: service_healthy
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ports:

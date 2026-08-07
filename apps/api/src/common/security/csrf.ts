@@ -7,11 +7,16 @@ import { HttpError } from "../http.js";
 const csrfCookieName = "pnp_csrf";
 const csrfHeaderName = "x-csrf-token";
 const unsafeMethods = new Set(["POST", "PUT", "PATCH", "DELETE"]);
-const csrfExemptPaths = new Set(["/api/v1/auth/csrf", "/api/v1/auth/login"]);
+const csrfExemptPaths = new Set([
+  "/api/v1/auth/csrf",
+  "/api/v1/auth/login",
+  "/api/v1/pnp-v2/feedback/classify"
+]);
 
 export function attachCsrfProtection(app: FastifyInstance): void {
   app.addHook("preHandler", async (request) => {
-    if (!unsafeMethods.has(request.method) || csrfExemptPaths.has(request.url)) {
+    const path = request.url.split("?", 1)[0];
+    if (!unsafeMethods.has(request.method) || (path !== undefined && csrfExemptPaths.has(path))) {
       return;
     }
 

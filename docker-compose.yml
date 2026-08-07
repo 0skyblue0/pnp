@@ -15,8 +15,10 @@ services:
       CORS_ORIGIN: http://localhost:5173,https://localhost:5173,https://127.0.0.1:5173,https://1.226.52.124:5173
       HERMES_API_BASE_URL: ${HERMES_API_BASE_URL:-http://host.docker.internal:8642/v1}
       HERMES_API_KEY: ${HERMES_API_KEY:-}
-      HERMES_API_MODEL: ${HERMES_API_MODEL:-pnp-response-classifier}
+      HERMES_API_MODEL: ${HERMES_API_MODEL:-pnpclassifier}
       HERMES_API_TIMEOUT_MS: ${HERMES_API_TIMEOUT_MS:-60000}
+      SUPABASE_URL: ${SUPABASE_URL:-}
+      SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY:-}
     command: >
       sh -c "npm run prisma:generate -w @pnp/api
       && npm run prisma:migrate:deploy -w @pnp/api

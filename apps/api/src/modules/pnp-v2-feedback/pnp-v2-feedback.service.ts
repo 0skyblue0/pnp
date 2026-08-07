@@ -236,3 +236,29 @@ export async function requestPnpV2HermesSuggestion(
     clearTimeout(timeout);
   }
 }
+
+export async function checkPnpV2HermesAvailability(config: AppConfig): Promise<boolean> {
+  if (!config.HERMES_API_BASE_URL || !config.HERMES_API_KEY) return false;
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), Math.min(config.HERMES_API_TIMEOUT_MS, 5000));
+  try {
+    const response = await fetch(
+      `${config.HERMES_API_BASE_URL.replace(/\/$/, "")}/models`,
+      {
+        headers: {
+          Accept: "application/json",
+          Authorization: `Bearer ${config.HERMES_API_KEY}`
+        },
+        signal: controller.signal
+      }
+    );
+    if (!response.ok) return false;
+    const body = await response.json() as { data?: Array<{ id?: string }> };
+    return body.data?.some((model) => model.id === config.HERMES_API_MODEL) ?? false;
+  } catch {
+    return false;
+  } finally {
+    clearTimeout(timeout);
+  }
+}

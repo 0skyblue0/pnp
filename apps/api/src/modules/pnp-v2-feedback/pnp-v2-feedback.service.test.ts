@@ -1,7 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { AppConfig } from "../../config.js";
-import { loadAuthorizedStoreCriteria } from "./pnp-v2-feedback.service.js";
+import {
+  loadAuthorizedStoreCriteria,
+  requestPnpV2HermesSuggestion,
+  type SupabaseCriterion,
+} from "./pnp-v2-feedback.service.js";
 
 const storeId = "11111111-1111-4111-8111-111111111111";
 const userId = "22222222-2222-4222-8222-222222222222";
@@ -18,6 +22,12 @@ const config = {
   SUPABASE_URL: "https://project.supabase.co",
   SUPABASE_ANON_KEY: "test-anon-key",
 } as AppConfig;
+
+const criteria: SupabaseCriterion[] = [
+  { id: "30000000-0000-4000-8000-000000000001", parent_id: null, depth: 1, name: "맛", sort_order: 1, active: true },
+  { id: "30000000-0000-4000-8000-000000000002", parent_id: "30000000-0000-4000-8000-000000000001", depth: 2, name: "식감", sort_order: 1, active: true },
+  { id: "30000000-0000-4000-8000-000000000003", parent_id: "30000000-0000-4000-8000-000000000002", depth: 3, name: "바게트", sort_order: 1, active: true },
+];
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -84,5 +94,103 @@ describe("loadAuthorizedStoreCriteria", () => {
     expect(criteriaRequest?.url).toContain("active=eq.true");
     expect(criteriaRequest?.headers.get("Authorization")).toBe("Bearer user-access-token");
     expect(criteriaRequest?.headers.get("apikey")).toBe("test-anon-key");
+  });
+});
+
+describe("requestPnpV2HermesSuggestion", () => {
+  it("sends masked content and registered criteria with the pnpclassifier contract", async () => {
+    let capturedUrl = "";
+    let capturedInit: RequestInit | undefined;
+    vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      capturedUrl = String(input);
+      capturedInit = init;
+      return Response.json({
+        id: "chatcmpl-test",
+        object: "chat.completion",
+        created: 1,
+        model: "pnpclassifier",
+        choices: [{
+          index: 0,
+          message: {
+            role: "assistant",
+            content: JSON.stringify({
+              major: "맛",
+              mid: "식감",
+              minor: "바게트",
+              signal: "불만/개선",
+              summary: "바게트 식감이 단단하다는 의견",
+              reason: "등록된 식감 기준과 일치합니다.",
+            }),
+          },
+          finish_reason: "stop",
+        }],
+      });
+    }));
+
+    await expect(requestPnpV2HermesSuggestion(
+      config,
+      "010-1234-5678 고객이 바게트가 딱딱하다고 말했다.",
+      criteria,
+    )).resolves.toEqual({
+      major: "맛",
+      mid: "식감",
+      minor: "바게트",
+      signal: "불만/개선",
+      summary: "바게트 식감이 단단하다는 의견",
+      reason: "등록된 식감 기준과 일치합니다.",
+    });
+
+    expect(capturedUrl).toBe("http://host.docker.internal:8642/v1/chat/completions");
+    const requestBody = JSON.parse(String(capturedInit?.body)) as {
+      model: string;
+      stream: boolean;
+      temperature: number;
+      messages: Array<{ content: string }>;
+    };
+    expect(requestBody.model).toBe("pnpclassifier");
+    expect(requestBody.stream).toBe(false);
+    expect(requestBody.temperature).toBe(0);
+    expect(requestBody.messages.at(-1)?.content).toContain("[PHONE]");
+    expect(requestBody.messages.at(-1)?.content).not.toContain("010-1234-5678");
+    expect(requestBody.messages.at(-1)?.content).toContain("30000000-0000-4000-8000-000000000003");
+  });
+
+  it("rejects an unregistered category path", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => Response.json({
+      choices: [{ message: { content: JSON.stringify({
+        major: "맛",
+        mid: "식감",
+        minor: "등록되지 않은 빵",
+        signal: "불만/개선",
+        summary: "요약",
+        reason: "이유",
+      }) } }],
+    })));
+
+    await expect(requestPnpV2HermesSuggestion(config, "빵이 딱딱해요", criteria))
+      .rejects.toMatchObject({ statusCode: 502, code: "HERMES_INVALID_SUGGESTION" });
+  });
+
+  it("rejects a signal outside the current service contract", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => Response.json({
+      choices: [{ message: { content: JSON.stringify({
+        major: "맛",
+        mid: "식감",
+        minor: "바게트",
+        signal: "새로운 신호",
+        summary: "요약",
+        reason: "이유",
+      }) } }],
+    })));
+
+    await expect(requestPnpV2HermesSuggestion(config, "빵이 딱딱해요", criteria))
+      .rejects.toMatchObject({ statusCode: 502, code: "HERMES_INVALID_SUGGESTION" });
+  });
+
+  it("maps transport failures to a stable error", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => Promise.reject(new Error("connect ECONNREFUSED"))));
+
+    await expect(requestPnpV2HermesSuggestion(config, "빵이 딱딱해요", criteria))
+      .rejects.toMatchObject({ statusCode: 502, code: "HERMES_SUGGESTION_FAILED" });
   });
 });

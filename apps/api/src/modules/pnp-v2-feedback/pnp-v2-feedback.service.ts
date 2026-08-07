@@ -1,5 +1,10 @@
 import type { AppConfig } from "../../config.js";
 import { HttpError } from "../../common/http.js";
+import { maskPii } from "../llm/pii-masker.js";
+import {
+  hermesFeedbackSuggestionSchema,
+  type PnpV2FeedbackSuggestion
+} from "./pnp-v2-feedback.schemas.js";
 
 export type SupabaseCriterion = {
   id: string;
@@ -20,6 +25,16 @@ type MembershipRow = {
 };
 
 const writableRoles = new Set(["owner", "manager", "staff"]);
+const suggestionNotConfiguredMessage =
+  "AI 분류 API가 설정되지 않았습니다. 관리자에게 연결 상태를 확인해 주세요.";
+const suggestionFailureMessage =
+  "AI 분류 API 실행에 실패했습니다. 관리자에게 연결 상태를 확인해 주세요.";
+const suggestionInvalidMessage =
+  "AI가 등록되지 않은 분류를 반환했습니다. 직접 분류해 주세요.";
+
+type HermesChatCompletionResponse = {
+  choices?: Array<{ message?: { content?: string | null } }>;
+};
 
 function supabaseHeaders(config: AppConfig, token: string): Record<string, string> {
   if (!config.SUPABASE_URL || !config.SUPABASE_ANON_KEY) {
@@ -86,4 +101,138 @@ export async function loadAuthorizedStoreCriteria(
     { headers }
   );
   return responseJson<SupabaseCriterion[]>(criteriaResponse, "SUPABASE_QUERY_FAILED");
+}
+
+function stripJsonFence(content: string): string {
+  const trimmed = content.trim();
+  const fenced = trimmed.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
+  return fenced?.[1]?.trim() ?? trimmed;
+}
+
+function validateRegisteredPath(
+  suggestion: PnpV2FeedbackSuggestion,
+  criteria: SupabaseCriterion[]
+): void {
+  const major = criteria.find((criterion) =>
+    criterion.active && criterion.depth === 1 && criterion.name === suggestion.major
+  );
+  if (!major) {
+    throw new HttpError(502, "HERMES_INVALID_SUGGESTION", suggestionInvalidMessage);
+  }
+
+  if (!suggestion.mid) {
+    if (suggestion.minor) {
+      throw new HttpError(502, "HERMES_INVALID_SUGGESTION", suggestionInvalidMessage);
+    }
+    return;
+  }
+
+  const mid = criteria.find((criterion) =>
+    criterion.active
+    && criterion.depth === 2
+    && criterion.parent_id === major.id
+    && criterion.name === suggestion.mid
+  );
+  if (!mid) {
+    throw new HttpError(502, "HERMES_INVALID_SUGGESTION", suggestionInvalidMessage);
+  }
+
+  if (!suggestion.minor) return;
+  const minor = criteria.find((criterion) =>
+    criterion.active
+    && criterion.depth === 3
+    && criterion.parent_id === mid.id
+    && criterion.name === suggestion.minor
+  );
+  if (!minor) {
+    throw new HttpError(502, "HERMES_INVALID_SUGGESTION", suggestionInvalidMessage);
+  }
+}
+
+function buildHermesUserPrompt(content: string, criteria: SupabaseCriterion[]): string {
+  return JSON.stringify({
+    task: "pnp_v2_feedback_classification",
+    rules: [
+      "registered_criteria_only",
+      "exact_parent_path",
+      "allowed_signal_only",
+      "json_only"
+    ],
+    registeredCriteria: criteria.map((criterion) => ({
+      id: criterion.id,
+      parentId: criterion.parent_id,
+      depth: criterion.depth,
+      name: criterion.name
+    })),
+    customerResponseText: maskPii(content).maskedText
+  }, null, 2);
+}
+
+const hermesSystemPrompt = [
+  "당신은 paul&paulina 고객 반응 분류 전용 프로필입니다.",
+  "제공된 등록 기준의 정확한 부모 경로만 선택합니다.",
+  "signal은 매출 기회, 놓친 매출, 손님 요청, 불만/개선, 칭찬, 운영 정보 중 하나입니다.",
+  "등록 기준에 없는 이름을 만들지 않습니다.",
+  "응답은 JSON 객체 하나만 반환합니다.",
+  '형식: {"major":string,"mid":string,"minor":string,"signal":string,"summary":string,"reason":string}',
+  "중분류나 소분류가 없는 기준은 해당 값을 빈 문자열로 반환합니다."
+].join("\n");
+
+export async function requestPnpV2HermesSuggestion(
+  config: AppConfig,
+  content: string,
+  criteria: SupabaseCriterion[]
+): Promise<PnpV2FeedbackSuggestion> {
+  if (!config.HERMES_API_BASE_URL || !config.HERMES_API_KEY) {
+    throw new HttpError(503, "HERMES_NOT_CONFIGURED", suggestionNotConfiguredMessage);
+  }
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), config.HERMES_API_TIMEOUT_MS);
+  try {
+    const response = await fetch(
+      `${config.HERMES_API_BASE_URL.replace(/\/$/, "")}/chat/completions`,
+      {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          Authorization: `Bearer ${config.HERMES_API_KEY}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          model: config.HERMES_API_MODEL,
+          stream: false,
+          temperature: 0,
+          messages: [
+            { role: "system", content: hermesSystemPrompt },
+            { role: "user", content: buildHermesUserPrompt(content, criteria) }
+          ]
+        }),
+        signal: controller.signal
+      }
+    );
+    if (!response.ok) {
+      throw new Error(`Hermes API failed with ${response.status}`);
+    }
+
+    const completion = await response.json() as HermesChatCompletionResponse;
+    const completionContent = completion.choices?.[0]?.message?.content;
+    if (!completionContent) {
+      throw new Error("Hermes API returned no content");
+    }
+
+    let suggestion: PnpV2FeedbackSuggestion;
+    try {
+      suggestion = hermesFeedbackSuggestionSchema.parse(JSON.parse(stripJsonFence(completionContent)));
+    } catch {
+      throw new HttpError(502, "HERMES_INVALID_SUGGESTION", suggestionInvalidMessage);
+    }
+    validateRegisteredPath(suggestion, criteria);
+    return suggestion;
+  } catch (error) {
+    if (error instanceof HttpError) throw error;
+    throw new HttpError(502, "HERMES_SUGGESTION_FAILED", suggestionFailureMessage);
+  } finally {
+    clearTimeout(timeout);
+  }
 }

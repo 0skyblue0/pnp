@@ -33,7 +33,9 @@ const envSchema = z.object({
   HERMES_API_BASE_URL: z.string().url().optional(),
   HERMES_API_KEY: optionalNonEmptyString,
   HERMES_API_MODEL: z.string().min(1).default("pnp-response-classifier"),
-  HERMES_API_TIMEOUT_MS: z.coerce.number().int().positive().default(60000)
+  HERMES_API_TIMEOUT_MS: z.coerce.number().int().positive().default(60000),
+  SUPABASE_URL: z.string().url().optional(),
+  SUPABASE_ANON_KEY: optionalNonEmptyString
 });
 
 export type AppConfig = z.infer<typeof envSchema>;

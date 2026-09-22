@@ -11,3 +11,5 @@ test-results/
 *.log
 *.tsbuildinfo
 .worktrees/
+output/playwright/
+*~$*.xlsx

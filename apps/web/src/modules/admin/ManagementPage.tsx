@@ -1,11 +1,12 @@
 import { Pencil, Plus, RefreshCcw, Trash2, UserPlus, X } from "lucide-react";
-import { useCallback, useEffect, useRef, useState, type DragEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type DragEvent, type KeyboardEvent } from "react";
 
 import { apiDelete, apiGet, apiPatch, apiPost } from "../../shared/api/client.js";
 import type { ListEnvelope } from "../../shared/api/types.js";
 import { productLineup } from "../../shared/productLineup.js";
 import { Button } from "../../shared/ui/Button.js";
 import { useConfirm } from "../../shared/ui/ConfirmDialog.js";
+import { PageHeader } from "../../shared/ui/PageHeader.js";
 
 type ProductDto = {
   id: number;
@@ -196,7 +197,7 @@ function deleteMessage(entity: string, result: DeleteResult<unknown>) {
 
 function statusBadge(isActive: boolean) {
   return [
-    "inline-flex min-h-8 items-center rounded-control px-2 text-sm font-semibold",
+    "inline-flex min-h-11 items-center rounded-control px-2 text-sm font-semibold",
     isActive ? "bg-green/10 text-green" : "bg-stone-100 text-muted"
   ].join(" ");
 }
@@ -1125,27 +1126,33 @@ export function ManagementPage() {
   );
   const selectedDateSchedules = selectedScheduleDate ? schedulesByDate[selectedScheduleDate] ?? [] : [];
   const scheduleCells = calendarDates(scheduleMonth);
+  const handleAdminTabKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
+    const currentIndex = adminTabs.findIndex((tab) => tab.key === activeAdminTab);
+    const nextIndex = event.key === "Home" ? 0 : event.key === "End" ? adminTabs.length - 1 : event.key === "ArrowRight" ? (currentIndex + 1) % adminTabs.length : event.key === "ArrowLeft" ? (currentIndex - 1 + adminTabs.length) % adminTabs.length : -1;
+    const nextTab = nextIndex < 0 ? undefined : adminTabs[nextIndex];
+    if (!nextTab) return;
+    event.preventDefault();
+    setActiveAdminTab(nextTab.key);
+    requestAnimationFrame(() => document.getElementById(`management-tab-${nextTab.key}`)?.focus());
+  };
 
   return (
-    <div className="mx-auto grid max-w-7xl gap-4">
-      <section className="order-1 min-w-0">
-        <div className="mb-4 flex items-center justify-between gap-3">
-          <div>
-            <h2 className="section-title">관리</h2>
-            <h2 className="sr-only">홈 목표·매출 공지 관리</h2>
-          </div>
+    <div className="app-page grid gap-4">
+      <section className="app-card order-1 min-w-0">
+        <PageHeader title="관리" description="제품, 직원, 분류 기준과 홈 공지를 관리합니다." actions={<>
           <Button className="sr-only" icon={RefreshCcw} type="button" onClick={() => void loadManagementData()}>
             {isLoading ? "조회 중" : "새로고침"}
           </Button>
-        </div>
+        </>} />
+        <h2 className="sr-only">홈 목표·매출 공지 관리</h2>
 
         {message ? (
-          <div className="mb-4 rounded-control border border-green/20 bg-green/10 px-3 py-2 text-sm font-semibold text-green">
+          <div role="status" className="mb-4 rounded-control border border-green/20 bg-green/10 px-3 py-2 text-sm font-semibold text-green">
             {message}
           </div>
         ) : null}
         {error ? (
-          <div className="mb-4 rounded-control border border-red/20 bg-red/10 px-3 py-2 text-sm font-semibold text-red">
+          <div role="alert" className="mb-4 rounded-control border border-red/20 bg-red/10 px-3 py-2 text-sm font-semibold text-red">
             {error}
           </div>
         ) : null}
@@ -1193,18 +1200,26 @@ export function ManagementPage() {
           </div>
         </div>
 
-        <div className="mt-4 flex gap-[6px]">
+        <div className="mt-4 flex flex-wrap gap-[6px] rounded-control border border-border bg-surface-muted p-1" role="tablist" aria-label="관리 항목">
           {adminTabs.map((tab) => {
             const isActive = activeAdminTab === tab.key;
             return (
               <button
                 key={tab.key}
+                id={`management-tab-${tab.key}`}
+                aria-controls={`management-panel-${tab.key}`}
                 type="button"
                 className={[
-                  "rounded-[9px] px-4 py-2 text-[12.5px] font-semibold transition",
-                  isActive ? "bg-bread text-white" : "bg-cream text-cocoa hover:bg-[#EFE6DA]"
+                  "min-h-11 rounded-[9px] px-4 py-2 text-[12.5px] font-semibold transition motion-reduce:transition-none",
+                  isActive
+                    ? "border-ref-gold border-b-2 bg-ref-gold-wash text-ref-gold-strong"
+                    : "border-transparent border-b-2 bg-transparent text-cocoa hover:bg-ref-gold-wash"
                 ].join(" ")}
+                role="tab"
+                aria-selected={isActive}
+                tabIndex={isActive ? 0 : -1}
                 onClick={() => setActiveAdminTab(tab.key)}
+                onKeyDown={handleAdminTabKeyDown}
               >
                 {tab.label}
               </button>
@@ -1212,7 +1227,7 @@ export function ManagementPage() {
           })}
         </div>
 
-        <div className="mt-[14px]">
+        <div className="mt-[14px]" id={`management-panel-${activeAdminTab}`} role="tabpanel" aria-labelledby={`management-tab-${activeAdminTab}`}>
           {activeAdminTab === "product" ? (
             <div className="rounded-[14px] border border-latte bg-white px-5 py-[18px]">
               <div className="flex flex-wrap items-center justify-between gap-3">
@@ -1223,7 +1238,7 @@ export function ManagementPage() {
                   </p>
                 </div>
                 <button
-                  className="rounded-[9px] bg-bread px-4 py-2 text-[12.5px] font-bold text-white"
+                  className="ref-primary-action"
                   type="button"
                   onClick={openNewProductForm}
                 >
@@ -1258,7 +1273,7 @@ export function ManagementPage() {
                       {editingProductId === null ? "제품 추가" : "제품 수정"}
                     </h4>
                     <button
-                      className="inline-flex min-h-9 items-center justify-center rounded-control border border-latte bg-white px-3 font-bold text-cocoa hover:bg-cream"
+                      className="inline-flex min-h-11 items-center justify-center rounded-control border border-latte bg-white px-3 font-bold text-cocoa hover:bg-cream"
                       type="button"
                       aria-label="제품 입력 닫기"
                       onClick={closeProductForm}
@@ -1369,7 +1384,7 @@ export function ManagementPage() {
               ) : null}
 
               <div ref={productListRef} className="mt-4 max-h-[460px] overflow-y-auto rounded-[12px] border border-latte bg-white px-4 py-2" onDragOver={scrollProductListDuringDrag}>
-                <div className="sticky top-0 z-10 grid grid-cols-[5.6rem_minmax(7rem,1.4fr)_minmax(5rem,0.8fr)_minmax(4rem,0.6fr)_minmax(8rem,1fr)_8rem] gap-2 border-b border-[#EFE8DC] bg-white py-2 text-[11px] font-semibold text-muted">
+                <div className="sticky top-0 z-10 grid grid-cols-[5.6rem_minmax(7rem,1.4fr)_minmax(5rem,0.8fr)_minmax(4rem,0.6fr)_minmax(8rem,1fr)_8rem] gap-2 border-b border-ref-line-warm bg-white py-2 text-[11px] font-semibold text-muted">
                   <div>순서</div><div>제품명</div><div>카테고리</div><div>시즌</div><div>기간</div><div>수정·삭제</div>
                 </div>
                 {visibleProducts.map((product) => (
@@ -1382,7 +1397,7 @@ export function ManagementPage() {
                     onDrop={() => void moveProductBefore(product.id)}
                     onDragEnd={() => setDraggedProductId(null)}
                     className={[
-                      "grid grid-cols-[5.6rem_minmax(7rem,1.4fr)_minmax(5rem,0.8fr)_minmax(4rem,0.6fr)_minmax(8rem,1fr)_8rem] items-center gap-2 border-b border-[#F5F0E7] py-3 text-[13px] last:border-b-0",
+                      "grid grid-cols-[5.6rem_minmax(7rem,1.4fr)_minmax(5rem,0.8fr)_minmax(4rem,0.6fr)_minmax(8rem,1fr)_8rem] items-center gap-2 border-b border-ref-line-faint py-3 text-[13px] last:border-b-0",
                       product.isActive ? "text-ink" : "bg-stone-50 text-muted"
                     ].join(" ")}
                   >
@@ -1454,13 +1469,13 @@ export function ManagementPage() {
 
           {activeAdminTab === "staff" ? (
             <div className="rounded-[14px] border border-latte bg-white px-[22px] pb-[6px] pt-2">
-              <div className="grid grid-cols-[1fr_1.4fr_1fr_0.8fr] gap-2 border-b border-[#EFE8DC] px-1 py-[11px] text-[11px] font-semibold text-muted">
+              <div className="grid grid-cols-[1fr_1.4fr_1fr_0.8fr] gap-2 border-b border-ref-line-warm px-1 py-[11px] text-[11px] font-semibold text-muted">
                 <div>아이디</div><div>표시 이름</div><div>역할</div><div>상태</div>
               </div>
               {staff.map((person) => (
                 <div
                   key={person.id}
-                  className="grid grid-cols-[1fr_1.4fr_1fr_0.8fr] items-center gap-2 border-b border-[#F5F0E7] px-1 py-[11px] text-[13px] text-ink last:border-b-0"
+                  className="grid grid-cols-[1fr_1.4fr_1fr_0.8fr] items-center gap-2 border-b border-ref-line-faint px-1 py-[11px] text-[13px] text-ink last:border-b-0"
                 >
                   <div className="text-muted">{person.username}</div>
                   <div className="font-semibold">{person.displayName ?? person.username}</div>
@@ -1494,7 +1509,7 @@ export function ManagementPage() {
                   <h3 className="text-[15px] font-bold text-ink">월별 매출 목표 · 홈 공지</h3>
                   <p className="mt-1 text-[12.5px] text-muted">매출 분석 달성률에 쓰는 월별 목표액과 홈 화면 공지를 관리합니다.</p>
                 </div>
-                <button className="rounded-[9px] bg-bread px-4 py-2 text-[12.5px] font-bold text-white" type="button" onClick={() => {
+                <button className="ref-primary-action" type="button" onClick={() => {
                   setEditingGoalNoticeId(null);
                   setGoalNoticeForm(salesGoalFormForYear(String(new Date().getFullYear())));
                   setSameMonthlyTarget("");
@@ -1528,12 +1543,12 @@ export function ManagementPage() {
                     </div>
                     <div className="flex flex-wrap gap-2">
                       <button className={[
-                        "rounded-[9px] px-3 py-2 text-xs font-bold",
-                        goalNoticeForm.category === "sales" ? "bg-bread text-white" : "bg-cream text-cocoa"
+                        "min-h-11 rounded-[9px] px-3 py-2 text-xs font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ref-gold focus-visible:ring-offset-1",
+                        goalNoticeForm.category === "sales" ? "border border-ref-gold bg-ref-gold-wash text-ref-gold-strong" : "border border-transparent bg-cream text-cocoa"
                       ].join(" ")} type="button" onClick={() => setGoalNoticeForm((current) => ({ ...salesGoalFormForYear(current.targetYear), monthlyTargets: current.monthlyTargets }))}>매출 목표</button>
                       <button className={[
-                        "rounded-[9px] px-3 py-2 text-xs font-bold",
-                        goalNoticeForm.category !== "sales" ? "bg-bread text-white" : "bg-cream text-cocoa"
+                        "min-h-11 rounded-[9px] px-3 py-2 text-xs font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ref-gold focus-visible:ring-offset-1",
+                        goalNoticeForm.category !== "sales" ? "border border-ref-gold bg-ref-gold-wash text-ref-gold-strong" : "border border-transparent bg-cream text-cocoa"
                       ].join(" ")} type="button" onClick={() => setGoalNoticeForm((current) => ({ ...current, category: "staff", title: "", value: "", note: "" }))}>직원 공지</button>
                     </div>
                   </div>
@@ -1571,7 +1586,7 @@ export function ManagementPage() {
                             <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-muted">원</span>
                           </span>
                         </label>
-                        <button className="rounded-control bg-cocoa px-4 py-2 text-sm font-extrabold text-white" type="button" onClick={applySameMonthlyTarget}>1~12월 전체 채우기</button>
+                        <button className="ref-primary-action" type="button" onClick={applySameMonthlyTarget}>1~12월 전체 채우기</button>
                       </div>
                       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
                         {monthKeys.map((month) => (
@@ -1604,20 +1619,20 @@ export function ManagementPage() {
                     <textarea className="input min-h-20 py-3" aria-label="공지 메모" placeholder={goalNoticeForm.category === "sales" ? "선택: 목표를 정한 이유나 참고사항" : "홈에 같이 보여줄 메모"} value={goalNoticeForm.note} onChange={(event) => setGoalNoticeForm((current) => ({ ...current, note: event.target.value }))} />
                   </label>
                   <div className="mt-3 flex justify-end gap-2">
-                    <button className="rounded-control border border-stone-300 bg-white px-4 py-2 font-bold text-cocoa" type="button" onClick={closeGoalNoticeForm}>취소</button>
-                    <button className="rounded-control bg-bread px-4 py-2 font-bold text-white" type="button" onClick={() => void saveGoalNotice()}>공지 저장</button>
+                    <button className="ref-secondary-action" type="button" onClick={closeGoalNoticeForm}>취소</button>
+                    <button className="ref-primary-action" type="button" onClick={() => void saveGoalNotice()}>공지 저장</button>
                   </div>
                 </div>
               ) : null}
 
               <div className="mt-4 grid gap-3 lg:grid-cols-3">
                 {goalNotices.map((notice) => (
-                  <div key={notice.id} className="rounded-[12px] border border-[#EFE8DC] bg-white p-4">
+                  <div key={notice.id} className="rounded-[12px] border border-ref-line-warm bg-white p-4">
                     <div className="mb-3 flex items-center justify-between gap-2">
                       <span className="rounded-full bg-blue/10 px-2 py-1 text-xs font-bold text-blue">{goalNoticeCategoryLabels[notice.category]}</span>
                       <div className="flex gap-1">
-                        <button className="rounded-[8px] border border-latte px-2 py-1 text-xs font-bold text-cocoa" type="button" aria-label={`${notice.title} 수정`} onClick={() => openGoalNoticeEdit(notice)}>수정</button>
-                        <button className="rounded-[8px] border border-red/30 px-2 py-1 text-xs font-bold text-red" type="button" aria-label={`${notice.title} 삭제`} onClick={() => void deleteGoalNotice(notice)}>삭제</button>
+                        <button className="inline-flex min-h-11 items-center justify-center rounded-[8px] border border-latte px-3 py-1 text-xs font-bold text-cocoa focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ref-gold focus-visible:ring-offset-1" type="button" aria-label={`${notice.title} 수정`} onClick={() => openGoalNoticeEdit(notice)}>수정</button>
+                        <button className="inline-flex min-h-11 items-center justify-center rounded-[8px] border border-red/30 px-3 py-1 text-xs font-bold text-red focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ref-danger focus-visible:ring-offset-1" type="button" aria-label={`${notice.title} 삭제`} onClick={() => void deleteGoalNotice(notice)}>삭제</button>
                       </div>
                     </div>
                     <p className="font-bold text-ink">{notice.title}</p>
@@ -1645,7 +1660,7 @@ export function ManagementPage() {
                 </div>
                 <div className="flex items-center gap-2 rounded-[12px] border border-latte bg-cream/50 px-3 py-2">
                   <button
-                    className="flex h-9 w-9 items-center justify-center rounded-full border border-latte bg-white text-lg font-extrabold text-cocoa hover:bg-[#EFE6DA]"
+                    className="flex h-11 w-11 items-center justify-center rounded-full border border-latte bg-white text-lg font-extrabold text-cocoa hover:bg-ref-peach-wash"
                     type="button"
                     aria-label="이전 달"
                     onClick={() => {
@@ -1658,7 +1673,7 @@ export function ManagementPage() {
                   </button>
                   <h4 className="min-w-[8.5rem] text-center text-lg font-extrabold text-ink">{scheduleMonthLabel(scheduleMonth)}</h4>
                   <button
-                    className="flex h-9 w-9 items-center justify-center rounded-full border border-latte bg-white text-lg font-extrabold text-cocoa hover:bg-[#EFE6DA]"
+                    className="flex h-11 w-11 items-center justify-center rounded-full border border-latte bg-white text-lg font-extrabold text-cocoa hover:bg-ref-peach-wash"
                     type="button"
                     aria-label="다음 달"
                     onClick={() => {
@@ -1674,9 +1689,9 @@ export function ManagementPage() {
 
               <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
                 <div className="overflow-hidden rounded-[12px] border border-latte bg-white">
-                  <div className="grid grid-cols-7 border-b border-[#EFE8DC] bg-cream/60 text-center text-[10px] font-extrabold text-cocoa">
+                  <div className="grid grid-cols-7 border-b border-ref-line-warm bg-cream/60 text-center text-[10px] font-extrabold text-cocoa">
                     {["일", "월", "화", "수", "목", "금", "토"].map((day) => (
-                      <div key={day} className="border-r border-[#EFE8DC] py-1.5 last:border-r-0">{day}</div>
+                      <div key={day} className="border-r border-ref-line-warm py-1.5 last:border-r-0">{day}</div>
                     ))}
                   </div>
                   <div className="grid grid-cols-7">
@@ -1702,7 +1717,7 @@ export function ManagementPage() {
                                 }
                           }
                           className={[
-                            "min-h-[5.5rem] border-r border-b border-[#F5F0E7] p-1.5 text-left last:border-r-0",
+                            "min-h-[5.5rem] border-r border-b border-ref-line-faint p-1.5 text-left last:border-r-0",
                             cell.day === null ? "bg-stone-50/60" : "cursor-pointer bg-white hover:bg-cream/40 focus:outline focus:outline-2 focus:outline-bread",
                             isSelectedScheduleDate ? "bg-cream/80 ring-2 ring-inset ring-bread/50" : "",
                             isRecentlySavedScheduleDate ? "bg-green/10" : ""
@@ -1869,21 +1884,21 @@ export function ManagementPage() {
                       {criterion.isActive ? "활성" : "비활성"}
                     </span>
                     <button
-                      className="inline-flex min-h-8 items-center justify-center rounded-control border border-stone-300 bg-white px-2 font-semibold hover:bg-stone-100"
+                      className="inline-flex min-h-11 items-center justify-center rounded-control border border-stone-300 bg-white px-2 font-semibold hover:bg-stone-100"
                       type="button"
                       onClick={() => openCriterionEdit(criterion)}
                     >
                       <Pencil className="h-4 w-4" aria-hidden="true" />
                     </button>
                     <button
-                      className="inline-flex min-h-8 items-center justify-center rounded-control border border-stone-300 bg-white px-2 font-semibold hover:bg-stone-100"
+                      className="inline-flex min-h-11 items-center justify-center rounded-control border border-stone-300 bg-white px-2 font-semibold hover:bg-stone-100"
                       type="button"
                       onClick={() => void toggleCriterionStatus(criterion)}
                     >
                       {criterion.isActive ? "비활성" : "활성"}
                     </button>
                     <button
-                      className="inline-flex min-h-8 items-center justify-center rounded-control border border-red/30 bg-white px-2 font-semibold text-red hover:bg-red/10"
+                      className="inline-flex min-h-11 items-center justify-center rounded-control border border-red/30 bg-white px-2 font-semibold text-red hover:bg-red/10"
                       type="button"
                       onClick={() => void deleteCriterion(criterion)}
                     >
@@ -1907,7 +1922,7 @@ export function ManagementPage() {
                 <h3 className="text-base font-semibold">중분류</h3>
               </div>
               <Button
-                className="min-h-9 px-3 text-sm"
+                className="min-h-11 px-3 text-sm"
                 disabled={selectedMajorId === null}
                 icon={Plus}
                 type="button"
@@ -1940,21 +1955,21 @@ export function ManagementPage() {
                       {criterion.isActive ? "활성" : "비활성"}
                     </span>
                     <button
-                      className="inline-flex min-h-8 items-center justify-center rounded-control border border-stone-300 bg-white px-2 font-semibold hover:bg-stone-100"
+                      className="inline-flex min-h-11 items-center justify-center rounded-control border border-stone-300 bg-white px-2 font-semibold hover:bg-stone-100"
                       type="button"
                       onClick={() => openCriterionEdit(criterion)}
                     >
                       <Pencil className="h-4 w-4" aria-hidden="true" />
                     </button>
                     <button
-                      className="inline-flex min-h-8 items-center justify-center rounded-control border border-stone-300 bg-white px-2 font-semibold hover:bg-stone-100"
+                      className="inline-flex min-h-11 items-center justify-center rounded-control border border-stone-300 bg-white px-2 font-semibold hover:bg-stone-100"
                       type="button"
                       onClick={() => void toggleCriterionStatus(criterion)}
                     >
                       {criterion.isActive ? "비활성" : "활성"}
                     </button>
                     <button
-                      className="inline-flex min-h-8 items-center justify-center rounded-control border border-red/30 bg-white px-2 font-semibold text-red hover:bg-red/10"
+                      className="inline-flex min-h-11 items-center justify-center rounded-control border border-red/30 bg-white px-2 font-semibold text-red hover:bg-red/10"
                       type="button"
                       onClick={() => void deleteCriterion(criterion)}
                     >
@@ -1978,7 +1993,7 @@ export function ManagementPage() {
                 <h3 className="text-base font-semibold">소분류</h3>
               </div>
               <Button
-                className="min-h-9 px-3 text-sm"
+                className="min-h-11 px-3 text-sm"
                 disabled={selectedMiddleId === null}
                 icon={Plus}
                 type="button"
@@ -2008,21 +2023,21 @@ export function ManagementPage() {
                       {criterion.isActive ? "활성" : "비활성"}
                     </span>
                     <button
-                      className="inline-flex min-h-8 items-center justify-center rounded-control border border-stone-300 bg-white px-2 font-semibold hover:bg-stone-100"
+                      className="inline-flex min-h-11 items-center justify-center rounded-control border border-stone-300 bg-white px-2 font-semibold hover:bg-stone-100"
                       type="button"
                       onClick={() => openCriterionEdit(criterion)}
                     >
                       <Pencil className="h-4 w-4" aria-hidden="true" />
                     </button>
                     <button
-                      className="inline-flex min-h-8 items-center justify-center rounded-control border border-stone-300 bg-white px-2 font-semibold hover:bg-stone-100"
+                      className="inline-flex min-h-11 items-center justify-center rounded-control border border-stone-300 bg-white px-2 font-semibold hover:bg-stone-100"
                       type="button"
                       onClick={() => void toggleCriterionStatus(criterion)}
                     >
                       {criterion.isActive ? "비활성" : "활성"}
                     </button>
                     <button
-                      className="inline-flex min-h-8 items-center justify-center rounded-control border border-red/30 bg-white px-2 font-semibold text-red hover:bg-red/10"
+                      className="inline-flex min-h-11 items-center justify-center rounded-control border border-red/30 bg-white px-2 font-semibold text-red hover:bg-red/10"
                       type="button"
                       onClick={() => void deleteCriterion(criterion)}
                     >
@@ -2049,7 +2064,7 @@ export function ManagementPage() {
                   : `${criterionLevelLabel(criterionFormDepth)} 수정 #${editingCriterionId}`}
               </h3>
               <button
-                className="inline-flex min-h-9 items-center justify-center rounded-control border border-stone-300 bg-white px-3 font-semibold hover:bg-stone-100"
+                className="inline-flex min-h-11 items-center justify-center rounded-control border border-stone-300 bg-white px-3 font-semibold hover:bg-stone-100"
                 type="button"
                 onClick={closeCriterionForm}
               >
@@ -2113,6 +2128,15 @@ export function ManagementPage() {
             </div>
           </div>
         ) : null}
+        {adminTabs.filter((tab) => tab.key !== activeAdminTab).map((tab) => (
+          <div
+            key={tab.key}
+            aria-labelledby={`management-tab-${tab.key}`}
+            id={`management-panel-${tab.key}`}
+            role="tabpanel"
+            hidden
+          />
+        ))}
       </section>
 
       <section className="hidden order-2" aria-hidden="true">
@@ -2157,7 +2181,7 @@ export function ManagementPage() {
                   <td className="py-3 pl-4">
                     <div className="flex gap-2">
                       <button
-                        className="inline-flex min-h-9 items-center justify-center gap-1 rounded-control border border-stone-300 bg-white px-3 font-semibold hover:bg-stone-100"
+                        className="inline-flex min-h-11 items-center justify-center gap-1 rounded-control border border-stone-300 bg-white px-3 font-semibold hover:bg-stone-100"
                         type="button"
                         onClick={() => openProductEdit(product)}
                       >
@@ -2165,7 +2189,7 @@ export function ManagementPage() {
                         수정
                       </button>
                       <button
-                        className="inline-flex min-h-9 items-center justify-center gap-1 rounded-control border border-red/30 bg-white px-3 font-semibold text-red hover:bg-red/10"
+                        className="inline-flex min-h-11 items-center justify-center gap-1 rounded-control border border-red/30 bg-white px-3 font-semibold text-red hover:bg-red/10"
                         type="button"
                         onClick={() => void deleteProduct(product)}
                       >
@@ -2192,7 +2216,7 @@ export function ManagementPage() {
                 {editingProductId === null ? "제품 추가" : `제품 수정 #${editingProductId}`}
               </h3>
               <button
-                className="inline-flex min-h-9 items-center justify-center rounded-control border border-stone-300 bg-white px-3 font-semibold hover:bg-stone-100"
+                className="inline-flex min-h-11 items-center justify-center rounded-control border border-stone-300 bg-white px-3 font-semibold hover:bg-stone-100"
                 type="button"
                 onClick={closeProductForm}
               >
@@ -2333,7 +2357,7 @@ export function ManagementPage() {
                   <td className="py-3 pl-4">
                     <div className="flex gap-2">
                       <button
-                        className="inline-flex min-h-9 items-center justify-center gap-1 rounded-control border border-stone-300 bg-white px-3 font-semibold hover:bg-stone-100"
+                        className="inline-flex min-h-11 items-center justify-center gap-1 rounded-control border border-stone-300 bg-white px-3 font-semibold hover:bg-stone-100"
                         type="button"
                         onClick={() => openStaffEdit(person)}
                       >
@@ -2341,7 +2365,7 @@ export function ManagementPage() {
                         수정
                       </button>
                       <button
-                        className="inline-flex min-h-9 items-center justify-center gap-1 rounded-control border border-red/30 bg-white px-3 font-semibold text-red hover:bg-red/10"
+                        className="inline-flex min-h-11 items-center justify-center gap-1 rounded-control border border-red/30 bg-white px-3 font-semibold text-red hover:bg-red/10"
                         type="button"
                         onClick={() => void deleteStaff(person)}
                       >
@@ -2368,7 +2392,7 @@ export function ManagementPage() {
                 {editingStaffId === null ? "직원 추가" : `직원 수정 #${editingStaffId}`}
               </h3>
               <button
-                className="inline-flex min-h-9 items-center justify-center rounded-control border border-stone-300 bg-white px-3 font-semibold hover:bg-stone-100"
+                className="inline-flex min-h-11 items-center justify-center rounded-control border border-stone-300 bg-white px-3 font-semibold hover:bg-stone-100"
                 type="button"
                 onClick={closeStaffForm}
               >

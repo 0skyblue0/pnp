@@ -1,13 +1,15 @@
 import { BarChart3, ListFilter } from "lucide-react";
-import { useMemo } from "react";
+import { useMemo, type KeyboardEvent } from "react";
 import { useSearchParams } from "react-router-dom";
 
+import { PageHeader } from "../../shared/ui/PageHeader.js";
 import { StatisticsPage } from "../statistics/StatisticsPage.js";
 import { ResponseEntryPage } from "./ResponseEntryPage.js";
 import { ResponseListPage } from "./ResponseListPage.js";
 
 type ResponseMode = "entry" | "lookup";
 type InquiryTab = "stats" | "detail";
+const modeOptions: ResponseMode[] = ["entry", "lookup"];
 
 const tabOptions: Array<{
   value: InquiryTab;
@@ -72,12 +74,30 @@ export function ResponseInquiryPage() {
     setSearchParams(nextParams, { replace: true });
   };
 
+  const handleModeKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
+    const currentIndex = modeOptions.indexOf(activeMode);
+    const nextIndex = event.key === "Home" ? 0 : event.key === "End" ? modeOptions.length - 1 : event.key === "ArrowRight" ? (currentIndex + 1) % modeOptions.length : event.key === "ArrowLeft" ? (currentIndex - 1 + modeOptions.length) % modeOptions.length : -1;
+    const nextMode = nextIndex < 0 ? undefined : modeOptions[nextIndex];
+    if (!nextMode) return;
+    event.preventDefault();
+    handleModeChange(nextMode);
+    requestAnimationFrame(() => document.getElementById(`response-mode-tab-${nextMode}`)?.focus());
+  };
+
+  const handleInquiryTabKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
+    const currentIndex = tabOptions.findIndex((option) => option.value === activeTab);
+    const nextIndex = event.key === "Home" ? 0 : event.key === "End" ? tabOptions.length - 1 : event.key === "ArrowRight" ? (currentIndex + 1) % tabOptions.length : event.key === "ArrowLeft" ? (currentIndex - 1 + tabOptions.length) % tabOptions.length : -1;
+    const nextTab = nextIndex < 0 ? undefined : tabOptions[nextIndex];
+    if (!nextTab) return;
+    event.preventDefault();
+    handleTabChange(nextTab.value);
+    requestAnimationFrame(() => document.getElementById(tabIds[nextTab.value].tab)?.focus());
+  };
+
   return (
-    <div className="grid gap-4">
-      <section className="mx-auto w-full max-w-none min-w-0">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <h2 className="section-title">손님 반응</h2>
-          <div
+    <div className="app-page grid gap-4">
+      <section className="app-card min-w-0">
+        <PageHeader title="손님 반응" description="손님 반응을 입력하고 기록을 분석합니다." actions={<div
             aria-label="손님 반응 화면 선택"
             className="flex flex-wrap gap-2 rounded-control border border-latte bg-white p-1"
             role="tablist"
@@ -90,20 +110,23 @@ export function ResponseInquiryPage() {
             ).map(([mode, label]) => (
               <button
                 key={mode}
+                id={`response-mode-tab-${mode}`}
+                aria-controls={`response-mode-panel-${mode}`}
                 aria-selected={activeMode === mode}
+                tabIndex={activeMode === mode ? 0 : -1}
                 className={[
-                  "inline-flex min-h-8 items-center rounded-[7px] px-4 text-[12.5px] font-semibold transition",
+                  "inline-flex min-h-11 items-center rounded-[7px] px-4 text-[12.5px] font-semibold transition motion-reduce:transition-none",
                   activeMode === mode ? "bg-bread text-white" : "text-cocoa hover:bg-cream"
                 ].join(" ")}
                 role="tab"
                 type="button"
                 onClick={() => handleModeChange(mode)}
+                onKeyDown={handleModeKeyDown}
               >
                 {label}
               </button>
             ))}
-          </div>
-        </div>
+          </div>} />
 
         {activeMode === "lookup" ? (
           <div
@@ -120,8 +143,9 @@ export function ResponseInquiryPage() {
                   key={option.value}
                   aria-controls={tabIds[option.value].panel}
                   aria-selected={isActive}
+                  tabIndex={isActive ? 0 : -1}
                   className={[
-                    "inline-flex min-h-11 items-center rounded-control border px-3 text-sm font-semibold",
+                    "inline-flex min-h-11 items-center rounded-control border px-3 text-sm font-semibold motion-reduce:transition-none",
                     isActive
                       ? "border-bread bg-bread text-white"
                       : "border-transparent bg-white text-cocoa hover:bg-cream"
@@ -130,6 +154,7 @@ export function ResponseInquiryPage() {
                   role="tab"
                   type="button"
                   onClick={() => handleTabChange(option.value)}
+                  onKeyDown={handleInquiryTabKeyDown}
                 >
                   <Icon className="mr-2 h-4 w-4 shrink-0" aria-hidden="true" />
                   {option.label}
@@ -141,10 +166,26 @@ export function ResponseInquiryPage() {
       </section>
 
       {activeMode === "entry" ? (
-        <ResponseEntryPage />
+        <div aria-labelledby="response-mode-tab-entry" id="response-mode-panel-entry" role="tabpanel">
+          <ResponseEntryPage />
+        </div>
       ) : (
-        <div aria-labelledby={tabIds[activeTab].tab} id={tabIds[activeTab].panel} role="tabpanel">
-          {activeTab === "stats" ? <StatisticsPage /> : <ResponseListPage />}
+        <div aria-labelledby="response-mode-tab-entry" id="response-mode-panel-entry" role="tabpanel" hidden />
+      )}
+      {activeMode === "lookup" ? (
+        <div aria-labelledby="response-mode-tab-lookup" id="response-mode-panel-lookup" role="tabpanel">
+          <div aria-labelledby={tabIds[activeTab].tab} id={tabIds[activeTab].panel} role="tabpanel">
+            {activeTab === "stats" ? <StatisticsPage /> : <ResponseListPage />}
+          </div>
+          {tabOptions.filter((option) => option.value !== activeTab).map((option) => (
+            <div key={option.value} aria-labelledby={tabIds[option.value].tab} id={tabIds[option.value].panel} role="tabpanel" hidden />
+          ))}
+        </div>
+      ) : (
+        <div aria-labelledby="response-mode-tab-lookup" id="response-mode-panel-lookup" role="tabpanel" hidden>
+          {tabOptions.map((option) => (
+            <div key={option.value} aria-labelledby={tabIds[option.value].tab} id={tabIds[option.value].panel} role="tabpanel" hidden />
+          ))}
         </div>
       )}
     </div>

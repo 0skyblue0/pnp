@@ -6,6 +6,7 @@ import type { ListEnvelope } from "../../shared/api/types.js";
 import { todayInStoreTime } from "../../shared/time/storeTime.js";
 import { Button } from "../../shared/ui/Button.js";
 import { useConfirm } from "../../shared/ui/ConfirmDialog.js";
+import { PageHeader } from "../../shared/ui/PageHeader.js";
 import { productLineup } from "../../shared/productLineup.js";
 import { DailyOperationExcelImportPanel } from "./DailyOperationExcelImportPanel.js";
 import { providedDailyOperationDefaultMonth } from "./providedDailyOperationRecords.js";
@@ -702,19 +703,17 @@ export function DailyLogPage() {
   }
 
   return (
-    <div className="mx-auto grid max-w-none gap-[14px]">
+    <div className="mx-auto grid w-full max-w-[996px] gap-[14px]">
       <section ref={entryPanelRef} className="min-w-0">
-        <div className="mb-4 flex items-center justify-between gap-3">
-          <div>
-            <h2 className="section-title">일일 운영 기록</h2>
-            <h2 className="sr-only">매장 운영일지</h2>
-          </div>
-          <div className="flex items-center gap-3">
+        <PageHeader
+          title="일일 운영 기록"
+          description="매장 운영일지"
+          actions={<div className="flex items-center gap-3">
             <span className="text-[12.5px] text-muted">{draft.date.replaceAll("-", ".")}</span>
             {viewMode === "entry" ? (
               <Button
                 aria-label="일일 운영 저장"
-                className="dc-action min-h-0"
+                className="dc-action"
                 icon={Save}
                 type="button"
                 onClick={() => void saveDraft()}
@@ -722,8 +721,9 @@ export function DailyLogPage() {
                 저장
               </Button>
             ) : null}
-          </div>
-        </div>
+          </div>}
+        />
+        <h2 className="sr-only">매장 운영일지</h2>
         <div className="mb-4 flex flex-wrap gap-2" role="tablist" aria-label="일일 운영 화면 선택">
           {(
             [
@@ -737,7 +737,7 @@ export function DailyLogPage() {
               role="tab"
               aria-selected={viewMode === mode}
               className={[
-                "rounded-control border px-5 py-2 text-sm font-bold transition",
+                "min-h-11 rounded-control border px-5 py-2 text-sm font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bread/30 motion-reduce:transition-none",
                 viewMode === mode
                   ? "border-cocoa bg-cocoa text-white shadow-control"
                   : "border-latte bg-white text-cocoa hover:border-bread"
@@ -753,14 +753,19 @@ export function DailyLogPage() {
             </button>
           ))}
         </div>
-        {viewMode === "entry" ? <DailyOperationExcelImportPanel /> : null}
+        {viewMode === "entry" ? (
+          <details className="mb-4 rounded-panel border border-latte bg-white px-4 py-3">
+            <summary className="cursor-pointer text-sm font-bold text-ink">일일업무보고서 엑셀 불러오기</summary>
+            <div className="mt-3 border-t border-latte pt-3"><DailyOperationExcelImportPanel /></div>
+          </details>
+        ) : null}
         {message ? (
-          <div className="mb-4 rounded-control border border-green/20 bg-green/10 px-3 py-2 text-sm font-semibold text-green">
+          <div role="status" className="mb-4 rounded-control border border-green/20 bg-green/10 px-3 py-2 text-sm font-semibold text-green">
             {message}
           </div>
         ) : null}
         {missingItems.length > 0 ? (
-          <div className="mb-4 rounded-control border border-red/20 bg-red/10 px-3 py-2 text-sm font-semibold text-red">
+          <div role="alert" className="mb-4 rounded-control border border-red/20 bg-red/10 px-3 py-2 text-sm font-semibold text-red">
             <p>일일 운영 작성 완료 전 빠진 항목을 확인해 주세요.</p>
             <div className="mt-2 flex flex-wrap gap-2">
               {missingItems.map((item) => {
@@ -795,7 +800,7 @@ export function DailyLogPage() {
         ) : null}
       </section>
 
-      <section className={viewMode === "entry" ? "grid gap-[14px]" : "grid gap-[14px]"}>
+      <section className={viewMode === "entry" ? "daily-entry-board grid min-w-0 gap-[14px]" : "grid min-w-0 gap-[14px]"}>
         {viewMode === "entry" ? (
           <>
             <div className="sr-only" role="tablist" aria-label="일일 운영 입력 분류">
@@ -817,12 +822,12 @@ export function DailyLogPage() {
                 </button>
               ))}
             </div>
-            <section className="dc-card-pad">
+            <section className="daily-entry-basic dc-card-pad">
               <p className="dc-eyebrow">환경 · 근무 정보</p>
               <h3 className="sr-only">환경 · 근무 정보</h3>
               <BasicSection draft={draft} updateDraft={updateDraft} />
             </section>
-            <section className="dc-card-pad">
+            <section className="daily-entry-products dc-card-pad">
               <p className="dc-eyebrow">제품별 생산 · 판매 (판매량 자동 계산)</p>
               <h3 className="sr-only">제품별 생산 · 판매</h3>
               <ProductsSection
@@ -830,8 +835,17 @@ export function DailyLogPage() {
                 totals={productTotals}
                 updateRow={updateProductRow}
               />
+              <div className="mt-4 grid gap-3 md:grid-cols-3" aria-label="일일 운영 핵심 요약">
+                <div className="rounded-[12px] bg-ref-cocoa px-4 py-3 text-ref-header"><p className="text-[11px] text-ref-sidebar-inactive">총 판매량</p><p className="mt-1 text-xl font-extrabold">{productTotals.sold.toLocaleString("ko-KR")}개</p></div>
+                <div className="rounded-[12px] bg-ref-cocoa px-4 py-3 text-ref-header"><p className="text-[11px] text-ref-sidebar-inactive">총 매출</p><p className="mt-1 text-xl font-extrabold">{formatCurrency(totalSales)}</p></div>
+                <div className="rounded-[12px] bg-ref-cocoa px-4 py-3 text-ref-header"><p className="text-[11px] text-ref-sidebar-inactive">객단가</p><p className="mt-1 text-xl font-extrabold">{formatCurrency(averageSpend)}</p></div>
+              </div>
+              <div className="mt-3 rounded-[10px] border border-latte bg-ref-table-head px-3 py-3 text-xs">
+                <div className="flex items-center justify-between"><p className="font-extrabold text-ink">일일업무보고서 미리보기</p><span className="text-muted">저장 후 기록됩니다</span></div>
+                <div className="mt-2 grid grid-cols-4 gap-2 border-t border-latte pt-2 text-muted"><span>날짜</span><span>총 매출</span><span>판매량</span><span>특이사항</span></div>
+              </div>
             </section>
-            <section>
+            <section className="daily-entry-sales">
               <h3 className="sr-only">매출 요약</h3>
               <SalesSection
                 channelRows={channelRows}
@@ -844,15 +858,15 @@ export function DailyLogPage() {
                 averageSpend={averageSpend}
               />
             </section>
-            <section className="dc-card-pad">
-              <h3 className="sr-only">메모 · 점검</h3>
-              <NotesSection
+            <details className="daily-entry-notes dc-card-pad">
+              <summary className="cursor-pointer text-[11.5px] font-semibold uppercase tracking-[0.03em] text-muted">메모 · 점검 입력 열기</summary>
+              <div className="mt-3"><NotesSection
                 draft={draft}
                 staffSpecialRows={staffSpecialRows}
                 updateDraft={updateDraft}
                 updateStaffSpecialRow={updateStaffSpecialRow}
-              />
-            </section>
+              /></div>
+            </details>
           </>
         ) : (
           <DailyLookupSection
@@ -938,7 +952,7 @@ export function DailyLookupSection({
     lookupMode === "week" ? "전주 대비" : lookupMode === "month" ? "전월 대비" : "이전 기간 대비";
 
   return (
-    <div className="grid gap-[14px]">
+    <div className="grid min-w-0 gap-[14px]">
       {!preview ? <div className="dc-card-pad min-w-0">
         <div className="mb-3 flex items-center justify-between gap-3">
           <div>
@@ -1455,7 +1469,7 @@ function BasicSection({
           <span className="text-[11px] text-muted">작성자 *</span>
           <input
             aria-label="작성자"
-            className="h-[34px] rounded-[8px] border border-latte px-[10px] text-[13px] text-ink outline-none focus:border-bread"
+            className="input w-full"
             placeholder="이름 입력"
             value={draft.author}
             onChange={(event) => updateDraft("author", event.target.value)}
@@ -1467,7 +1481,7 @@ function BasicSection({
             <UnitInput
               aria-label="외부온도"
               wrapperClassName="w-0 flex-1"
-              className="h-[34px] w-full rounded-[8px] border border-latte px-[10px] text-[13px] outline-none focus:border-bread"
+              className="input w-full"
               unit="℃"
               value={draft.outsideTemp || "0"}
               onFocus={(event) => event.currentTarget.select()}
@@ -1476,7 +1490,7 @@ function BasicSection({
             <UnitInput
               aria-label="외부습도"
               wrapperClassName="w-0 flex-1"
-              className="h-[34px] w-full rounded-[8px] border border-latte px-[10px] text-[13px] outline-none focus:border-bread"
+              className="input w-full"
               unit="%"
               value={draft.outsideHumidity || "0"}
               onFocus={(event) => event.currentTarget.select()}
@@ -1490,7 +1504,7 @@ function BasicSection({
             <UnitInput
               aria-label="내부온도"
               wrapperClassName="w-0 flex-1"
-              className="h-[34px] w-full rounded-[8px] border border-latte px-[10px] text-[13px] outline-none focus:border-bread"
+              className="input w-full"
               unit="℃"
               value={draft.insideTemp || "0"}
               onFocus={(event) => event.currentTarget.select()}
@@ -1499,7 +1513,7 @@ function BasicSection({
             <UnitInput
               aria-label="내부습도"
               wrapperClassName="w-0 flex-1"
-              className="h-[34px] w-full rounded-[8px] border border-latte px-[10px] text-[13px] outline-none focus:border-bread"
+              className="input w-full"
               unit="%"
               value={draft.insideHumidity || "0"}
               onFocus={(event) => event.currentTarget.select()}
@@ -1509,12 +1523,12 @@ function BasicSection({
         </div>
       </div>
       <div className="mt-[14px] text-[11px] text-muted">날씨</div>
-      <div className="mt-[6px] flex gap-[8px]">
+      <div className="mt-[6px] flex flex-wrap gap-[8px]">
         {weatherOptions.map((weather) => (
           <button
             key={weather}
             className={[
-              "rounded-full px-[15px] py-[7px] text-[12.5px] font-semibold transition",
+              "min-h-11 rounded-full px-[15px] py-[7px] text-[12.5px] font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bread/30 motion-reduce:transition-none",
               visualWeather === weather
                 ? "bg-bread text-white"
                 : "bg-cream text-cocoa hover:bg-[#eadfd1]"
@@ -1649,8 +1663,42 @@ function ProductsSection({
 
   return (
     <div>
-      <div className="max-h-[420px] overflow-y-auto rounded-[10px] border border-latte bg-white pr-1">
-        <div className="sticky top-0 z-10 grid grid-cols-[1.1fr_0.8fr_0.98fr_0.98fr_0.8fr_0.8fr] gap-[8px] border-b border-[#EFE8DC] bg-white px-[8px] py-[9px] text-[11px] font-semibold text-muted">
+      <div className="grid gap-3 md:hidden">
+        {rows.map((row) => (
+          <article key={row.productName} className="rounded-[10px] border border-latte bg-white p-3">
+            <h4 className="text-[13px] font-semibold text-ink">{row.productName}</h4>
+            <div className="mt-3 grid grid-cols-2 gap-3">
+              <label className="grid gap-1 text-[11px] font-semibold text-muted">
+                생산량(개)
+                <input aria-label={`${row.productName} 생산량`} className="min-h-11 w-full rounded-[7px] border border-latte px-2 text-[13px] text-ink outline-none focus:border-bread focus:ring-2 focus:ring-bread/15" inputMode="numeric" value={row.producedQty} onFocus={(event) => event.currentTarget.select()} onChange={(event) => updateRow(row.productName, "producedQty", event.target.value)} />
+              </label>
+              <label className="grid gap-1 text-[11px] font-semibold text-muted">
+                재고(남음, 개)
+                <input aria-label={`${row.productName} 재고량`} className="min-h-11 w-full rounded-[7px] border border-latte px-2 text-[13px] text-ink outline-none focus:border-bread focus:ring-2 focus:ring-bread/15" inputMode="numeric" value={row.stockQty} onFocus={(event) => event.currentTarget.select()} onChange={(event) => updateRow(row.productName, "stockQty", event.target.value)} />
+              </label>
+              <QuantityStepper label={`${row.productName} 손실량`} value={row.lossQty} onChange={(value) => updateRow(row.productName, "lossQty", value)} decrement={() => adjustQuantity(row.productName, "lossQty", -1)} increment={() => adjustQuantity(row.productName, "lossQty", 1)} />
+              <QuantityStepper label={`${row.productName} 시식량`} value={row.tastingQty} onChange={(value) => updateRow(row.productName, "tastingQty", value)} decrement={() => adjustQuantity(row.productName, "tastingQty", -1)} increment={() => adjustQuantity(row.productName, "tastingQty", 1)} />
+              <label className="grid gap-1 text-[11px] font-semibold text-muted">
+                기타 입고(+)
+                <input aria-label={`${row.productName} 기타 입고 +`} className="min-h-11 w-full rounded-[7px] border border-latte px-2 text-[13px] text-ink outline-none focus:border-bread focus:ring-2 focus:ring-bread/15" inputMode="numeric" value={row.otherInQty} onFocus={(event) => event.currentTarget.select()} onChange={(event) => updateRow(row.productName, "otherInQty", event.target.value)} />
+              </label>
+              <label className="grid gap-1 text-[11px] font-semibold text-muted">
+                기타 출고(-)
+                <input aria-label={`${row.productName} 기타 출고 -`} className="min-h-11 w-full rounded-[7px] border border-latte px-2 text-[13px] text-ink outline-none focus:border-bread focus:ring-2 focus:ring-bread/15" inputMode="numeric" value={row.otherOutQty} onFocus={(event) => event.currentTarget.select()} onChange={(event) => updateRow(row.productName, "otherOutQty", event.target.value)} />
+              </label>
+              {row.manualSold ? (
+                <label className="grid gap-1 text-[11px] font-semibold text-muted">
+                  판매량 직접입력(개)
+                  <input aria-label={`${row.productName} 판매량 직접입력`} className="min-h-11 w-full rounded-[7px] border border-latte px-2 text-[13px] text-ink outline-none focus:border-bread focus:ring-2 focus:ring-bread/15" inputMode="numeric" value={row.soldQty} onFocus={(event) => event.currentTarget.select()} onChange={(event) => updateRow(row.productName, "soldQty", event.target.value)} />
+                </label>
+              ) : null}
+            </div>
+            <p className="mt-3 text-[13px] font-bold text-bread">판매량: {row.soldQtyUnmeasurable ? "측정 불가" : `${row.manualSold ? row.soldQty : calculatedSold(row)}개`}</p>
+          </article>
+        ))}
+      </div>
+      <div className="hidden max-h-[300px] overflow-x-auto overflow-y-auto rounded-[10px] border border-latte bg-white pr-1 md:block">
+        <div className="sticky top-0 z-10 grid min-w-[720px] grid-cols-[1.1fr_0.8fr_0.98fr_0.98fr_0.8fr_0.8fr] gap-[8px] border-b border-[#EFE8DC] bg-white px-[8px] py-[9px] text-[11px] font-semibold text-muted">
         <div>제품명</div>
         <div>생산량(개)</div>
         <div>손실량(개)</div>
@@ -1661,11 +1709,12 @@ function ProductsSection({
       {rows.map((row) => (
         <div
           key={row.productName}
-          className="grid grid-cols-[1.1fr_0.8fr_0.98fr_0.98fr_0.8fr_0.8fr] items-center gap-[8px] border-b border-[#F5F0E7] px-[8px] py-[8px] last:border-b-0"
+          className="grid min-w-[720px] grid-cols-[1.1fr_0.8fr_0.98fr_0.98fr_0.8fr_0.8fr] items-center gap-[8px] border-b border-[#F5F0E7] px-[8px] py-[8px] last:border-b-0"
         >
           <div className="text-[13px] font-semibold text-ink">{row.productName}</div>
           <input
-            className="h-[30px] min-w-0 w-full rounded-[7px] border border-latte px-[8px] text-[12.5px] outline-none"
+            aria-label={`${row.productName} 생산량`}
+            className="min-h-11 min-w-0 w-full rounded-[7px] border border-latte px-[8px] text-[12.5px] outline-none focus:border-bread focus:ring-2 focus:ring-bread/15"
             inputMode="numeric"
             value={row.producedQty}
             onFocus={(event) => event.currentTarget.select()}
@@ -1673,21 +1722,22 @@ function ProductsSection({
           />
           <div className="flex items-center gap-[3px]">
             <button
-              className="flex h-[26px] w-[20px] shrink-0 items-center justify-center rounded-[6px] bg-cream text-[13px] font-bold text-cocoa"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[6px] bg-cream text-[13px] font-bold text-cocoa focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bread/30"
               type="button"
               onClick={() => adjustQuantity(row.productName, "lossQty", -1)}
             >
               −
             </button>
             <input
-              className="h-[30px] min-w-0 flex-1 rounded-[7px] border border-latte px-[2px] text-center text-[12.5px] outline-none"
+              aria-label={`${row.productName} 손실량`}
+              className="min-h-11 min-w-0 flex-1 rounded-[7px] border border-latte px-[2px] text-center text-[12.5px] outline-none focus:border-bread focus:ring-2 focus:ring-bread/15"
               inputMode="numeric"
               value={row.lossQty}
               onFocus={(event) => event.currentTarget.select()}
               onChange={(event) => updateRow(row.productName, "lossQty", event.target.value)}
             />
             <button
-              className="flex h-[26px] w-[20px] shrink-0 items-center justify-center rounded-[6px] bg-cream text-[13px] font-bold text-cocoa"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[6px] bg-cream text-[13px] font-bold text-cocoa focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bread/30"
               type="button"
               onClick={() => adjustQuantity(row.productName, "lossQty", 1)}
             >
@@ -1696,21 +1746,22 @@ function ProductsSection({
           </div>
           <div className="flex items-center gap-[3px]">
             <button
-              className="flex h-[26px] w-[20px] shrink-0 items-center justify-center rounded-[6px] bg-cream text-[13px] font-bold text-cocoa"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[6px] bg-cream text-[13px] font-bold text-cocoa focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bread/30"
               type="button"
               onClick={() => adjustQuantity(row.productName, "tastingQty", -1)}
             >
               −
             </button>
             <input
-              className="h-[30px] min-w-0 flex-1 rounded-[7px] border border-latte px-[2px] text-center text-[12.5px] outline-none"
+              aria-label={`${row.productName} 시식량`}
+              className="min-h-11 min-w-0 flex-1 rounded-[7px] border border-latte px-[2px] text-center text-[12.5px] outline-none focus:border-bread focus:ring-2 focus:ring-bread/15"
               inputMode="numeric"
               value={row.tastingQty}
               onFocus={(event) => event.currentTarget.select()}
               onChange={(event) => updateRow(row.productName, "tastingQty", event.target.value)}
             />
             <button
-              className="flex h-[26px] w-[20px] shrink-0 items-center justify-center rounded-[6px] bg-cream text-[13px] font-bold text-cocoa"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[6px] bg-cream text-[13px] font-bold text-cocoa focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bread/30"
               type="button"
               onClick={() => adjustQuantity(row.productName, "tastingQty", 1)}
             >
@@ -1718,7 +1769,8 @@ function ProductsSection({
             </button>
           </div>
           <input
-            className="h-[30px] min-w-0 w-full rounded-[7px] border border-latte px-[8px] text-[12.5px] outline-none"
+            aria-label={`${row.productName} 재고량`}
+            className="min-h-11 min-w-0 w-full rounded-[7px] border border-latte px-[8px] text-[12.5px] outline-none focus:border-bread focus:ring-2 focus:ring-bread/15"
             inputMode="numeric"
             value={row.stockQty}
             onFocus={(event) => event.currentTarget.select()}
@@ -1730,6 +1782,34 @@ function ProductsSection({
         </div>
       ))}
       </div>
+      <details className="mt-3 hidden rounded-[8px] border border-latte bg-cream/30 md:block">
+        <summary className="cursor-pointer px-3 py-2 text-xs font-semibold text-cocoa marker:text-bread">
+          기타 입·출고 및 직접 판매 입력 열기
+        </summary>
+        <div className="grid gap-3 border-t border-latte p-3 md:grid-cols-2 xl:grid-cols-3">
+        {rows.map((row) => (
+          <div key={row.productName} className="grid gap-2 rounded-[8px] border border-latte bg-cream/30 p-2">
+            <p className="text-xs font-semibold text-ink">{row.productName} 기타/직접 판매</p>
+            <div className="grid grid-cols-2 gap-2">
+              <label className="grid gap-1 text-[11px] text-muted">
+                기타 입고(+)
+                <input aria-label={`${row.productName} 기타 입고 +`} className="min-h-11 w-full rounded-[7px] border border-latte bg-white px-2 text-[13px] text-ink outline-none focus:border-bread focus:ring-2 focus:ring-bread/15" inputMode="numeric" value={row.otherInQty} onFocus={(event) => event.currentTarget.select()} onChange={(event) => updateRow(row.productName, "otherInQty", event.target.value)} />
+              </label>
+              <label className="grid gap-1 text-[11px] text-muted">
+                기타 출고(-)
+                <input aria-label={`${row.productName} 기타 출고 -`} className="min-h-11 w-full rounded-[7px] border border-latte bg-white px-2 text-[13px] text-ink outline-none focus:border-bread focus:ring-2 focus:ring-bread/15" inputMode="numeric" value={row.otherOutQty} onFocus={(event) => event.currentTarget.select()} onChange={(event) => updateRow(row.productName, "otherOutQty", event.target.value)} />
+              </label>
+            </div>
+            {row.manualSold ? (
+              <label className="grid gap-1 text-[11px] text-muted">
+                판매량 직접입력(개)
+                <input aria-label={`${row.productName} 판매량 직접입력`} className="min-h-11 w-full rounded-[7px] border border-latte bg-white px-2 text-[13px] text-ink outline-none focus:border-bread focus:ring-2 focus:ring-bread/15" inputMode="numeric" value={row.soldQty} onFocus={(event) => event.currentTarget.select()} onChange={(event) => updateRow(row.productName, "soldQty", event.target.value)} />
+              </label>
+            ) : null}
+          </div>
+        ))}
+        </div>
+      </details>
       <div className="flex justify-end gap-[24px] pt-[10px] text-[12.5px] text-muted">
         <div>
           총 생산량 <span className="font-bold text-ink">{totals.produced.toLocaleString("ko-KR")}개</span>
@@ -1738,7 +1818,7 @@ function ProductsSection({
           총 판매량 <span className="font-bold text-bread">{totals.sold.toLocaleString("ko-KR")}개</span>
         </div>
       </div>
-      <div className="sr-only">
+      <div className="hidden">
         <table>
           <thead>
             <tr>
@@ -1822,6 +1902,19 @@ function ProductsSection({
         <span>자동 계산</span>
       </div>
     </div>
+  );
+}
+
+function QuantityStepper({ label, value, onChange, decrement, increment }: { label: string; value: string; onChange: (value: string) => void; decrement: () => void; increment: () => void }) {
+  return (
+    <label className="grid gap-1 text-[11px] font-semibold text-muted">
+      {label}
+      <span className="grid grid-cols-[2.75rem_minmax(0,1fr)_2.75rem] gap-1">
+        <button className="flex h-11 w-11 items-center justify-center rounded-[7px] bg-cream text-base font-bold text-cocoa focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bread/30" type="button" aria-label={`${label} 줄이기`} onClick={decrement}>−</button>
+        <input aria-label={label} className="min-h-11 min-w-0 rounded-[7px] border border-latte px-2 text-center text-[13px] text-ink outline-none focus:border-bread focus:ring-2 focus:ring-bread/15" inputMode="numeric" value={value} onFocus={(event) => event.currentTarget.select()} onChange={(event) => onChange(event.target.value)} />
+        <button className="flex h-11 w-11 items-center justify-center rounded-[7px] bg-cream text-base font-bold text-cocoa focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bread/30" type="button" aria-label={`${label} 늘리기`} onClick={increment}>+</button>
+      </span>
+    </label>
   );
 }
 
@@ -1966,10 +2059,10 @@ function NotesSection({
 
   return (
     <div className="grid gap-[14px]">
-      <section>
+      <section className="min-w-0">
         <div className="dc-eyebrow mb-[12px]">메모</div>
         <div className="grid grid-cols-1 gap-[14px] md:grid-cols-2">
-          {memoFields.map((field, index) => (
+          {memoFields.slice(0, 3).map((field, index) => (
             <label
               key={field.key}
               className={["grid gap-[5px]", index === 0 ? "md:col-span-2" : ""]
@@ -1985,11 +2078,23 @@ function NotesSection({
               />
             </label>
           ))}
+          <details className="md:col-span-2 rounded-[8px] border border-latte bg-cream/30 px-3 py-2">
+            <summary className="cursor-pointer text-[11px] font-semibold text-muted">추가 메모 입력 열기</summary>
+            <div className="mt-3 grid gap-[14px] md:grid-cols-2">
+              {memoFields.slice(3).map((field) => (
+                <label key={field.key} className="grid gap-[5px]">
+                  <span className="text-[11px] text-muted">{field.label}</span>
+                  <textarea aria-label={field.label} className="h-[56px] resize-none rounded-[8px] border border-latte bg-white px-[10px] py-[9px] text-[12.5px] outline-none focus:border-bread" value={draft[field.key]} onChange={(event) => updateDraft(field.key, event.target.value)} />
+                </label>
+              ))}
+            </div>
+          </details>
         </div>
       </section>
 
-      <section className="rounded-[12px] border border-latte bg-cream/30 px-4 py-3">
-        <div className="dc-eyebrow mb-[12px]">직원 특이사항</div>
+      <details className="min-w-0 rounded-[12px] border border-latte bg-cream/30 px-4 py-3">
+        <summary className="cursor-pointer text-[11.5px] font-semibold uppercase tracking-[0.03em] text-muted">직원 특이사항 입력 열기</summary>
+        <div className="mt-3">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[760px] text-left text-[12px]">
             <thead>
@@ -2030,10 +2135,12 @@ function NotesSection({
             </tbody>
           </table>
         </div>
-      </section>
+        </div>
+      </details>
 
-      <section className="rounded-[12px] border border-latte bg-cream/30 px-4 py-3">
-        <div className="dc-eyebrow mb-[12px]">시설 점검사항</div>
+      <details className="min-w-0 rounded-[12px] border border-latte bg-cream/30 px-4 py-3">
+        <summary className="cursor-pointer text-[11.5px] font-semibold uppercase tracking-[0.03em] text-muted">시설 점검사항 입력 열기</summary>
+        <div className="mt-3">
         <div className="grid gap-3 md:grid-cols-2">
           <WorkerTimeInput
             label="첫출근자"
@@ -2080,7 +2187,8 @@ function NotesSection({
             />
           </div>
         </div>
-      </section>
+        </div>
+      </details>
     </div>
   );
 }

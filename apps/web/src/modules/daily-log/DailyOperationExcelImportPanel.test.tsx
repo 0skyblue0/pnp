@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { apiPost } from "../../shared/api/client.js";
@@ -8,6 +8,7 @@ vi.mock("../../shared/api/client.js", () => ({ apiPost: vi.fn() }));
 
 describe("DailyOperationExcelImportPanel", () => {
   afterEach(() => {
+    cleanup();
     vi.clearAllMocks();
   });
 
@@ -55,6 +56,7 @@ describe("DailyOperationExcelImportPanel", () => {
 
     const acknowledgement = await screen.findByRole("checkbox", { name: "2026-05-07 검증 경고를 확인하고 저장합니다." });
     expect(screen.getByRole("heading", { name: "엑셀 미리보기 일지" })).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("엑셀 미리보기를 만들었습니다");
     expect(acknowledgement).not.toBeChecked();
     expect(screen.getByRole("button", { name: "확인한 내용 저장" })).toBeDisabled();
 
@@ -69,5 +71,21 @@ describe("DailyOperationExcelImportPanel", () => {
         acknowledgedDates: ["2026-05-07"]
       });
     });
+  });
+
+  it("announces import preview failures as an alert", async () => {
+    vi.mocked(apiPost).mockResolvedValueOnce({
+      data: null,
+      error: { code: "IMPORT_FAILED", message: "엑셀을 읽지 못했습니다." }
+    });
+    const file = {
+      name: "손상된_일일업무보고서.xlsx",
+      arrayBuffer: vi.fn().mockResolvedValue(new ArrayBuffer(1))
+    } as unknown as File;
+
+    render(<DailyOperationExcelImportPanel />);
+    fireEvent.change(screen.getByLabelText("엑셀 선택"), { target: { files: [file] } });
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("엑셀을 읽지 못했습니다.");
   });
 });

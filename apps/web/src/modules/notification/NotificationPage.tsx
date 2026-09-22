@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 
 import { apiGet, apiPatch } from "../../shared/api/client.js";
 import type { ListEnvelope } from "../../shared/api/types.js";
+import { PageHeader } from "../../shared/ui/PageHeader.js";
 
 
 type NotificationDto = {
@@ -78,33 +79,32 @@ export function NotificationPage() {
   }, []);
 
   return (
-    <section className="mx-auto grid max-w-none gap-4">
-      <div className="mb-0 flex items-baseline justify-between gap-3">
-        <h2 className="section-title">알림</h2>
+    <section className="app-page grid gap-4">
+      <PageHeader title="알림" description="운영 중 확인이 필요한 상태를 모아 봅니다." actions={<>
         <button
-          className="text-[12.5px] font-semibold text-bread hover:text-cocoa"
+          className="ref-secondary-action text-[12.5px]"
           disabled={isLoading}
           type="button"
           onClick={() => void markAllRead()}
         >
           전체 읽음 처리
         </button>
-      </div>
+      </>} />
 
       {error ? (
-        <div className="mb-4 rounded-control border border-red/20 bg-red/10 px-3 py-2 text-sm font-semibold text-red">
+        <div role="alert" className="mb-4 rounded-control border border-red/30 bg-[#fff5f4] px-3 py-2 text-sm font-semibold text-red">
           {error}
         </div>
       ) : null}
 
-      <div className="dc-card px-[22px] py-1">
+      <div className="app-card px-[22px] py-1" aria-label="알림 상태 목록">
         {notifications.map((notification) => {
           const content = (
             <>
-              <span className={["rounded-full px-2.5 py-1 text-[10px] font-bold", severityClasses(notification.severity)].join(" ")}>{notification.severity}</span>
+              <span className={["app-status px-2.5 py-1 text-[10px] font-bold", severityClasses(notification.severity)].join(" ")}>{notification.severity}</span>
               <span className="min-w-0 flex-1 truncate text-[13px] text-ink">{notification.title}</span>
               <span className="shrink-0 text-[11px] text-muted">{formatCreatedAt(notification.createdAt)}</span>
-              <span className={["w-11 shrink-0 text-right text-[11px] font-semibold", notification.isRead ? "text-muted" : "text-bread"].join(" ")}>{notification.isRead ? "읽음" : "안읽음"}</span>
+              <span className={["w-11 shrink-0 text-right text-[11px] font-semibold", notification.isRead ? "text-muted" : "text-red"].join(" ")}>{notification.isRead ? "읽음" : "안읽음"}</span>
             </>
           );
 
@@ -112,7 +112,10 @@ export function NotificationPage() {
             return (
               <Link
                 key={notification.id}
-                className="flex items-center gap-3 border-b border-[#F1EAE0] py-3.5 opacity-100 last:border-b-0 hover:bg-cream/40"
+                className={[
+                  "flex items-center gap-3 border-b border-[#F1EAE0] py-3.5 opacity-100 last:border-b-0 hover:bg-[#fdf8ec]",
+                  notification.isRead ? "" : "bg-[#fdf8ec]"
+                ].join(" ")}
                 to={notification.link}
               >
                 {content}
@@ -123,7 +126,10 @@ export function NotificationPage() {
           return (
             <div
               key={notification.id}
-              className="flex items-center gap-3 border-b border-[#F1EAE0] py-3.5 opacity-100 last:border-b-0"
+              className={[
+                "flex items-center gap-3 border-b border-[#F1EAE0] py-3.5 opacity-100 last:border-b-0",
+                notification.isRead ? "" : "bg-[#fdf8ec]"
+              ].join(" ")}
             >
               {content}
             </div>

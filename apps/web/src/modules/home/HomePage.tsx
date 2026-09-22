@@ -353,7 +353,11 @@ export function HomePage() {
   const completedReservationCount = todayReservationCount - pendingReservationCount;
 
   return (
-    <div className="mx-auto grid max-w-none gap-4">
+    <div className="mx-auto grid w-full max-w-[996px] gap-4">
+      <header className="flex min-h-11 items-center gap-3 border-b border-[var(--ref-line)] pb-3">
+        <h1 className="text-[21px] font-extrabold tracking-[-0.025em] text-ink">홈</h1>
+        <p className="text-sm text-muted">오늘의 운영 현황</p>
+      </header>
       {error ? (
         <div className="rounded-control border border-red/20 bg-red/10 px-3 py-2 text-sm font-semibold text-red">
           {error}
@@ -363,17 +367,17 @@ export function HomePage() {
         <div className="grid gap-3 md:grid-cols-3">
           <Link
             to="/daily-log/today"
-            className="min-h-[92px] rounded-panel border border-latte bg-white px-[18px] py-4 shadow-none transition hover:border-bread"
+            className="ref-card min-h-[104px] px-[18px] py-4 transition hover:border-bread focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bread/30 motion-reduce:transition-none"
           >
             <span className="block text-[11.5px] font-medium text-muted">일일 운영 작성</span>
-            <span className="mt-3 inline-flex rounded-full bg-[#F7E6C8] px-3 py-1 text-[12px] font-bold text-[#B86A23]">
+            <span className="mt-3 inline-flex rounded-full bg-ref-warning-wash px-3 py-1 text-[12px] font-bold text-ref-warning-strong">
               {dailyOperationSaved ? "작성 완료" : "작성 전"}
             </span>
           </Link>
 
           <Link
             to="/reservation?view=list"
-            className="min-h-[92px] rounded-panel border border-latte bg-white px-[18px] py-4 shadow-none transition hover:border-bread"
+            className="ref-card min-h-[104px] px-[18px] py-4 transition hover:border-bread focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bread/30 motion-reduce:transition-none"
           >
             <span className="block text-[11.5px] font-medium text-muted">오늘 예약 현황</span>
             <span className="mt-2 flex items-end gap-5">
@@ -382,7 +386,7 @@ export function HomePage() {
                 <span className="text-[10.5px] font-medium text-muted">전체</span>
               </span>
               <span className="grid gap-0.5">
-                <span className="text-[19px] font-extrabold leading-none text-[#C7851E]">{pendingReservationCount}</span>
+                <span className="text-[19px] font-extrabold leading-none text-ref-gold">{pendingReservationCount}</span>
                 <span className="text-[10.5px] font-medium text-muted">대기</span>
               </span>
               <span className="grid gap-0.5">
@@ -394,7 +398,7 @@ export function HomePage() {
 
           <Link
             to="/response"
-            className="min-h-[92px] rounded-panel border border-latte bg-white px-[18px] py-4 shadow-none transition hover:border-bread"
+            className="ref-card min-h-[104px] px-[18px] py-4 transition hover:border-bread focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bread/30 motion-reduce:transition-none"
           >
             <span className="block text-[11.5px] font-medium text-muted">손님 반응 기록</span>
             <span className="mt-2 block text-[21px] font-extrabold leading-tight text-ink">{todayResponseCount}건</span>
@@ -404,7 +408,7 @@ export function HomePage() {
 
       <section className="grid gap-3 md:grid-cols-3">
         <button
-          className="rounded-panel border border-latte bg-white px-5 py-[18px] text-left transition hover:border-bread"
+          className="ref-card md:col-span-3 px-5 py-4 text-left transition hover:border-bread focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bread/30 motion-reduce:transition-none"
           type="button"
           onClick={() => salesGoalNotice ? setDetailGoalNoticeKey(goalNoticeKey(salesGoalNotice)) : undefined}
         >
@@ -422,7 +426,7 @@ export function HomePage() {
             </div>
             <div className="h-2.5 overflow-hidden rounded-full bg-cream ring-1 ring-latte">
               <div
-                className="h-full rounded-full bg-bread transition-[width]"
+                className="h-full rounded-full bg-bread transition-[width] motion-reduce:transition-none"
                 style={{ width: `${monthlySalesAchievementPercent}%` }}
               />
             </div>
@@ -443,7 +447,7 @@ export function HomePage() {
           </div>
         </button>
         <button
-          className="rounded-panel border border-latte bg-white px-5 py-[18px] text-left transition hover:border-bread"
+          className="ref-card min-h-[154px] px-5 py-4 text-left transition hover:border-bread focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bread/30 motion-reduce:transition-none"
           type="button"
           onClick={() => operationNotice ? setDetailGoalNoticeKey(goalNoticeKey(operationNotice)) : undefined}
         >
@@ -452,7 +456,7 @@ export function HomePage() {
           <p className="mt-1 line-clamp-2 text-[13px] leading-6 text-cocoa">{operationNotice?.value ?? "관리 탭에서 운영 목표를 입력해 주세요."}</p>
         </button>
         <button
-          className="rounded-panel border border-latte bg-white px-5 py-[18px] text-left transition hover:border-bread"
+          className="ref-card min-h-[154px] px-5 py-4 text-left transition hover:border-bread focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bread/30 motion-reduce:transition-none"
           type="button"
           onClick={() => staffNotice ? setDetailGoalNoticeKey(goalNoticeKey(staffNotice)) : undefined}
         >
@@ -460,15 +464,20 @@ export function HomePage() {
           <p className="mt-2 text-base font-bold text-ink">{staffNotice?.title ?? "직원 공지 미등록"}</p>
           <p className="mt-1 line-clamp-2 text-[13px] leading-6 text-cocoa">{staffNotice?.value ?? "관리 탭에서 직원 공지를 입력해 주세요."}</p>
         </button>
+        <div className="ref-card min-h-[154px] px-5 py-4">
+          <p className="text-[11.5px] text-muted">연간 일정</p>
+          <p className="mt-2 text-base font-bold text-ink">다가오는 일정 {upcomingScheduleItems.length}건</p>
+          <p className="mt-1 line-clamp-2 text-[13px] leading-6 text-cocoa">연간 운영 일정을 확인하고 관리합니다.</p>
+        </div>
       </section>
       {renderGoalNoticeDetail()}
 
       <section className="grid gap-3 lg:grid-cols-2">
-        <div className="rounded-panel border border-latte bg-white px-5 py-4">
+        <div className="ref-card px-5 py-4">
           <p className="mb-3 text-[11.5px] font-semibold uppercase tracking-[0.03em] text-muted">
             연간 스케줄
           </p>
-          <div className="divide-y divide-[#F1EAE0]">
+          <div className="divide-y divide-ref-divider">
             {upcomingScheduleItems.slice(0, 4).map((item) => (
               <div
                 key={scheduleItemKey(item)}
@@ -477,7 +486,7 @@ export function HomePage() {
                 <span className="text-[11px] font-bold text-muted">
                   {String(item.month).padStart(2, "0")}.{String(item.day).padStart(2, "0")}
                 </span>
-                <span className="rounded-full bg-[#F4E3D8] px-2 py-0.5 text-center text-[10.5px] text-cocoa">
+                <span className="rounded-full bg-ref-peach-wash px-2 py-0.5 text-center text-[10.5px] text-cocoa">
                   {scheduleBadgeLabel(item.tone)}
                 </span>
                 <span className="truncate text-ink">{item.title} 일정</span>
@@ -489,11 +498,11 @@ export function HomePage() {
           </div>
         </div>
 
-        <div className="rounded-panel border border-latte bg-white px-5 py-4">
+        <div className="ref-card px-5 py-4">
           <p className="mb-3 text-[11.5px] font-semibold uppercase tracking-[0.03em] text-muted">
             알림 ({notifications.length}건)
           </p>
-          <div className="divide-y divide-[#F1EAE0]">
+          <div className="divide-y divide-ref-divider">
             {notifications.slice(0, 3).map((notification) => (
               <Link
                 key={notification.id}
@@ -510,6 +519,13 @@ export function HomePage() {
                         : "bg-bread"
                   ].join(" ")}
                 />
+                <span className="sr-only">
+                  {notification.severity === "CRITICAL"
+                    ? "긴급 알림: "
+                    : notification.severity === "WARN"
+                      ? "주의 알림: "
+                      : "안내 알림: "}
+                </span>
                 <span>{notification.title}</span>
               </Link>
             ))}
@@ -523,4 +539,3 @@ export function HomePage() {
     </div>
   );
 }
-

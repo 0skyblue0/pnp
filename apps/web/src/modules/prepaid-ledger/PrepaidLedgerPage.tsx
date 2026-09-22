@@ -11,6 +11,7 @@ import {
 import { apiDelete, apiGet, apiPatch, apiPost } from "../../shared/api/client.js";
 import type { ListEnvelope } from "../../shared/api/types.js";
 import { useConfirm } from "../../shared/ui/ConfirmDialog.js";
+import { PageHeader } from "../../shared/ui/PageHeader.js";
 
 type PrepaidTransactionDto = {
   id: string;
@@ -139,13 +140,7 @@ function transactionAmountLabel(transaction: PrepaidTransactionDto): string {
 }
 
 function transactionToneClass(type: string): string {
-  return type === "USE" ? "bg-[#F4E3D8] text-[#8C4A32]" : "bg-[#EAF1F7] text-[#3B6EA5]";
-}
-
-function lastTransactionText(customer: PrepaidCustomerDto): string {
-  const last = customer.transactions[0];
-  if (!last) return "거래 내역 없음";
-  return `${formatLedgerDate(last.occurredAt)} ${transactionLabel(last.type)} ${transactionAmountLabel(last)}`;
+  return type === "USE" ? "bg-ref-peach-wash text-cocoa" : "bg-ref-info-wash text-ref-info-strong";
 }
 
 function parseSharedLimitText(value: string | null | undefined): number {
@@ -275,7 +270,7 @@ export function PrepaidLedgerPage() {
     setSelectedCustomerId((current) => {
       if (current && envelope.data.items.some((customer) => customer.id === current))
         return current;
-      return null;
+      return envelope.data.items[0]?.id ?? null;
     });
   }, [query]);
 
@@ -530,34 +525,40 @@ export function PrepaidLedgerPage() {
   }
 
   return (
-    <div className="mx-auto grid max-w-7xl gap-4">
-      <section>
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <h2 className="section-title">선결제 장부</h2>
-          <div className="flex flex-wrap items-center gap-2">
+    <div className="mx-auto grid w-full max-w-[996px] gap-3 pb-6">
+      <section className="border-b border-[var(--ref-line)] pb-3">
+        <PageHeader
+          title="선결제 장부"
+          description="손님별 잔액과 거래 내역을 확인하고 충전·사용을 처리합니다."
+          actions={
+            <>
             <label className="sr-only" htmlFor="prepaid-search">
-              손님 검색
+              고객 검색
             </label>
             <input
               id="prepaid-search"
-              aria-label="손님 검색"
-              className="input h-10 w-64"
-              placeholder="손님 이름 또는 연락처 검색"
+              aria-label="고객 검색"
+              type="search"
+              className="input min-h-11 w-64"
+              placeholder="고객 이름 또는 연락처 검색"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
             />
             <button
-              className="inline-flex min-h-10 items-center gap-2 rounded-control bg-bread px-4 text-sm font-bold text-white transition hover:bg-cocoa"
+              className="inline-flex min-h-11 items-center gap-2 rounded-control bg-bread px-4 text-sm font-bold text-white transition hover:bg-cocoa"
               type="button"
               onClick={() => setShowNewForm((current) => !current)}
             >
               <UserPlus className="h-4 w-4" aria-hidden="true" />
               신규 등록
             </button>
-          </div>
-        </div>
+            </>
+          }
+        />
 
-        <div className="rounded-[14px] border border-latte bg-white px-5 py-4">
+        <details className="mt-3 rounded-control border border-[var(--ref-line)] bg-[var(--ref-table-head)] px-4 py-2">
+          <summary className="cursor-pointer text-xs font-bold text-muted">선결제 요약 보기</summary>
+          <div className="mt-2 flex flex-wrap gap-8 border-t border-[var(--ref-line)] pt-3">
           <div className="flex flex-wrap gap-8">
             <div>
               <p className="text-[11px] font-semibold text-muted">검색된 손님 수</p>
@@ -572,16 +573,17 @@ export function PrepaidLedgerPage() {
               </p>
             </div>
           </div>
-        </div>
+          </div>
+        </details>
       </section>
 
       {message ? (
-        <div className="rounded-control border border-green/20 bg-green/10 px-3 py-2 text-sm font-semibold text-green">
+        <div role="status" className="rounded-control border border-green/20 bg-green/10 px-3 py-2 text-sm font-semibold text-green">
           {message}
         </div>
       ) : null}
       {error ? (
-        <div className="rounded-control border border-red/20 bg-red/10 px-3 py-2 text-sm font-semibold text-red">
+        <div role="alert" className="rounded-control border border-red/20 bg-red/10 px-3 py-2 text-sm font-semibold text-red">
           {error}
         </div>
       ) : null}
@@ -595,63 +597,28 @@ export function PrepaidLedgerPage() {
         />
       ) : null}
 
-      <section className="rounded-[14px] border border-latte bg-white px-5 py-3">
-        <div className="grid grid-cols-[1fr_1.25fr_0.9fr_1.6fr_1.7fr] gap-2 border-b border-[#EFE8DC] px-1 py-3 text-[11.5px] font-bold text-muted">
-          <div>이름</div>
-          <div>연락처</div>
-          <div>잔액</div>
-          <div>최근 거래</div>
-          <div>액션</div>
-        </div>
-        <div>
+      <div className="grid gap-3 xl:grid-cols-[minmax(300px,0.72fr)_minmax(0,1.28fr)] xl:items-start">
+      <section className="ref-card !p-0" role="region" aria-labelledby="prepaid-history-title">
+        <div className="border-b border-[var(--ref-line)] px-4 py-3"><h2 id="prepaid-history-title" className="text-[15px] font-extrabold text-foreground">선결제 손님</h2><p className="mt-1 text-xs text-muted">손님을 선택하면 거래 내역과 사용 처리를 볼 수 있습니다.</p></div>
+        <div className="p-3">
           {sortedCustomers.map((customer) => (
             <div
               key={customer.id}
-              className="grid grid-cols-[1fr_1.25fr_0.9fr_1.6fr_1.7fr] items-center gap-2 border-b border-[#F5F0E7] px-1 py-3 text-sm text-ink last:border-b-0"
+              className="mb-2 flex items-center justify-between gap-3 rounded-panel border border-[var(--ref-line)] bg-white p-3 last:mb-0 aria-[current=true]:border-[var(--ref-gold)] aria-[current=true]:bg-[var(--ref-gold-wash)]"
             >
               <button
                 type="button"
-                className="text-left font-bold text-ink underline-offset-4 hover:underline"
+                className="min-w-0 flex-1 text-left"
+                aria-current={selectedCustomer?.id === customer.id ? "true" : undefined}
                 onClick={() => openCustomer(customer, "DETAIL")}
               >
-                {customer.customerName}님
+                <span className="block font-extrabold text-ink">{customer.customerName}님</span>
+                <span className="mt-1 block text-[11px] font-semibold text-muted">{customer.contactPhone || "연락처 없음"}</span>
               </button>
-              <div className="text-[12.5px] font-semibold text-muted">
-                {customer.contactPhone || "연락처 없음"}
-              </div>
-              <div className="font-extrabold">{formatCurrency(customer.balance)}원</div>
-              <div className="text-[12.5px] font-semibold text-muted">
-                {lastTransactionText(customer)}
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  className="rounded-[8px] bg-[#EAF1F7] px-3 py-1.5 text-xs font-bold text-[#3B6EA5]"
-                  onClick={() => openCustomer(customer, "CHARGE")}
-                >
-                  충전
-                </button>
-                <button
-                  type="button"
-                  className="rounded-[8px] bg-[#F4E3D8] px-3 py-1.5 text-xs font-bold text-[#8C4A32]"
-                  onClick={() => openCustomer(customer, "USE")}
-                >
-                  사용
-                </button>
-                <button
-                  type="button"
-                  className="rounded-[8px] bg-[#F5F0E7] px-3 py-1.5 text-xs font-bold text-muted"
-                  onClick={() => openCustomer(customer, "DETAIL")}
-                >
-                  세부내역
-                </button>
-                <button
-                  type="button"
-                  className="rounded-[8px] bg-red/10 px-3 py-1.5 text-xs font-bold text-red"
-                  onClick={() => void deleteCustomer(customer)}
-                >
-                  삭제
-                </button>
+              <div className="text-right">
+                <p className="text-[11px] font-semibold text-muted">잔액</p>
+                <p className="mt-1 font-extrabold text-ink">{formatCurrency(customer.balance)}원</p>
+                <button type="button" className="mt-1 text-[10px] font-semibold text-muted underline-offset-2 hover:text-red hover:underline" onClick={() => void deleteCustomer(customer)}>삭제</button>
               </div>
             </div>
           ))}
@@ -664,7 +631,8 @@ export function PrepaidLedgerPage() {
       </section>
 
       {selectedCustomer ? (
-        <SelectedCustomerDetail
+        <aside className="app-card xl:sticky xl:top-4" aria-label="선택한 고객 상세">
+          <SelectedCustomerDetail
           customer={selectedCustomer}
           mode={detailMode}
           chargeForm={
@@ -682,8 +650,13 @@ export function PrepaidLedgerPage() {
           useSharedBalance={useSharedBalance}
           saveMemo={saveMemo}
           deleteTransaction={deleteTransaction}
-        />
-      ) : null}
+          />
+        </aside>
+      ) : <aside className="app-card xl:sticky xl:top-4" aria-label="선택한 고객 상세">
+        <h2 className="text-base font-bold text-foreground">선택한 고객 상세</h2>
+        <p className="mt-2 text-sm leading-6 text-subtle">거래 내역에서 고객을 선택하면 잔액, 메모, 충전과 사용 기록을 확인할 수 있습니다.</p>
+      </aside>}
+      </div>
     </div>
   );
 }
@@ -727,7 +700,7 @@ function NewPrepaidForm(props: {
             <button
               key={ledgerType}
               type="button"
-              className={`min-h-10 rounded-[10px] text-sm font-extrabold ${form.ledgerType === ledgerType ? "bg-white text-bread shadow-sm" : "text-muted"}`}
+              className={`min-h-11 rounded-[10px] text-sm font-extrabold ${form.ledgerType === ledgerType ? "bg-white text-bread shadow-sm" : "text-muted"}`}
               onClick={() => setForm((current) => ({ ...current, ledgerType }))}
             >
               {ledgerType === "GENERAL" ? "일반" : "공동"}
@@ -740,7 +713,7 @@ function NewPrepaidForm(props: {
             <input
               aria-label="새 손님 이름"
               className="input"
-              placeholder="홍길동"
+              placeholder="이름"
               value={form.customerName}
               onChange={(event) =>
                 setForm((current) => ({ ...current, customerName: event.target.value }))
@@ -786,7 +759,7 @@ function NewPrepaidForm(props: {
           </label>
         </div>
         {form.ledgerType === "SHARED" ? (
-          <div className="mt-3 grid gap-3 rounded-[12px] border border-[#E8D6C7] bg-[#FFFBF6] p-3 md:grid-cols-[0.8fr_1.4fr]">
+          <div className="mt-3 grid gap-3 rounded-[12px] border border-ref-alert-line bg-ref-alert-wash p-3 md:grid-cols-[0.8fr_1.4fr]">
             <label className="grid gap-1">
               <span className="field-label">1인 한도</span>
               <span className="relative block">
@@ -815,7 +788,7 @@ function NewPrepaidForm(props: {
               <textarea
                 aria-label="공동 선결제 참여자"
                 className="input min-h-16 resize-y"
-                placeholder="예: 홍길동 1234, 이영희 5678"
+                placeholder="예: 이름 1234, 이름 5678"
                 value={form.participantsText}
                 onChange={(event) =>
                   setForm((current) => ({ ...current, participantsText: event.target.value }))
@@ -853,13 +826,13 @@ function NewPrepaidForm(props: {
         <div className="mt-4 flex justify-end gap-2">
           <button
             type="button"
-            className="inline-flex min-h-10 items-center justify-center rounded-control border border-latte bg-white px-5 text-sm font-bold text-cocoa transition hover:bg-cream"
+            className="inline-flex min-h-11 items-center justify-center rounded-control border border-latte bg-white px-5 text-sm font-bold text-cocoa transition hover:bg-cream"
             onClick={onClose}
           >
             취소
           </button>
           <button
-            className="inline-flex min-h-10 items-center justify-center gap-2 rounded-control bg-bread px-5 text-sm font-bold text-white transition hover:bg-cocoa"
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-control bg-bread px-5 text-sm font-bold text-white transition hover:bg-cocoa"
             type="button"
             onClick={() => void createLedger()}
           >
@@ -929,6 +902,8 @@ function SelectedCustomerDetail(props: {
     : undefined;
   const selectedSharedRemaining = selectedParticipant?.remainingAmount ?? sharedLimit;
   const isSharedLedger = customer.ledgerType === "SHARED";
+  const totalCharged = customer.transactions.filter((item) => item.type !== "USE").reduce((total, item) => total + item.amount, 0);
+  const totalUsed = customer.transactions.filter((item) => item.type === "USE").reduce((total, item) => total + item.amount, 0);
   const [directUseOpen, setDirectUseOpen] = useState(!isSharedLedger);
 
   useEffect(() => {
@@ -941,7 +916,7 @@ function SelectedCustomerDetail(props: {
       aria-label={`${customer.customerName} 선결제 장부`}
       className="rounded-[14px] border border-latte bg-white p-5"
     >
-      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[#EFE8DC] pb-4">
+      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-ref-line-warm pb-4">
         <div>
           <p className="text-xs font-extrabold text-bread">현재 선택한 손님</p>
           <h3 className="mt-1 text-2xl font-extrabold text-ink">{customer.customerName}님</h3>
@@ -956,13 +931,18 @@ function SelectedCustomerDetail(props: {
           </p>
         </div>
       </div>
+      <div className="mt-3 grid gap-2 sm:grid-cols-3">
+        <div className="rounded-control bg-ref-table-head px-3 py-2"><p className="text-[11px] text-muted">현재 잔액</p><p className="mt-1 text-lg font-extrabold text-bread">{formatCurrency(customer.balance)}원</p></div>
+        <div className="rounded-control bg-ref-table-head px-3 py-2"><p className="text-[11px] text-muted">누적 충전</p><p className="mt-1 text-lg font-extrabold text-ink">{formatCurrency(totalCharged)}원</p></div>
+        <div className="rounded-control bg-ref-table-head px-3 py-2"><p className="text-[11px] text-muted">누적 사용</p><p className="mt-1 text-lg font-extrabold text-ink">{formatCurrency(totalUsed)}원</p></div>
+      </div>
 
       {mode === "USE" ? (
-        <section className="mt-4 rounded-[12px] bg-[#F4E3D8]/60 p-4">
+        <section className="mt-4 rounded-[12px] bg-ref-peach-wash/60 p-4">
           <h3 className="text-base font-extrabold text-ink">사용</h3>
 
           {isSharedLedger ? (
-            <div className="mt-3 rounded-[12px] border border-[#E8D6C7] bg-white/70 p-4">
+            <div className="mt-3 rounded-[12px] border border-ref-alert-line bg-white/70 p-4">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-start gap-2">
                   <Users className="mt-0.5 h-4 w-4 text-cocoa" aria-hidden="true" />
@@ -986,7 +966,7 @@ function SelectedCustomerDetail(props: {
                   <input
                     aria-label={`${customer.customerName} 공동 사용자 이름`}
                     className="input"
-                    placeholder={selectedParticipant?.participantName ?? "홍길동"}
+                    placeholder={selectedParticipant?.participantName ?? "이름"}
                     value={sharedUseForm.name}
                     onChange={(event) =>
                       setSharedUseForm(customer.id, { name: event.target.value })
@@ -1026,7 +1006,7 @@ function SelectedCustomerDetail(props: {
                   />
                 </label>
                 <button
-                  className="inline-flex min-h-10 items-center justify-center gap-2 rounded-control bg-ink px-4 text-sm font-bold text-white transition hover:bg-cocoa"
+                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-control bg-ink px-4 text-sm font-bold text-white transition hover:bg-cocoa"
                   type="button"
                   onClick={() => void useSharedBalance(customer)}
                 >
@@ -1054,7 +1034,7 @@ function SelectedCustomerDetail(props: {
           ) : null}
 
           {isSharedLedger ? (
-            <div className="mt-3 rounded-[12px] border border-[#E8D6C7] bg-white/60 p-3">
+            <div className="mt-3 rounded-[12px] border border-ref-alert-line bg-white/60 p-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
                   <p className="text-xs font-extrabold text-cocoa">공동 사용이 아닌 경우</p>
@@ -1101,7 +1081,7 @@ function SelectedCustomerDetail(props: {
                 />
               </label>
               <button
-                className="inline-flex min-h-10 items-center justify-center gap-2 rounded-control bg-cocoa px-4 text-sm font-bold text-white transition hover:bg-bread md:col-span-2 lg:col-span-1"
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-control bg-cocoa px-4 text-sm font-bold text-white transition hover:bg-bread md:col-span-2 lg:col-span-1"
                 type="button"
                 onClick={() => void useBalance(customer)}
               >
@@ -1114,7 +1094,7 @@ function SelectedCustomerDetail(props: {
       ) : null}
 
       {mode === "CHARGE" ? (
-        <section className="mt-4 rounded-[12px] bg-[#EAF1F7] p-4">
+        <section className="mt-4 rounded-[12px] bg-ref-info-wash p-4">
           <h3 className="text-base font-extrabold text-ink">충전</h3>
           <div className="mt-3 grid gap-2 md:grid-cols-[1fr_1.5fr_auto_auto] md:items-end">
             <label className="grid gap-1">
@@ -1140,7 +1120,7 @@ function SelectedCustomerDetail(props: {
                 onChange={(event) => setChargeForm(customer.id, { note: event.target.value })}
               />
             </label>
-            <label className="inline-flex min-h-10 items-center gap-2 rounded-control border border-[#CADCEC] bg-white px-3 text-xs font-extrabold text-cocoa">
+            <label className="inline-flex min-h-11 items-center gap-2 rounded-control border border-ref-info-line bg-white px-3 text-xs font-extrabold text-cocoa">
               <input
                 aria-label={`${customer.customerName} 포인트 적립 완료`}
                 type="checkbox"
@@ -1153,7 +1133,7 @@ function SelectedCustomerDetail(props: {
               포인트 적립
             </label>
             <button
-              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-control bg-bread px-4 text-sm font-bold text-white transition hover:bg-cocoa"
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-control bg-bread px-4 text-sm font-bold text-white transition hover:bg-cocoa"
               type="button"
               onClick={() => void chargeBalance(customer)}
             >
@@ -1166,7 +1146,7 @@ function SelectedCustomerDetail(props: {
 
       <section className="mt-4">
         {sharedSummaries.length > 0 ? (
-          <div className="mb-4 rounded-[12px] border border-[#E8D6C7] bg-[#FFFBF6] p-4">
+          <div className="mb-4 rounded-[12px] border border-ref-alert-line bg-ref-alert-wash p-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h3 className="text-base font-extrabold text-ink">공동 사용 현황</h3>
               {sharedLimit > 0 ? (
@@ -1175,7 +1155,7 @@ function SelectedCustomerDetail(props: {
                 </p>
               ) : null}
             </div>
-            <div className="mt-3 grid grid-cols-[1fr_0.9fr_0.9fr_0.9fr] gap-2 border-b border-[#EFE8DC] px-1 py-2 text-[11.5px] font-bold text-muted">
+            <div className="mt-3 grid grid-cols-[1fr_0.9fr_0.9fr_0.9fr] gap-2 border-b border-ref-line-warm px-1 py-2 text-[11.5px] font-bold text-muted">
               <div>사용자</div>
               <div>사용 합계</div>
               <div>남은 한도</div>
@@ -1184,7 +1164,7 @@ function SelectedCustomerDetail(props: {
             {sharedSummaries.map((summary) => (
               <div
                 key={summary.id}
-                className="grid grid-cols-[1fr_0.9fr_0.9fr_0.9fr] gap-2 border-b border-[#F5F0E7] px-1 py-2 text-sm last:border-b-0"
+                className="grid grid-cols-[1fr_0.9fr_0.9fr_0.9fr] gap-2 border-b border-ref-line-faint px-1 py-2 text-sm last:border-b-0"
               >
                 <div className="font-bold text-ink">
                   {summary.participantName}({summary.phoneLast4})
@@ -1208,7 +1188,7 @@ function SelectedCustomerDetail(props: {
             잘못 입력한 내역은 이곳에서 삭제합니다.
           </p>
         </div>
-        <div className="mt-3 grid grid-cols-[0.7fr_0.8fr_0.9fr_2fr_auto] gap-2 border-b border-[#EFE8DC] px-1 py-2 text-[11.5px] font-bold text-muted">
+        <div className="mt-3 grid grid-cols-[0.7fr_0.8fr_0.9fr_2fr_auto] gap-2 border-b border-ref-line-warm px-1 py-2 text-[11.5px] font-bold text-muted">
           <div>구분</div>
           <div>금액</div>
           <div>날짜</div>
@@ -1218,7 +1198,7 @@ function SelectedCustomerDetail(props: {
         {customer.transactions.map((transaction) => (
           <div
             key={transaction.id}
-            className="grid grid-cols-[0.7fr_0.8fr_0.9fr_2fr_auto] items-center gap-2 border-b border-[#F5F0E7] px-1 py-3 text-sm last:border-b-0"
+            className="grid grid-cols-[0.7fr_0.8fr_0.9fr_2fr_auto] items-center gap-2 border-b border-ref-line-faint px-1 py-3 text-sm last:border-b-0"
           >
             <div>
               <span
@@ -1244,8 +1224,8 @@ function SelectedCustomerDetail(props: {
         ) : null}
       </section>
 
-      <section className="mt-4 border-t border-[#EFE8DC] pt-4">
-        <h3 className="text-base font-extrabold text-ink">손님 메모</h3>
+      <details className="mt-4 border-t border-ref-line-warm pt-4">
+        <summary className="cursor-pointer text-base font-extrabold text-ink">손님 메모 편집</summary>
         <label className="mt-3 grid gap-1">
           <span className="text-xs font-bold text-muted">기타 메모</span>
           <textarea
@@ -1267,7 +1247,7 @@ function SelectedCustomerDetail(props: {
         >
           기타 메모 수정
         </button>
-      </section>
+      </details>
     </article>
   );
 }

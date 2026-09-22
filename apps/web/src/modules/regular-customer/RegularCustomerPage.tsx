@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { apiGet, apiPost } from "../../shared/api/client.js";
+import { PageHeader } from "../../shared/ui/PageHeader.js";
 
 type RegularCustomerDto = {
   id: string;
@@ -67,65 +68,66 @@ export function RegularCustomerPage() {
   }
 
   return (
-    <div className="mx-auto grid max-w-7xl gap-4">
-      <section className="rounded-[14px] border border-latte bg-white p-5">
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <h2 className="section-title">단골손님 리스트</h2>
-            <p className="mt-1 text-sm text-muted">예약·선결제에서 자주 보이는 손님과 직원이 저장한 고정 메모를 모아 봅니다.</p>
-          </div>
-          <div className="flex gap-2">
-            <input className="input min-w-56" aria-label="단골손님 검색" placeholder="이름 또는 연락처" value={query} onChange={(event) => setQuery(event.target.value)} />
-            <button className="rounded-control bg-bread px-4 py-2 text-sm font-bold text-white" type="button" onClick={() => void load()}>검색</button>
-          </div>
-        </div>
-        {message ? <p className="mt-3 rounded-control bg-green/10 px-3 py-2 text-sm font-bold text-green">{message}</p> : null}
-        {error ? <p className="mt-3 rounded-control bg-red/10 px-3 py-2 text-sm font-bold text-red">{error}</p> : null}
-        <div className="mt-4 grid gap-3 md:grid-cols-3">
-          <div className="dc-card px-4 py-3"><p className="text-xs text-muted">저장된 단골</p><p className="mt-1 text-2xl font-extrabold text-ink">{items.length}</p></div>
-          <div className="dc-card px-4 py-3"><p className="text-xs text-muted">단골 후보</p><p className="mt-1 text-2xl font-extrabold text-ink">{candidates.length}</p></div>
-          <div className="dc-card px-4 py-3"><p className="text-xs text-muted">운영 기준</p><p className="mt-1 text-sm font-bold text-cocoa">후보는 직원 확인 후 저장</p></div>
-        </div>
+    <div className="mx-auto grid w-full max-w-[996px] gap-3 pb-6">
+      <section className="ref-card !p-0">
+        <PageHeader title="단골손님 리스트" description="예약·선결제에서 자주 보이는 손님과 직원이 저장한 고정 메모를 모아 봅니다." actions={<div className="flex w-full flex-wrap gap-2 sm:w-auto sm:flex-nowrap">
+            <input className="input w-full min-w-0 sm:w-auto sm:min-w-56" aria-label="단골손님 검색" placeholder="이름 또는 연락처" value={query} onChange={(event) => setQuery(event.target.value)} />
+            <button className="ref-primary-action" type="button" onClick={() => void load()}>검색</button>
+          </div>} />
+        {message ? <p role="status" className="mx-4 mb-3 rounded-control bg-green/10 px-3 py-2 text-sm font-bold text-green">{message}</p> : null}
+        {error ? <p role="alert" className="mx-4 mb-3 rounded-control bg-red/10 px-3 py-2 text-sm font-bold text-red">{error}</p> : null}
       </section>
 
-      <div className="grid gap-4 lg:grid-cols-[1fr_1fr]">
-        <section className="rounded-[14px] border border-latte bg-white p-5">
-          <h3 className="text-base font-extrabold text-ink">저장된 단골손님</h3>
-          <div className="mt-3 grid gap-2">
+      <div className="grid gap-3 xl:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)]">
+        <section className="ref-card !p-0">
+          <div className="border-b border-[var(--ref-line)] px-4 py-3"><h2 className="text-[15px] font-extrabold text-ink">저장된 단골손님</h2><p className="mt-1 text-xs text-muted">이름, 연락처와 고정 메모를 한 행에서 확인합니다.</p></div>
+          <div className="hidden grid-cols-[1fr_1fr_1.8fr] ref-table-head md:grid"><span>이름</span><span>연락처</span><span>고정 메모</span></div>
+          <div>
             {items.map((item) => (
-              <article key={item.id} className="rounded-[12px] border border-latte bg-cream/40 p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-base font-extrabold text-ink">{item.customerName}님</p>
-                    <p className="mt-1 text-sm text-muted">{item.maskedPhone ?? "연락처 없음"}</p>
-                  </div>
-                  <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-cocoa">저장됨</span>
-                </div>
-                <p className="mt-3 rounded-[9px] bg-white px-3 py-2 text-sm leading-6 text-cocoa">{item.fixedMemo || "저장된 메모 없음"}</p>
+              <article key={item.id} className="grid gap-1 ref-table-row md:grid-cols-[1fr_1fr_1.8fr] md:gap-3">
+                <p className="font-extrabold text-ink">{item.customerName}님</p><p className="text-muted">{item.maskedPhone ?? "연락처 없음"}</p><p className="text-[12px] text-[var(--ref-text-secondary)]">{item.fixedMemo || "저장된 메모 없음"}</p>
               </article>
             ))}
-            {items.length === 0 ? <p className="rounded-[12px] border border-dashed border-latte px-3 py-8 text-center text-sm text-muted">저장된 단골손님이 없습니다.</p> : null}
+            {items.length === 0 ? (
+              <>
+                {["placeholder-1", "placeholder-2", "placeholder-3"].map((key) => (
+                  <div key={key} className="grid gap-1 ref-table-row text-muted md:grid-cols-[1fr_1fr_1.8fr] md:gap-3" aria-label="저장 단골 플레이스홀더">
+                    <span className="font-semibold">이름</span><span>연락처</span><span className="text-[12px]">고정 메모</span>
+                  </div>
+                ))}
+                <p className="px-4 py-3 text-center text-xs font-semibold text-muted">저장된 단골손님이 없습니다. 후보를 확인해 추가할 수 있습니다.</p>
+              </>
+            ) : null}
           </div>
         </section>
 
-        <section className="rounded-[14px] border border-latte bg-white p-5">
-          <h3 className="text-base font-extrabold text-ink">확인할 단골 후보</h3>
-          <p className="mt-1 text-xs text-muted">자동으로 저장하지 않고 직원이 확인한 손님만 단골 리스트에 넣습니다.</p>
-          <div className="mt-3 grid gap-2">
+        <section className="ref-card !p-0">
+          <div className="border-b border-[var(--ref-line)] px-4 py-3"><h2 className="text-[15px] font-extrabold text-ink">확인할 단골 후보</h2><p className="mt-1 text-xs text-muted">직원이 확인한 손님만 목록에 저장합니다.</p></div>
+          <div>
             {candidates.map((candidate, index) => (
-              <article key={`${candidate.source}-${candidate.customerName}-${index}`} className="rounded-[12px] border border-latte bg-cream/40 p-4">
+              <article key={`${candidate.source}-${candidate.customerName}-${index}`} className="ref-table-row">
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <p className="text-base font-extrabold text-ink">{candidate.customerName}님</p>
-                    <p className="mt-1 text-sm text-muted">{candidate.maskedPhone ?? "연락처 없음"} · {candidate.reason}</p>
+                    <p className="font-extrabold text-ink">{candidate.customerName}님</p>
+                    <p className="mt-1 text-[12px] text-muted">{candidate.maskedPhone ?? "연락처 없음"} · {candidate.reason}</p>
                   </div>
-                  <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-cocoa">{candidate.source === "PREPAID" ? "선결제" : "예약"}</span>
+                  <span className="ref-status-tag">{candidate.source === "PREPAID" ? "선결제" : "예약"}</span>
                 </div>
-                {candidate.fixedMemo ? <p className="mt-3 rounded-[9px] bg-white px-3 py-2 text-sm text-cocoa">{candidate.fixedMemo}</p> : null}
-                <button className="mt-3 rounded-control bg-bread px-4 py-2 text-sm font-bold text-white" type="button" onClick={() => void saveCandidate(candidate)}>단골로 저장</button>
+                {candidate.fixedMemo ? <p className="mt-2 text-[12px] text-[var(--ref-text-secondary)]">{candidate.fixedMemo}</p> : null}
+                <button className="ref-secondary-action mt-3" type="button" onClick={() => void saveCandidate(candidate)}>단골로 저장</button>
               </article>
             ))}
-            {candidates.length === 0 ? <p className="rounded-[12px] border border-dashed border-latte px-3 py-8 text-center text-sm text-muted">현재 단골 후보가 없습니다.</p> : null}
+            {candidates.length === 0 ? (
+              <>
+                {["candidate-placeholder-1", "candidate-placeholder-2", "candidate-placeholder-3"].map((key) => (
+                  <div key={key} className="ref-table-row opacity-65" aria-label="단골 후보 플레이스홀더">
+                    <div className="flex items-start justify-between gap-3"><div><p className="font-extrabold text-ink">이름</p><p className="mt-1 text-[12px] text-muted">연락처 · 방문 이력</p></div><span className="ref-status-tag">후보</span></div>
+                    <button className="ref-secondary-action mt-3" type="button" disabled>단골로 저장</button>
+                  </div>
+                ))}
+                <p className="px-4 py-3 text-center text-xs font-semibold text-muted">현재 단골 후보가 없습니다.</p>
+              </>
+            ) : null}
           </div>
         </section>
       </div>

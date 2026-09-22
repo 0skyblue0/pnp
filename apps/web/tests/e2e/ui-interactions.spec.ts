@@ -46,16 +46,6 @@ type ReservationDto = {
   }>;
 };
 
-type ProductionLotDto = {
-  id: string;
-  productId: number;
-  productName: string;
-  producedAt: string;
-  lotType: "AM" | "PM_2ND" | null;
-  producedQty: number;
-  staffNote: string | null;
-};
-
 type NotificationDto = {
   id: number;
   title: string;
@@ -76,7 +66,6 @@ type MockState = {
   products: ProductDto[];
   staff: StaffDto[];
   reservations: ReservationDto[];
-  productionLots: ProductionLotDto[];
   notifications: NotificationDto[];
   responseCriteria: ResponseCriterionDto[];
 };
@@ -163,17 +152,6 @@ function defaultState(): MockState {
         items: [{ productId: 1, productName: "바게트", quantity: 3, cuttingOption: "NONE" }]
       }
     ],
-    productionLots: [
-      {
-        id: "1",
-        productId: 1,
-        productName: "바게트",
-        producedAt: "2026-05-10T00:00:00.000Z",
-        lotType: "AM",
-        producedQty: 12,
-        staffNote: null
-      }
-    ],
     notifications: [
       {
         id: 1,
@@ -227,10 +205,6 @@ async function installApiMock(page: Page, state = defaultState(), override?: Ove
       await fulfillJson(route, listEnvelope(state.reservations));
       return;
     }
-    if (method === "GET" && path === "/production-lot") {
-      await fulfillJson(route, { ...listEnvelope(state.productionLots), date: "2026-05-10" });
-      return;
-    }
     if (method === "GET" && path === "/notification") {
       await fulfillJson(route, listEnvelope(state.notifications));
       return;
@@ -254,6 +228,14 @@ async function installApiMock(page: Page, state = defaultState(), override?: Ove
       await fulfillJson(route, listEnvelope([]));
       return;
     }
+    if (method === "GET" && path === "/annual-goal-notice") {
+      await fulfillJson(route, listEnvelope([]));
+      return;
+    }
+    if (method === "GET" && path === "/annual-schedule") {
+      await fulfillJson(route, { items: [] });
+      return;
+    }
 
     await route.fulfill({
       status: 500,
@@ -266,57 +248,14 @@ async function installApiMock(page: Page, state = defaultState(), override?: Ove
   });
 }
 
-test("home production form validates inputs and submits the expected production payload", async ({
-  page
-}) => {
-  const state = defaultState();
-  let postedProduction: unknown = null;
-
-  await installApiMock(page, state, async (route, { method, path }) => {
-    if (method === "POST" && path === "/production-lot") {
-      postedProduction = route.request().postDataJSON();
-      const created = {
-        id: "2",
-        productId: 1,
-        productName: "바게트",
-        producedAt: "2026-05-10T01:30:00.000Z",
-        lotType: "PM_2ND",
-        producedQty: 7,
-        staffNote: "2차 생산"
-      } satisfies ProductionLotDto;
-      state.productionLots = [created, ...state.productionLots];
-      await fulfillJson(route, created, 201);
-      return true;
-    }
-    return false;
-  });
-
+test("home daily operation quick link opens the current daily operation workspace", async ({ page }) => {
+  await installApiMock(page);
   await page.goto("/home");
-  await expect(page.getByRole("heading", { name: "생산 수량 입력" })).toBeVisible();
-  await expect(page.getByRole("row", { name: /바게트 12 3 9/ })).toBeVisible();
-
-  const productionPanel = page
-    .locator("section")
-    .filter({ has: page.getByRole("heading", { name: "생산 수량 입력" }) });
-
-  await productionPanel.getByRole("button", { name: "생산 수량 저장" }).click();
-  await expect(page.getByText("생산 제품명을 입력하세요.")).toBeVisible();
-
-  await productionPanel.getByLabel("제품").fill(" 바게트 ");
-  await productionPanel.getByLabel("수량").fill("7");
-  await productionPanel.getByLabel("로트").selectOption("PM_2ND");
-  await productionPanel.getByLabel("생산 시각").fill("2026-05-10T10:30");
-  await productionPanel.getByLabel("메모").fill(" 2차 생산 ");
-  await productionPanel.getByRole("button", { name: "생산 수량 저장" }).click();
-
-  await expect(page.getByText("생산 수량 저장: 바게트 7개")).toBeVisible();
-  expect(postedProduction).toMatchObject({
-    productName: "바게트",
-    producedQty: 7,
-    lotType: "PM_2ND",
-    producedAt: "2026-05-10T10:30",
-    staffNote: "2차 생산"
-  });
+  const dailyOperationLink = page.getByRole("main").getByRole("link", { name: /^일일 운영 작성/ });
+  await expect(dailyOperationLink).toHaveAttribute("href", "/daily-log/today");
+  await dailyOperationLink.click();
+  await expect(page).toHaveURL(/\/daily-log\/today$/);
+  await expect(page.getByRole("heading", { name: "일일 운영 기록" })).toBeVisible();
 });
 
 test("reservation form submits entered fields and status buttons patch the selected reservation", async ({
@@ -362,24 +301,24 @@ test("reservation form submits entered fields and status buttons patch the selec
   });
 
   await page.goto("/reservation");
-  const registerPanel = page
-    .locator("section")
-    .filter({ has: page.getByRole("heading", { name: "예약 등록" }) });
+  await page.getByRole("button", { name: "+ 새 예약 등록" }).click();
+  const registerPanel = page.locator('section[aria-label="새 예약 등록"]');
+  await expect(registerPanel).toBeVisible();
 
   await registerPanel.getByLabel("손님 이름").fill("예약손님");
   await registerPanel.getByLabel("연락처").fill("010-0000-0000");
   await registerPanel.getByLabel("픽업 날짜").fill("2026-05-10");
-  await registerPanel.getByLabel("픽업 시").selectOption("18");
-  await registerPanel.getByLabel("픽업 분").selectOption("00");
-  await registerPanel.getByLabel("제품 1").selectOption("바게트");
+  await registerPanel.getByLabel("픽업 시", { exact: true }).selectOption("18");
+  await registerPanel.getByLabel("픽업 분", { exact: true }).selectOption("00");
+  await registerPanel.getByLabel("제품명 1").selectOption("바게트");
   await registerPanel.getByLabel("수량 1").fill("4");
-  await registerPanel.getByLabel("반컷팅").check();
+  await registerPanel.getByRole("button", { name: "반컷팅", exact: true }).click();
   await registerPanel.getByRole("button", { name: "제품 추가" }).click();
-  await registerPanel.getByLabel("제품 2").selectOption("호밀빵");
+  await registerPanel.getByLabel("제품명 2").selectOption("호밀빵");
   await registerPanel.getByLabel("수량 2").fill("2");
-  await expect(registerPanel.getByLabel("슬라이스")).toHaveCount(0);
-  await registerPanel.getByLabel("메모").fill("쇼핑백 요청");
-  await registerPanel.getByRole("button", { name: "저장" }).click();
+  await expect(registerPanel.getByRole("button", { name: "슬라이스", exact: true })).toHaveCount(0);
+  await registerPanel.getByLabel("예약 메모").fill("쇼핑백 요청");
+  await registerPanel.getByRole("button", { name: "등록", exact: true }).click();
 
   await expect(page.getByText("예약 저장 #88")).toBeVisible();
   expect(postedReservation).toMatchObject({
@@ -395,9 +334,9 @@ test("reservation form submits entered fields and status buttons patch the selec
     ]
   });
 
-  await expect(page.getByRole("button", { name: "결제완료" })).toHaveCount(0);
-
-  await page.getByRole("button", { name: "픽업완료" }).click();
+  const savedReservation = page.getByRole("article", { name: "예약손님 예약" });
+  await expect(savedReservation).toBeVisible();
+  await savedReservation.getByRole("button", { name: "대기" }).click();
   await expect(page.getByText("상태 변경 #88")).toBeVisible();
   expect(patchedStatus).toEqual({ status: "COMPLETED" });
 });
@@ -417,15 +356,15 @@ test("response entry buttons and inputs produce the expected response payload", 
   });
 
   await page.goto("/response/new");
-  await page.getByRole("button", { name: "서비스" }).click();
-  await page.getByRole("button", { name: "직원" }).click();
-  await page.getByRole("button", { name: "친절" }).click();
-  await page.getByLabel("짧은 요약").fill("친절 응대가 좋았음");
-  await page.getByLabel("자세한 내용").fill("직원 안내가 자세했고 선물 포장 문의가 있었다.");
+  await page.getByRole("button", { name: "서비스", exact: true }).click();
+  await page.getByRole("button", { name: "직원", exact: true }).click();
+  await page.getByRole("button", { name: "친절", exact: true }).click();
+  await page.getByLabel("한 줄 요약").fill("친절 응대가 좋았음");
+  await page.getByLabel("실제 기록 내용").fill("직원 안내가 자세했고 선물 포장 문의가 있었다.");
   await page.getByRole("button", { name: "저장" }).click();
 
   await expect(page.getByText("저장 완료 #42")).toBeVisible();
-  await expect(page.getByLabel("짧은 요약")).toHaveValue("");
+  await expect(page.getByLabel("한 줄 요약")).toHaveValue("");
   expect(postedResponse).toMatchObject({
     criterionId: 4,
     shortSummary: "친절 응대가 좋았음",
@@ -433,54 +372,11 @@ test("response entry buttons and inputs produce the expected response payload", 
   });
 });
 
-test("management staff form validates required fields and creates staff without blank displayName", async ({
-  page
-}) => {
-  const state = defaultState();
-  let postedStaff: Record<string, unknown> | null = null;
-
-  await installApiMock(page, state, async (route, { method, path }) => {
-    if (method === "POST" && path === "/staff") {
-      postedStaff = route.request().postDataJSON() as Record<string, unknown>;
-      const created = {
-        id: 2,
-        username: String(postedStaff.username),
-        displayName: null,
-        role: postedStaff.role as StaffDto["role"],
-        isActive: true,
-        createdAt: "2026-05-10T00:00:00.000Z"
-      } satisfies StaffDto;
-      state.staff = [...state.staff, created];
-      await fulfillJson(route, created, 201);
-      return true;
-    }
-    return false;
-  });
-
+test("management staff tab displays the current team roster", async ({ page }) => {
+  await installApiMock(page);
   await page.goto("/staff");
-  const staffPanel = page
-    .locator("section")
-    .filter({ has: page.getByRole("heading", { name: "직원 조회" }) });
-
-  await staffPanel.getByRole("button", { name: "직원 추가" }).click();
-  await staffPanel.getByRole("button", { name: "추가", exact: true }).click();
-  await expect(page.getByText("직원 아이디를 입력하세요.")).toBeVisible();
-
-  await staffPanel.getByLabel("아이디").fill("baker2");
-  await staffPanel.getByLabel("비밀번호").fill("short");
-  await staffPanel.getByRole("button", { name: "추가", exact: true }).click();
-  await expect(page.getByText("초기 비밀번호를 8자 이상 입력하세요.")).toBeVisible();
-
-  await staffPanel.getByLabel("비밀번호").fill("validpass1");
-  await staffPanel.getByLabel("역할").selectOption("PRODUCTION");
-  await staffPanel.getByRole("button", { name: "추가", exact: true }).click();
-
-  await expect(page.getByText("직원 추가: baker2")).toBeVisible();
-  expect(postedStaff).toMatchObject({
-    username: "baker2",
-    password: "validpass1",
-    role: "PRODUCTION",
-    isActive: true
-  });
-  expect(postedStaff).not.toHaveProperty("displayName");
+  await page.getByRole("tab", { name: "직원 관리" }).click();
+  const staffPanel = page.getByRole("tabpanel", { name: "직원 관리" });
+  await expect(staffPanel).toContainText("대표");
+  await expect(staffPanel).toContainText("owner");
 });

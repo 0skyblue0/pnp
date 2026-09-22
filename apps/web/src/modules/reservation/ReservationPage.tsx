@@ -7,6 +7,7 @@ import type { ListEnvelope } from "../../shared/api/types.js";
 import { productLineup } from "../../shared/productLineup.js";
 import { todayInStoreTime } from "../../shared/time/storeTime.js";
 import { useConfirm } from "../../shared/ui/ConfirmDialog.js";
+import { PageHeader } from "../../shared/ui/PageHeader.js";
 
 type ReservationDto = {
   id: string;
@@ -560,7 +561,7 @@ export function ReservationPage() {
   }
 
   return (
-    <div className="relative mx-auto grid max-w-none gap-4">
+    <div className="app-page relative grid gap-4">
       {showReservationForm ? (
         <div className="fixed inset-0 z-50 flex items-start justify-center bg-[rgba(43,38,34,0.4)] px-4 pt-[16px]">
           <section
@@ -570,17 +571,17 @@ export function ReservationPage() {
             <div className="mb-3 text-[16px] font-bold text-ink">{editingId ? "예약 수정" : "새 예약 등록"}</div>
 
             {message ? (
-              <div className="mb-3 rounded-[9px] bg-green/10 px-[13px] py-[8px] text-[12px] font-semibold text-green">
+              <div role="status" className="mb-3 rounded-[9px] bg-green/10 px-[13px] py-[8px] text-[12px] font-semibold text-green">
                 {message}
               </div>
             ) : null}
             {error ? (
-              <div className="mb-3 rounded-[9px] bg-[#F7E3E1] px-[13px] py-[8px] text-[12px] font-semibold text-red">
+              <div role="alert" className="mb-3 rounded-[9px] bg-[#F7E3E1] px-[13px] py-[8px] text-[12px] font-semibold text-red">
                 {error}
               </div>
             ) : null}
             {formErrors.length > 0 ? (
-              <div className="mb-3 rounded-[9px] bg-[#F7E3E1] px-[13px] py-[8px] text-[12px] font-semibold text-red">
+              <div role="alert" className="mb-3 rounded-[9px] bg-[#F7E3E1] px-[13px] py-[8px] text-[12px] font-semibold text-red">
                 <p>저장 전 확인해 주세요.</p>
                 <ul className="mt-1 list-disc pl-5">
                   {formErrors.map((formError) => (
@@ -841,12 +842,8 @@ export function ReservationPage() {
         </div>
       ) : null}
 
-      <section className="panel min-w-0">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h2 className="section-title">예약 · {date.replaceAll("-", ".")}</h2>
-          </div>
-          <div className="flex flex-wrap items-end gap-2">
+      <section className="app-card min-w-0">
+        <PageHeader title={`예약 · ${date.replaceAll("-", ".")}`} description="예약 목록을 확인하고 새 예약을 등록합니다." actions={<div className="flex flex-wrap items-end gap-2">
             <label className="grid min-w-40 max-w-full cursor-pointer gap-1">
               <span className="text-[11px] font-semibold text-muted">조회 날짜</span>
               <input
@@ -870,7 +867,7 @@ export function ReservationPage() {
             </label>
             <button
               type="button"
-              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-[0.9rem] bg-white px-3 text-sm font-extrabold text-cocoa shadow-sm ring-1 ring-latte transition hover:-translate-y-0.5 hover:bg-cream hover:shadow-md active:translate-y-0"
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[0.9rem] bg-white px-3 text-sm font-extrabold text-cocoa shadow-sm ring-1 ring-latte transition hover:-translate-y-0.5 hover:bg-cream hover:shadow-md active:translate-y-0"
               onClick={() => void loadReservations()}
             >
               <RefreshCcw className="h-4 w-4" aria-hidden="true" />
@@ -879,25 +876,24 @@ export function ReservationPage() {
             {!showReservationForm ? (
               <button
                 type="button"
-                className="dc-action inline-flex min-h-0 items-center justify-center"
+                className="dc-action inline-flex min-h-11 items-center justify-center"
                 onClick={openNewReservationForm}
               >
                 + 새 예약 등록
               </button>
             ) : null}
-          </div>
-        </div>
+          </div>} />
         <p className="mb-3 text-xs font-semibold text-muted">
           {reservationQuery.trim() ? "다른 날짜까지 검색 중" : `${date.replaceAll("-", ".")} 픽업 체크리스트`} · 전체 {reservations.length}건 / 대기 {pendingCount}건 / 픽업완료 {completedCount}건
           {overdueCount > 0 ? <span className="ml-2 rounded-full bg-red/10 px-2 py-0.5 text-red">픽업 지연 {overdueCount}건</span> : null}
         </p>
         {!showReservationForm && message ? (
-          <div className="mb-4 rounded-control border border-green/20 bg-green/10 px-3 py-2 text-sm font-semibold text-green">
+          <div role="status" className="mb-4 rounded-control border border-green/20 bg-green/10 px-3 py-2 text-sm font-semibold text-green">
             {message}
           </div>
         ) : null}
         {!showReservationForm && error ? (
-          <div className="mb-4 rounded-control border border-red/20 bg-red/10 px-3 py-2 text-sm font-semibold text-red">
+          <div role="alert" className="mb-4 rounded-control border border-red/20 bg-red/10 px-3 py-2 text-sm font-semibold text-red">
             {error}
           </div>
         ) : null}
@@ -913,7 +909,7 @@ export function ReservationPage() {
               <article
                 key={reservation.id}
                 aria-label={`${customerName} 예약`}
-                className="dc-card grid gap-3 px-4 py-4 md:grid-cols-[9rem_minmax(0,1fr)] md:gap-4"
+                className="app-card grid gap-3 px-4 py-4 md:grid-cols-[9rem_minmax(0,1fr)] md:gap-4"
               >
                 <div className="flex flex-row items-start justify-between gap-3 border-b border-latte pb-3 md:block md:border-b-0 md:border-r md:pb-0 md:pr-4">
                   <div>

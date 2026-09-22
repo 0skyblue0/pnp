@@ -31,9 +31,12 @@ const ConfirmContext = createContext<ConfirmContextValue | null>(null);
 export function ConfirmProvider({ children }: PropsWithChildren) {
   const [pending, setPending] = useState<PendingConfirm | null>(null);
   const confirmButtonRef = useRef<HTMLButtonElement | null>(null);
+  const dialogRef = useRef<HTMLDivElement | null>(null);
+  const returnFocusRef = useRef<HTMLElement | null>(null);
 
   const confirm = useCallback<ConfirmContextValue>((options) => {
     return new Promise<boolean>((resolve) => {
+      returnFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
       setPending({ ...options, resolve });
     });
   }, []);
@@ -42,6 +45,7 @@ export function ConfirmProvider({ children }: PropsWithChildren) {
     (confirmed: boolean) => {
       pending?.resolve(confirmed);
       setPending(null);
+      window.requestAnimationFrame(() => returnFocusRef.current?.focus());
     },
     [pending]
   );
@@ -54,7 +58,36 @@ export function ConfirmProvider({ children }: PropsWithChildren) {
 
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
+        event.preventDefault();
         close(false);
+        return;
+      }
+      if (event.key !== "Tab" || !dialogRef.current) {
+        return;
+      }
+
+      const focusableElements = Array.from(
+        dialogRef.current.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        )
+      );
+      if (focusableElements.length === 0) {
+        event.preventDefault();
+        dialogRef.current.focus();
+        return;
+      }
+
+      const first = focusableElements[0];
+      const last = focusableElements.at(-1);
+      if (!first || !last) {
+        return;
+      }
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
       }
     }
 
@@ -68,7 +101,7 @@ export function ConfirmProvider({ children }: PropsWithChildren) {
       {pending
         ? createPortal(
             <div
-              className="fixed inset-0 z-[110] grid place-items-center bg-ink/40 px-4"
+              className="fixed inset-0 z-[110] grid place-items-center bg-ref-cocoa/45 px-4"
               onMouseDown={(event) => {
                 if (event.target === event.currentTarget) {
                   close(false);
@@ -76,11 +109,13 @@ export function ConfirmProvider({ children }: PropsWithChildren) {
               }}
             >
               <div
+                ref={dialogRef}
                 role="alertdialog"
                 aria-modal="true"
                 aria-labelledby="confirm-dialog-title"
                 aria-describedby="confirm-dialog-message"
-                className="w-full max-w-sm rounded-panel bg-white p-5 shadow-elegant"
+                tabIndex={-1}
+                className="w-full max-w-sm rounded-panel border border-ref-line bg-ref-card p-5 shadow-elegant"
               >
                 <h2 id="confirm-dialog-title" className="text-base font-bold text-ink">
                   {pending.title ?? "확인"}
@@ -91,7 +126,7 @@ export function ConfirmProvider({ children }: PropsWithChildren) {
                 <div className="mt-5 flex justify-end gap-2">
                   <button
                     type="button"
-                    className="min-h-10 rounded-control border border-latte bg-white px-4 text-sm font-semibold text-cocoa transition hover:bg-cream"
+                    className="ref-secondary-action min-h-11 text-sm"
                     onClick={() => close(false)}
                   >
                     {pending.cancelLabel ?? "취소"}
@@ -100,8 +135,8 @@ export function ConfirmProvider({ children }: PropsWithChildren) {
                     ref={confirmButtonRef}
                     type="button"
                     className={[
-                      "min-h-10 rounded-control px-4 text-sm font-semibold text-white transition",
-                      pending.tone === "danger" ? "bg-red hover:bg-red/90" : "bg-bread hover:bg-cocoa"
+                      "min-h-11 px-4 text-sm",
+                      pending.tone === "danger" ? "rounded-control border border-red bg-red text-white transition hover:bg-red/90" : "ref-primary-action"
                     ].join(" ")}
                     onClick={() => close(true)}
                   >

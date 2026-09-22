@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -16,7 +16,7 @@ import { todayInStoreTime } from "../shared/time/storeTime.js";
 import { ConfirmProvider } from "../shared/ui/ConfirmDialog.js";
 import { ToastProvider } from "../shared/ui/Toast.js";
 
-const ACTIVE_NAV_CLASS = "from-cocoa";
+const ACTIVE_NAV_CLASS = "bg-ref-gold";
 const monthlyTargetsFixture = {
   "01": 0,
   "02": 0,
@@ -61,6 +61,71 @@ describe("App", () => {
     vi.unstubAllGlobals();
   });
 
+  it("opens the labelled mobile navigation control", () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "메뉴 열기" }));
+
+    expect(screen.getByRole("link", { name: "매출 분석" })).toBeVisible();
+  });
+
+  it("focuses the drawer, traps its keyboard navigation, and restores the menu trigger after Escape", () => {
+    render(<App />);
+
+    const trigger = screen.getByRole("button", { name: "메뉴 열기" });
+    fireEvent.click(trigger);
+
+    const dialog = screen.getByRole("dialog", { name: "주요 메뉴" });
+    const closeButton = within(dialog).getByRole("button", { name: "메뉴 닫기" });
+    expect(closeButton).toHaveFocus();
+
+    const lastLink = within(dialog).getByRole("link", { name: "알림" });
+    lastLink.focus();
+    fireEvent.keyDown(dialog, { key: "Tab" });
+    expect(within(dialog).getByRole("link", { name: "Paul & Paulina 홈" })).toHaveFocus();
+
+    fireEvent.keyDown(dialog, { key: "Escape" });
+    expect(screen.queryByRole("dialog", { name: "주요 메뉴" })).not.toBeInTheDocument();
+    expect(trigger).toHaveFocus();
+  });
+
+  it("closes the mobile drawer after navigation", () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "메뉴 열기" }));
+    fireEvent.click(within(screen.getByRole("dialog", { name: "주요 메뉴" })).getByRole("link", { name: "매출 분석" }));
+
+    expect(screen.queryByRole("dialog", { name: "주요 메뉴" })).not.toBeInTheDocument();
+  });
+
+  it("closes the drawer and keeps the desktop sidebar available at the large breakpoint", () => {
+    const listeners = new Set<(event: MediaQueryListEvent) => void>();
+    const mediaQueryState = { matches: false };
+    const mediaQuery = {
+      get matches() {
+        return mediaQueryState.matches;
+      },
+      media: "(min-width: 1024px)",
+      onchange: null,
+      addEventListener: (_type: string, listener: (event: MediaQueryListEvent) => void) => listeners.add(listener),
+      removeEventListener: (_type: string, listener: (event: MediaQueryListEvent) => void) => listeners.delete(listener),
+      addListener: (listener: (event: MediaQueryListEvent) => void) => listeners.add(listener),
+      removeListener: (listener: (event: MediaQueryListEvent) => void) => listeners.delete(listener),
+      dispatchEvent: () => true
+    } as MediaQueryList;
+    vi.stubGlobal("matchMedia", vi.fn(() => mediaQuery));
+
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "메뉴 열기" }));
+    mediaQueryState.matches = true;
+    act(() => {
+      listeners.forEach((listener) => listener({ matches: true } as MediaQueryListEvent));
+    });
+
+    expect(screen.queryByRole("dialog", { name: "주요 메뉴" })).not.toBeInTheDocument();
+    expect(document.querySelector("aside")).toHaveAttribute("aria-hidden", "false");
+  });
+
   it("shows the main bakery work tabs", () => {
     render(
       <MemoryRouter initialEntries={["/home"]}>
@@ -91,6 +156,22 @@ describe("App", () => {
       "href",
       "/home"
     );
+  });
+
+  it("groups desktop navigation and marks the active route in the reference sidebar", () => {
+    render(
+      <MemoryRouter initialEntries={["/sales-analysis"]}>
+        <Routes>
+          <Route element={<AppLayout />}>
+            <Route path="/sales-analysis" element={<div />} />
+          </Route>
+        </Routes>
+      </MemoryRouter>
+    );
+
+    expect(screen.getByText("운영")).toBeInTheDocument();
+    expect(screen.getByText("고객")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "매출 분석" })).toHaveAttribute("aria-current", "page");
   });
 
   it("shows yearly sales analysis with visual monthly bars", async () => {
@@ -176,18 +257,23 @@ describe("App", () => {
     expect(await screen.findByRole("heading", { name: "매출 분석" })).toBeInTheDocument();
     expect(screen.getByText("350,000원")).toBeInTheDocument();
     expect(screen.getByText("현장 요약")).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "연간 매출 핵심 지표" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "매출 비교 시각화" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "월별 상세" })).toBeInTheDocument();
+    expect(screen.getByRole("list", { name: "월별 매출 막대" })).toBeInTheDocument();
+    expect(screen.getAllByRole("listitem")).toHaveLength(3);
     expect(screen.getByRole("link", { name: "월별 목표 입력하러 가기" })).toHaveAttribute(
       "href",
       `/staff?tab=notice&goal=sales&year=${new Date().getFullYear()}`
     );
-    expect(screen.getByText("월별 목표 달성 흐름")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "월별 매출 비교" })).toBeInTheDocument();
     expect(screen.getByText("등록된 목표 합계")).toBeInTheDocument();
     expect(screen.getByText("700,000원")).toBeInTheDocument();
     expect(screen.getByText("전체 달성률")).toBeInTheDocument();
     expect(screen.getAllByText("50%").length).toBeGreaterThan(0);
-    expect(screen.getByText("최근 기록월 목표 차이")).toBeInTheDocument();
+    expect(screen.getByText(/최근 기록월 목표 차이:/)).toBeInTheDocument();
     expect(screen.getByText("200,000원 부족")).toBeInTheDocument();
-    expect(screen.getByText(/목표 400,000원 · 달성률/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "2월 매출 200,000원" })).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByText("기록일 평균")).toBeInTheDocument();
     expect(screen.getByText("채널별 매출 비중")).toBeInTheDocument();
     expect(screen.getAllByText(/바게트/).length).toBeGreaterThan(0);
@@ -484,10 +570,12 @@ describe("App", () => {
     expect(screen.getByText("활성 제품")).toBeInTheDocument();
     expect(screen.getByText("전체 직원")).toBeInTheDocument();
     expect(screen.getByText("활성 직원")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "제품 관리" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "직원 관리" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "반응 기준 관리" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "홈 공지 관리" })).toBeInTheDocument();
+    const productManagementTab = screen.getByRole("tab", { name: "제품 관리" });
+    expect(productManagementTab).toHaveAttribute("aria-selected", "true");
+    expect(document.getElementById(productManagementTab.getAttribute("aria-controls") ?? "")).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "직원 관리" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "반응 기준 관리" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "홈 공지 관리" })).toBeInTheDocument();
     expect(screen.getAllByText("제품명").length).toBeGreaterThan(0);
     expect(screen.getAllByText("카테고리").length).toBeGreaterThan(0);
     expect(screen.getAllByText("시즌").length).toBeGreaterThan(0);
@@ -523,17 +611,21 @@ describe("App", () => {
         body: JSON.stringify({ productIds: [1, 3, 2] })
       })
     );
-    fireEvent.click(screen.getByRole("button", { name: "반응 기준 관리" }));
+    fireEvent.click(screen.getByRole("tab", { name: "반응 기준 관리" }));
     expect(
       screen.getByText(/대분류\(제품·서비스·응대·구매·운영·손님경험·기타\)/)
     ).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "홈 공지 관리" }));
+    fireEvent.click(screen.getByRole("tab", { name: "홈 공지 관리" }));
     expect(screen.getByText(/매출 분석 달성률에 쓰는 월별 목표액/)).toBeInTheDocument();
     expect(screen.getByText("월별 매출 목표 · 홈 공지")).toBeInTheDocument();
     expect(screen.getByText("2026년 매출 목표")).toBeInTheDocument();
     expect(screen.getByText("총합 48,000,000원")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "월별 목표 입력" }));
     expect(screen.getByText("월별 매출 목표 입력")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "매출 목표" })).toHaveClass("min-h-11");
+    expect(screen.getByRole("button", { name: "직원 공지" })).toHaveClass("min-h-11");
+    expect(screen.getByRole("button", { name: "올해 매출 목표 수정" })).toHaveClass("min-h-11");
+    expect(screen.getByRole("button", { name: "올해 매출 목표 삭제" })).toHaveClass("min-h-11");
     fireEvent.change(screen.getByLabelText("모든 달 같은 목표액"), { target: { value: "70000000" } });
     fireEvent.click(screen.getByRole("button", { name: "1~12월 전체 채우기" }));
     expect(screen.getByLabelText("1월 매출 목표")).toHaveValue("70,000,000");
@@ -560,7 +652,7 @@ describe("App", () => {
     fireEvent.click(within(goalNoticeConfirmDialog).getByRole("button", { name: "삭제" }));
     expect(await screen.findByText("홈 공지 삭제 완료")).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "연간 스케줄 관리" }));
+    fireEvent.click(screen.getByRole("tab", { name: "연간 스케줄 관리" }));
     expect(screen.getByText("연간 스케줄 달력 관리")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "2026년 7월" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "이전 달" })).toBeInTheDocument();
@@ -1511,26 +1603,34 @@ describe("App", () => {
     expect(screen.getAllByText("10건").length).toBeGreaterThan(0);
 
     fireEvent.click(screen.getByRole("tab", { name: "제품" }));
-    expect(screen.getByText("바게트")).toBeInTheDocument();
-    expect(screen.getByText("치킨샌드위치")).toBeInTheDocument();
+    const productInput = (label: string) => {
+      const input = screen.getAllByLabelText(label)[0];
+      if (!input) throw new Error(`Expected product input: ${label}`);
+      return input;
+    };
+    expect(screen.getAllByText("바게트").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("치킨샌드위치").length).toBeGreaterThan(0);
     expect(
-      screen
-        .getByLabelText("치킨샌드위치 생산량")
-        .compareDocumentPosition(screen.getByLabelText("바게트 생산량")) &
+      productInput("치킨샌드위치 생산량").compareDocumentPosition(productInput("바게트 생산량")) &
         Node.DOCUMENT_POSITION_FOLLOWING
     ).toBeTruthy();
-    expect(screen.getByText("생산량(개)")).toBeInTheDocument();
-    expect(screen.getByText("판매량(개)")).toBeInTheDocument();
+    expect(screen.getAllByText("생산량(개)").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("판매량(개)").length).toBeGreaterThan(0);
     expect(screen.getByText("기타(+)/(-)")).toBeInTheDocument();
-    expect(screen.getByLabelText("바게트 기타 입고 +")).toBeInTheDocument();
-    expect(screen.getByLabelText("바게트 기타 출고 -")).toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText("바게트 생산량"), { target: { value: "10" } });
-    fireEvent.change(screen.getByLabelText("바게트 기타 입고 +"), { target: { value: "3" } });
-    fireEvent.change(screen.getByLabelText("바게트 기타 출고 -"), { target: { value: "2" } });
-    fireEvent.change(screen.getByLabelText("바게트 손실량"), { target: { value: "1" } });
-    fireEvent.change(screen.getByLabelText("바게트 시식량"), { target: { value: "1" } });
-    fireEvent.change(screen.getByLabelText("바게트 재고량"), { target: { value: "4" } });
-    expect(screen.getAllByText("2").length).toBeGreaterThan(0);
+    expect(productInput("바게트 기타 입고 +")).toBeInTheDocument();
+    expect(productInput("바게트 기타 출고 -")).toBeInTheDocument();
+    for (const label of ["바게트 기타 입고 +", "바게트 기타 출고 -", "호밀쇼콜라오렌지 판매량 직접입력"]) {
+      expect(screen.getAllByLabelText(label).some((input) => !input.closest(".sr-only"))).toBe(true);
+    }
+    fireEvent.change(productInput("바게트 생산량"), { target: { value: "10" } });
+    fireEvent.change(productInput("바게트 기타 입고 +"), { target: { value: "3" } });
+    fireEvent.change(productInput("바게트 기타 출고 -"), { target: { value: "2" } });
+    fireEvent.change(productInput("바게트 손실량"), { target: { value: "1" } });
+    fireEvent.change(productInput("바게트 시식량"), { target: { value: "1" } });
+    fireEvent.change(productInput("바게트 재고량"), { target: { value: "4" } });
+    expect(productInput("바게트 생산량")).toHaveValue("10");
+    expect(productInput("바게트 기타 입고 +")).toHaveValue("3");
+    expect(productInput("바게트 기타 출고 -")).toHaveValue("2");
     expect(screen.getAllByLabelText("호밀쇼콜라오렌지 판매량 직접입력").length).toBeGreaterThan(0);
     expect(screen.getByText("자동 계산")).toBeInTheDocument();
 
@@ -1596,7 +1696,7 @@ describe("App", () => {
     expect(savedRecordRow).toHaveTextContent("총매출액35,000원");
     expect(savedRecordRow).toHaveTextContent("매출건수10건");
     expect(savedRecordRow).toHaveTextContent("객단가3,500원");
-    expect(savedRecordRow).toHaveTextContent("제품판매량2개");
+    expect(savedRecordRow).toHaveTextContent("제품판매량4개");
     expect(savedRecordRow).toHaveTextContent("메모2건");
     expect(savedRecordRow).toHaveTextContent("상세");
     expect(within(savedRecordRow).queryByText("구름빵 반죽 작업 있습니다")).not.toBeInTheDocument();
@@ -1660,7 +1760,7 @@ describe("App", () => {
     expect(screen.getByLabelText("POS 매출액")).toHaveValue("20,000");
     expect(screen.getByLabelText("선물 매출액")).toHaveValue("10,000");
     fireEvent.click(screen.getByRole("tab", { name: "제품" }));
-    expect(screen.getByLabelText("바게트 생산량")).toHaveValue("10");
+    expect(screen.getAllByLabelText("바게트 생산량").at(0)).toHaveValue("10");
 
     fireEvent.click(screen.getByRole("tab", { name: "데이터 조회" }));
     fireEvent.change(screen.getByLabelText("조회 방식"), { target: { value: "date" } });
@@ -1998,15 +2098,11 @@ describe("App", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "AI 분류하기" }));
 
-    const errorToast = await screen.findByRole("alert");
-    expect(errorToast).toHaveTextContent(
-      "AI 분류 API가 설정되지 않았습니다. 관리자에게 연결 상태를 확인해 주세요."
-    );
-    expect(
-      screen.getAllByText(
-        "AI 분류 API가 설정되지 않았습니다. 관리자에게 연결 상태를 확인해 주세요."
-      ).length
-    ).toBeGreaterThan(0);
+    const errorMessage = "AI 분류 API가 설정되지 않았습니다. 관리자에게 연결 상태를 확인해 주세요.";
+    await waitFor(() => expect(screen.getAllByText(errorMessage)).toHaveLength(2));
+    const errorAlerts = screen.getAllByRole("alert");
+    expect(errorAlerts).toHaveLength(2);
+    errorAlerts.forEach((alert) => expect(alert).toHaveTextContent(errorMessage));
     expect(screen.getByText("선택 기준: 미선택")).toBeInTheDocument();
     expect(screen.getByLabelText("한 줄 요약")).toHaveValue("");
     expect(screen.queryByText(/AI 추천 적용됨/)).not.toBeInTheDocument();
@@ -2383,7 +2479,7 @@ describe("App", () => {
     fireEvent.click(screen.getByRole("link", { name: "선결제 장부" }));
 
     expect(await screen.findByRole("heading", { name: "선결제 장부" })).toBeInTheDocument();
-    expect(screen.getByLabelText("손님 검색")).toBeInTheDocument();
+    expect(screen.getByLabelText("고객 검색")).toBeInTheDocument();
     expect(screen.getByText("검색된 손님 수")).toBeInTheDocument();
     expect(screen.getByText("총 잔액")).toBeInTheDocument();
     expect(screen.getByText("이름")).toBeInTheDocument();
